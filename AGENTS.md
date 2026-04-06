@@ -5,8 +5,22 @@
 - **Name**: NanoVMS (Nano Virtual Machine Services)
 - **Description**: Nano Virtual Machine Services — headless VM abstraction for agents with support for Apple, Android, Smart TV, Gaming, IoT/Embedded, and AR/VR platforms
 - **Location**: `/Users/kooshapari/CodeProjects/Phenotype/repos/nanovms`
-- **Language Stack**: Go 1.23+
 - **Published**: Private (Phenotype org)
+
+## Language Stack
+
+| Language | Use Case | Tier |
+|----------|----------|------|
+| **Go** | Core orchestration, CLI, networking | 1 (Primary) |
+| **Rust** | Performance-critical, FFI, safety-critical | 1 |
+| **Zig** | Low-level, embedded, C interop | 1 |
+| **Mojo** | ML/AI workloads | 1 |
+| **Python** | ML fallback only | 2 (Worst case) |
+| **C#** | Windows tooling only | 2 (Worst case) |
+| **TypeScript** | Web UI only | 2 (Worst case) |
+| **Swift/Kotlin** | Platform companions only | 2 (Worst case) |
+
+> **⚠️ IMPORTANT**: See [LANGUAGES.md](LANGUAGES.md) for full language selection criteria. Tier 2 languages require documented justification in PRs.
 
 ## Quick Start
 
