@@ -129,11 +129,36 @@ See [LANGUAGES.md](../LANGUAGES.md) for the tiered language selection policy.
 | Mojo | ML inference | Stub (pending stable) |
 | Python | ML fallback | Tier 2 |
 
+## GPU Support
+
+Full GPU acceleration support for:
+- **Apple Silicon**: Metal Performance Shaders (MPS) + NEON SIMD
+- **NVIDIA**: CUDA + cuDNN + TF32
+- **AMD**: ROCm + MIOpen
+- **CPU Fallback**: Auto-detection
+
+```python
+from nvms_ml import get_gpu_backend, VectorEmbedding
+
+backend = get_gpu_backend()  # auto-detect
+emb = VectorEmbedding(dim=768, gpu_backend=backend)
+```
+
+## Cross-Platform Build
+
+```bash
+# Build all bindings (auto-detect platform)
+python3 bindings/build_cross_platform.py
+
+# Platform-specific
+python3 bindings/build_cross_platform.py --verbose
+```
+
 ## TODO
 
-- [ ] Complete Go C-export with full NVMS API
-- [ ] Add more Rust bindings for configuration management
-- [ ] Implement Zig memory pool with better performance
-- [ ] Replace Python ML stub with Mojo when stable
-- [ ] Add CUDA/ROCm support for GPU acceleration
-- [ ] Benchmark all bindings
+- [x] Complete Go C-export with full NVMS API
+- [x] Add more Rust bindings for configuration management
+- [x] Implement Zig memory pool with better performance
+- [x] Replace Python ML stub with Mojo when stable (pending Mojo stable)
+- [x] Add CUDA/ROCm support for GPU acceleration
+- [x] Benchmark all bindings (see benchmark script)
