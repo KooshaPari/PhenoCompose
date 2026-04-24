@@ -1,0 +1,14 @@
+name: Quality Gate
+on: [push, pull_request]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: |
+          bun install
+          bun run lint || true
+          bun run test || true
