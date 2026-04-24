@@ -1,0 +1,19 @@
+# CODEOWNERS — default reviewers for this repository.
+# Order matters: later rules override earlier ones.
+
+* @KooshaPari
+
+# Governance / meta
+/.github/                @KooshaPari
+/SECURITY.md             @KooshaPari
+/CODEOWNERS              @KooshaPari
+/.github/CODEOWNERS      @KooshaPari
+
+# Polyglot drill-down
+/rust/                    @KooshaPari
+/go/                      @KooshaPari
+/python/                  @KooshaPari
+*.rs                      @KooshaPari
+*.go                      @KooshaPari
+*.py                      @KooshaPari
+*.ts                      @KooshaPari
