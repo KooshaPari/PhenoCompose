@@ -78,11 +78,36 @@ cd nvms && go build ./cmd/nvms
 cargo install pheno-compose --features nvms-driver
 ```
 
+## Features
+
+- **Multi-Tier Isolation** — WASM, gVisor, Firecracker for different trust/performance tradeoffs
+- **Unified Orchestration** — PhenoCompose driver standardizes deployment across tiers
+- **Cross-Platform** — Native support for macOS, Linux, Windows
+- **Fast Startup** — WASM in milliseconds for dev/testing workloads
+- **Secure Isolation** — gVisor/Firecracker for untrusted code execution
+
+## Project Status
+
+- **Status**: Active
+- **Languages**: Go (core) + Rust (PhenoCompose driver)
+- **Type**: Container/Sandbox Orchestration
+- **Part of**: Phenotype Ecosystem
+- **Integrates With**: BytePort, nanovms, AgilePlus
+
+## Quality & Testing
+
+- Functional requirements tracked in AgilePlus
+- Platform compatibility tests for each tier
+- Integration tests with Firecracker and gVisor
+- Deployment verification across cloud platforms
+
 ## Documentation
 
 - [PhenoCompose Integration](integrations/pheno-compose/README.md)
 - [AWS Deployment](docs/aws-deployment.md)
-- [Architecture](docs/architecture.md)
+- [Architecture Guide](docs/architecture.md)
+- **Worklogs**: Audit trail in `docs/worklogs/` (if present)
+- **Governance**: See `CLAUDE.md` for development rules
 
 ## License
 
