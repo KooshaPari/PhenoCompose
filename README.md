@@ -56,6 +56,18 @@ pheno-compose deploy --runtime nvms --config nvms.yaml
 | **AWS deployment** | BytePort/nvms | ✅ Merged | Firecracker orchestration |
 | **Unified interface** | PhenoCompose | ✅ New | Rust driver, standardization |
 
+## Key Features
+
+- **Multi-Tier Isolation Strategy** — Choose isolation level (WASM, gVisor, Firecracker) based on trust model and performance requirements
+- **Unified Interface** — Single `pheno-compose` CLI for all isolation backends; configuration portable across tiers
+- **Sub-Second Cold Starts** — WASM tier enables 1ms startup for rapid scaling and function-as-a-service workloads
+- **Container Compatibility** — gVisor tier runs standard OCI containers without hardware virtualization
+- **Full Virtualization** — Firecracker tier provides complete OS-level isolation for untrusted or legacy code
+- **Resource Metering** — Track CPU, memory, I/O per workload with automatic enforcement
+- **Networking** — Bridge or overlay network modes; DNS resolution via Phenotype service mesh
+- **Volume Management** — Persistent volumes, ephemeral scratch, read-only root filesystem support
+- **Observability** — Built-in logging, metrics (Prometheus), distributed tracing (Tempo integration)
+
 ## Platform Support
 
 | Platform | Tier 1 (WASM) | Tier 2 (gVisor) | Tier 3 (Firecracker) |
