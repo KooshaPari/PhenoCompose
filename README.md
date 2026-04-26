@@ -1,5 +1,10 @@
 # NVMS - NanoVM Service (Unified)
 
+[![Build](https://img.shields.io/github/actions/workflow/status/KooshaPari/PhenoCompose/quality-gate.yml?branch=main&label=build)](https://github.com/KooshaPari/PhenoCompose/actions)
+[![Release](https://img.shields.io/github/v/release/KooshaPari/PhenoCompose?include_prereleases&sort=semver)](https://github.com/KooshaPari/PhenoCompose/releases)
+[![License](https://img.shields.io/github/license/KooshaPari/PhenoCompose)](LICENSE)
+[![Phenotype](https://img.shields.io/badge/Phenotype-org-blueviolet)](https://github.com/KooshaPari)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Quality Gate](https://github.com/KooshaPari/PhenoCompose/actions/workflows/quality-gate.yml/badge.svg)](https://github.com/KooshaPari/PhenoCompose/actions/workflows/quality-gate.yml)
 [![Go](https://img.shields.io/badge/go-1.21%2B-00ADD8.svg)](https://go.dev)
