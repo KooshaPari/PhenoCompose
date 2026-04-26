@@ -124,3 +124,7 @@ cargo install pheno-compose --features nvms-driver
 ## License
 
 Apache-2.0
+
+## License
+
+MIT — see [LICENSE](./LICENSE).
