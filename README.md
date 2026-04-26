@@ -1,5 +1,9 @@
 # NVMS - NanoVM Service (Unified)
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Quality Gate](https://github.com/KooshaPari/PhenoCompose/actions/workflows/quality-gate.yml/badge.svg)](https://github.com/KooshaPari/PhenoCompose/actions/workflows/quality-gate.yml)
+[![Go](https://img.shields.io/badge/go-1.21%2B-00ADD8.svg)](https://go.dev)
+
 > **Merged Implementation**: KooshaPari/nanovms + BytePort/nvms + PhenoCompose Driver
 
 NVMS provides **3-tier isolation** for secure, efficient application deployment:
