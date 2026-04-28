@@ -4,9 +4,9 @@ vars:
   HAS_GO:
     sh: 'test -f go.mod && echo 1 || echo 0'
   HAS_RUST:
-    sh: 'test -f pheno-compose-driver/Cargo.toml && echo 1 || echo 0'
+    sh: 'cargo metadata --manifest-path pheno-compose-driver/Cargo.toml --no-deps --format-version 1 >/dev/null 2>&1 && echo 1 || echo 0'
   HAS_RUST_FFI:
-    sh: 'test -f bindings/rust-ffi/Cargo.toml && echo 1 || echo 0'
+    sh: 'cargo metadata --manifest-path bindings/rust-ffi/Cargo.toml --no-deps --format-version 1 >/dev/null 2>&1 && echo 1 || echo 0'
   HAS_ROOT_PACKAGE:
     sh: 'test -f package.json && echo 1 || echo 0'
   HAS_DOCS_BUILD:
