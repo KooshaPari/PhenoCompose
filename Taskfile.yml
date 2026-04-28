@@ -1,8 +1,114 @@
-version: '3'
+version: "3"
+
+vars:
+  HAS_GO:
+    sh: 'test -f go.mod && echo 1 || echo 0'
+  HAS_RUST_DRIVER:
+    sh: 'test -f pheno-compose-driver/Cargo.toml && echo 1 || echo 0'
+  HAS_DOCS:
+    sh: 'test -f package.json && echo 1 || echo 0'
+  HAS_PLAYWRIGHT:
+    sh: 'test -f tests/playwright/package.json && echo 1 || echo 0'
+
 tasks:
-  fmt:
+  build:
+    desc: Build detected project components
     cmds:
-      - cargo fmt
+      - cmd: |
+          set -eu
+
+          if [ "{{.HAS_GO}}" = "1" ]; then
+            go build ./...
+          fi
+
+          if [ "{{.HAS_RUST_DRIVER}}" = "1" ]; then
+            (cd pheno-compose-driver && cargo build)
+          fi
+
+          if [ "{{.HAS_DOCS}}" = "1" ]; then
+            if command -v bun >/dev/null 2>&1; then
+              bun run docs:build
+            elif command -v npm >/dev/null 2>&1; then
+              npm run docs:build
+            fi
+          fi
+
+          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ]; then
+            (cd tests/playwright && npm run build)
+          fi
+
   test:
+    desc: Run detected project tests
     cmds:
-      - cargo test
+      - cmd: |
+          set -eu
+
+          if [ "{{.HAS_GO}}" = "1" ]; then
+            go test ./...
+          fi
+
+          if [ "{{.HAS_RUST_DRIVER}}" = "1" ]; then
+            (cd pheno-compose-driver && cargo test)
+          fi
+
+          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ]; then
+            (cd tests/playwright && npm run test)
+          fi
+
+  lint:
+    desc: Lint detected project components
+    cmds:
+      - cmd: |
+          set -eu
+
+          if [ "{{.HAS_GO}}" = "1" ]; then
+            if command -v golangci-lint >/dev/null 2>&1; then
+              golangci-lint run ./...
+            else
+              go vet ./...
+            fi
+          fi
+
+          if [ "{{.HAS_RUST_DRIVER}}" = "1" ]; then
+            (cd pheno-compose-driver && cargo fmt --all --check && cargo clippy --all-targets --all-features -- -D warnings)
+          fi
+
+          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ]; then
+            (cd tests/playwright && npm run build)
+          fi
+
+  clean:
+    desc: Remove generated artifacts
+    cmds:
+      - cmd: |
+          set -eu
+
+          if [ "{{.HAS_GO}}" = "1" ]; then
+            go clean -cache -testcache
+          fi
+
+          if [ "{{.HAS_RUST_DRIVER}}" = "1" ]; then
+            (cd pheno-compose-driver && cargo clean)
+          fi
+
+          if [ "{{.HAS_DOCS}}" = "1" ]; then
+            rm -rf docs/.vitepress/dist
+          fi
+
+          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ]; then
+            rm -rf tests/playwright/dist tests/playwright/node_modules/.cache
+          fi
+
+  fmt:
+    desc: Format detected project components
+    cmds:
+      - cmd: |
+          set -eu
+
+          if [ "{{.HAS_GO}}" = "1" ]; then
+            go fmt ./...
+          fi
+
+          if [ "{{.HAS_RUST_DRIVER}}" = "1" ]; then
+            (cd pheno-compose-driver && cargo fmt)
+          fi
