@@ -93,7 +93,9 @@ tasks:
           fi
 
           if [ "{{.HAS_RUST}}" = "1" ]; then
-            cargo clean --manifest-path pheno-compose-driver/Cargo.toml
+            if cargo metadata --manifest-path pheno-compose-driver/Cargo.toml >/dev/null 2>&1; then
+              cargo clean --manifest-path pheno-compose-driver/Cargo.toml
+            fi
           fi
 
           if [ "{{.HAS_DOCS}}" = "1" ]; then
