@@ -11,6 +11,8 @@ vars:
     sh: 'test -f package.json && echo 1 || echo 0'
   HAS_PLAYWRIGHT:
     sh: 'test -f tests/playwright/package.json && echo 1 || echo 0'
+  JS_RUNNER:
+    sh: 'command -v bun >/dev/null 2>&1 && echo bun || echo npm'
 
 tasks:
   build:
@@ -32,15 +34,12 @@ tasks:
           fi
 
           if [ "{{.HAS_DOCS}}" = "1" ]; then
-            if command -v bun >/dev/null 2>&1; then
-              bun run docs:build
-            elif command -v npm >/dev/null 2>&1; then
-              npm run docs:build
-            fi
+            {{.JS_RUNNER}} run docs:build
           fi
 
           if [ "{{.HAS_PLAYWRIGHT}}" = "1" ]; then
-            npm --prefix tests/playwright run build
+            cd tests/playwright
+            {{.JS_RUNNER}} run build
           fi
 
   test:
@@ -62,7 +61,8 @@ tasks:
           fi
 
           if [ "{{.HAS_PLAYWRIGHT}}" = "1" ]; then
-            npm --prefix tests/playwright run test
+            cd tests/playwright
+            {{.JS_RUNNER}} run test
           fi
 
   lint:
@@ -90,11 +90,7 @@ tasks:
           fi
 
           if [ "{{.HAS_DOCS}}" = "1" ]; then
-            if command -v bun >/dev/null 2>&1; then
-              bun run docs:build
-            elif command -v npm >/dev/null 2>&1; then
-              npm run docs:build
-            fi
+            {{.JS_RUNNER}} run docs:build
           fi
 
   clean:
