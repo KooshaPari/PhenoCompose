@@ -1,67 +1,59 @@
 version: "3"
 
-vars:
-  HAS_GO:
-    sh: 'test -f go.mod && echo 1 || echo 0'
-  HAS_RUST:
-    sh: 'test -f pheno-compose-driver/Cargo.toml && echo 1 || echo 0'
-  HAS_DOCS:
-    sh: 'test -f package.json && echo 1 || echo 0'
-  HAS_PLAYWRIGHT:
-    sh: 'test -f tests/playwright/package.json && echo 1 || echo 0'
-
 tasks:
   build:
-    desc: Build repo components detected from manifests
+    desc: Build detected Go, Rust, TypeScript, and VitePress components
     cmds:
       - cmd: |
           set -eu
 
-          if [ "{{.HAS_GO}}" = "1" ]; then
+          if [ -f go.mod ]; then
             go build ./cmd/... ./internal/... ./bindings/...
           fi
 
-          if [ "{{.HAS_RUST}}" = "1" ]; then
-            cargo build --manifest-path pheno-compose-driver/Cargo.toml
-          fi
+          for manifest in $(find . -name Cargo.toml -not -path "./target/*" | sort); do
+            [ -n "$manifest" ] || continue
+            cargo build --manifest-path "$manifest"
+          done
 
-          if [ "{{.HAS_DOCS}}" = "1" ]; then
+          if [ -f package.json ]; then
             if command -v bun >/dev/null 2>&1; then
               bun run docs:build
-            elif command -v npm >/dev/null 2>&1; then
+            else
               npm run docs:build
             fi
           fi
 
-          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ]; then
+          if [ -f tests/playwright/package.json ]; then
             npm --prefix tests/playwright run build
           fi
 
   test:
-    desc: Run repo tests for detected components
+    desc: Run tests for detected Go, Rust, and Playwright components
     cmds:
       - cmd: |
           set -eu
 
-          if [ "{{.HAS_GO}}" = "1" ]; then
+          if [ -f go.mod ]; then
             go test ./cmd/... ./internal/... ./bindings/...
           fi
 
-          if [ "{{.HAS_RUST}}" = "1" ]; then
-            cargo test --manifest-path pheno-compose-driver/Cargo.toml
-          fi
+          for manifest in $(find . -name Cargo.toml -not -path "./target/*" | sort); do
+            [ -n "$manifest" ] || continue
+            cargo test --manifest-path "$manifest"
+          done
 
-          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ]; then
-            npm --prefix tests/playwright run test
+          if [ -f tests/playwright/package.json ]; then
+            npm --prefix tests/playwright test
           fi
 
   lint:
-    desc: Lint repo components detected from manifests
+    desc: Lint detected Go, Rust, TypeScript, and docs components
     cmds:
       - cmd: |
           set -eu
 
-          if [ "{{.HAS_GO}}" = "1" ]; then
+          if [ -f go.mod ]; then
             if command -v golangci-lint >/dev/null 2>&1; then
               golangci-lint run ./cmd/... ./internal/... ./bindings/...
             else
@@ -69,39 +61,43 @@ tasks:
             fi
           fi
 
-          if [ "{{.HAS_RUST}}" = "1" ]; then
-            cargo fmt --manifest-path pheno-compose-driver/Cargo.toml --all --check
-            cargo clippy --manifest-path pheno-compose-driver/Cargo.toml --all-targets --all-features -- -D warnings
-          fi
+          for manifest in $(find . -name Cargo.toml -not -path "./target/*" | sort); do
+            [ -n "$manifest" ] || continue
+            cargo fmt --manifest-path "$manifest" --all --check
+            cargo clippy --manifest-path "$manifest" --all-targets --all-features -- -D warnings
+          done
 
-          if [ "{{.HAS_DOCS}}" = "1" ]; then
+          if [ -f package.json ]; then
             if command -v bun >/dev/null 2>&1; then
               bun run docs:build
-            elif command -v npm >/dev/null 2>&1; then
+            else
               npm run docs:build
             fi
           fi
 
+          if [ -f tests/playwright/package.json ]; then
+            npm --prefix tests/playwright run build
+          fi
+
   clean:
-    desc: Remove generated artifacts for detected components
+    desc: Remove generated artifacts and caches for detected components
     cmds:
       - cmd: |
           set -eu
 
-          if [ "{{.HAS_GO}}" = "1" ]; then
+          if [ -f go.mod ]; then
             go clean -cache -testcache
           fi
 
-          if [ "{{.HAS_RUST}}" = "1" ]; then
-            if cargo metadata --manifest-path pheno-compose-driver/Cargo.toml >/dev/null 2>&1; then
-              cargo clean --manifest-path pheno-compose-driver/Cargo.toml
-            fi
-          fi
+          for manifest in $(find . -name Cargo.toml -not -path "./target/*" | sort); do
+            [ -n "$manifest" ] || continue
+            cargo clean --manifest-path "$manifest"
+          done
 
-          if [ "{{.HAS_DOCS}}" = "1" ]; then
+          if [ -f package.json ]; then
             rm -rf docs/.vitepress/dist
           fi
 
-          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ]; then
+          if [ -f tests/playwright/package.json ]; then
             rm -rf tests/playwright/dist tests/playwright/node_modules/.cache
           fi
