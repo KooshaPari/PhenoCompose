@@ -11,6 +11,8 @@ vars:
     sh: 'test -f package.json && echo 1 || echo 0'
   HAS_PLAYWRIGHT:
     sh: 'test -f tests/playwright/package.json && echo 1 || echo 0'
+  HAS_PLAYWRIGHT_TSCONFIG:
+    sh: 'test -f tests/playwright/tsconfig.json && echo 1 || echo 0'
   JS_RUNNER:
     sh: 'command -v bun >/dev/null 2>&1 && echo bun || echo npm'
 
@@ -37,7 +39,7 @@ tasks:
             {{.JS_RUNNER}} run docs:build
           fi
 
-          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ]; then
+          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ] && [ "{{.HAS_PLAYWRIGHT_TSCONFIG}}" = "1" ]; then
             cd tests/playwright
             {{.JS_RUNNER}} run build
           fi
@@ -100,7 +102,7 @@ tasks:
           set -eu
 
           if [ "{{.HAS_GO}}" = "1" ]; then
-            go clean -cache -testcache
+            go clean ./cmd/... ./internal/...
           fi
 
           if [ "{{.HAS_RUST}}" = "1" ]; then
