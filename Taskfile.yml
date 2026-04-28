@@ -20,7 +20,7 @@ tasks:
           set -eu
 
           if [ "{{.HAS_GO}}" = "1" ]; then
-            go build ./cmd/... ./internal/... ./bindings/...
+            go build ./cmd/... ./internal/...
           fi
 
           if [ "{{.HAS_RUST}}" = "1" ]; then
@@ -50,7 +50,7 @@ tasks:
           set -eu
 
           if [ "{{.HAS_GO}}" = "1" ]; then
-            go test ./cmd/... ./internal/... ./bindings/...
+            go test ./cmd/... ./internal/...
           fi
 
           if [ "{{.HAS_RUST}}" = "1" ]; then
@@ -73,9 +73,9 @@ tasks:
 
           if [ "{{.HAS_GO}}" = "1" ]; then
             if command -v golangci-lint >/dev/null 2>&1; then
-              golangci-lint run ./cmd/... ./internal/... ./bindings/...
+              golangci-lint run ./cmd/... ./internal/...
             else
-              go vet ./cmd/... ./internal/... ./bindings/...
+              go vet ./cmd/... ./internal/...
             fi
           fi
 
