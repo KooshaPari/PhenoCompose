@@ -7,12 +7,19 @@ vars:
     sh: 'test -f pheno-compose-driver/Cargo.toml && echo 1 || echo 0'
   HAS_RUST_FFI:
     sh: 'test -f bindings/rust-ffi/Cargo.toml && echo 1 || echo 0'
-  HAS_DOCS:
+  HAS_ROOT_PACKAGE:
     sh: 'test -f package.json && echo 1 || echo 0'
+  HAS_DOCS_BUILD:
+    sh: |
+      node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync("package.json", "utf8")); process.exit(p.scripts && p.scripts["docs:build"] ? 0 : 1)' >/dev/null 2>&1 && echo 1 || echo 0
   HAS_PLAYWRIGHT:
     sh: 'test -f tests/playwright/package.json && echo 1 || echo 0'
-  HAS_PLAYWRIGHT_TSCONFIG:
-    sh: 'test -f tests/playwright/tsconfig.json && echo 1 || echo 0'
+  HAS_PLAYWRIGHT_BUILD:
+    sh: |
+      node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync("tests/playwright/package.json", "utf8")); process.exit(p.scripts && p.scripts.build ? 0 : 1)' >/dev/null 2>&1 && echo 1 || echo 0
+  HAS_PLAYWRIGHT_TEST:
+    sh: |
+      node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync("tests/playwright/package.json", "utf8")); process.exit(p.scripts && p.scripts.test ? 0 : 1)' >/dev/null 2>&1 && echo 1 || echo 0
   JS_RUNNER:
     sh: 'command -v bun >/dev/null 2>&1 && echo bun || echo npm'
 
@@ -35,11 +42,11 @@ tasks:
             cargo build --manifest-path bindings/rust-ffi/Cargo.toml
           fi
 
-          if [ "{{.HAS_DOCS}}" = "1" ]; then
+          if [ "{{.HAS_DOCS_BUILD}}" = "1" ]; then
             {{.JS_RUNNER}} run docs:build
           fi
 
-          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ] && [ "{{.HAS_PLAYWRIGHT_TSCONFIG}}" = "1" ]; then
+          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ] && [ "{{.HAS_PLAYWRIGHT_BUILD}}" = "1" ]; then
             cd tests/playwright
             {{.JS_RUNNER}} run build
           fi
@@ -62,7 +69,7 @@ tasks:
             cargo test --manifest-path bindings/rust-ffi/Cargo.toml
           fi
 
-          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ]; then
+          if [ "{{.HAS_PLAYWRIGHT}}" = "1" ] && [ "{{.HAS_PLAYWRIGHT_TEST}}" = "1" ]; then
             cd tests/playwright
             {{.JS_RUNNER}} run test
           fi
@@ -91,7 +98,7 @@ tasks:
             cargo clippy --manifest-path bindings/rust-ffi/Cargo.toml --all-targets --all-features -- -D warnings
           fi
 
-          if [ "{{.HAS_DOCS}}" = "1" ]; then
+          if [ "{{.HAS_DOCS_BUILD}}" = "1" ]; then
             {{.JS_RUNNER}} run docs:build
           fi
 
@@ -113,7 +120,7 @@ tasks:
             rm -rf bindings/rust-ffi/target
           fi
 
-          if [ "{{.HAS_DOCS}}" = "1" ]; then
+          if [ "{{.HAS_ROOT_PACKAGE}}" = "1" ]; then
             rm -rf docs/.vitepress/dist
           fi
 
