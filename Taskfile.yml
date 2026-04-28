@@ -3,6 +3,11 @@ version: "3"
 vars:
   HAS_GO:
     sh: 'test -f go.mod && echo 1 || echo 0'
+  GO_PACKAGES:
+    sh: |
+      if [ -d cmd ] || [ -d internal ]; then
+        echo "./cmd/... ./internal/..."
+      fi
   HAS_RUST:
     sh: 'cargo metadata --manifest-path pheno-compose-driver/Cargo.toml --no-deps --format-version 1 >/dev/null 2>&1 && echo 1 || echo 0'
   HAS_RUST_FFI:
@@ -36,7 +41,7 @@ tasks:
           set -eu
 
           if [ "{{.HAS_GO}}" = "1" ]; then
-            go build ./cmd/... ./internal/...
+            go build {{.GO_PACKAGES}}
           fi
 
           if [ "{{.HAS_RUST}}" = "1" ]; then
@@ -63,7 +68,7 @@ tasks:
           set -eu
 
           if [ "{{.HAS_GO}}" = "1" ]; then
-            go test ./cmd/... ./internal/...
+            go test {{.GO_PACKAGES}}
           fi
 
           if [ "{{.HAS_RUST}}" = "1" ]; then
@@ -87,9 +92,9 @@ tasks:
 
           if [ "{{.HAS_GO}}" = "1" ]; then
             if command -v golangci-lint >/dev/null 2>&1; then
-              golangci-lint run ./cmd/... ./internal/...
+              golangci-lint run {{.GO_PACKAGES}}
             else
-              go vet ./cmd/... ./internal/...
+              go vet {{.GO_PACKAGES}}
             fi
           fi
 
@@ -114,7 +119,7 @@ tasks:
           set -eu
 
           if [ "{{.HAS_GO}}" = "1" ]; then
-            go clean ./cmd/... ./internal/...
+            go clean {{.GO_PACKAGES}}
           fi
 
           if [ "{{.HAS_RUST}}" = "1" ]; then
