@@ -20,6 +20,3 @@ A clear description of what you expected to happen.
 **Environment:**
  - OS: [e.g. macOS, Linux]
  - Version [e.g. 0.1.0]
-
-**Additional context**
-Add any other context about the problem here.
