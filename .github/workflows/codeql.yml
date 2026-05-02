@@ -19,7 +19,7 @@ jobs:
       matrix:
         language: ["go", "javascript-typescript", "python", "actions"]
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - uses: github/codeql-action/init@8c6e48dbe051ceb3015c19554831af1b43275f46 # v3
         with:
           languages: ${{ matrix.language }}
