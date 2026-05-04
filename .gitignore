@@ -1,0 +1,13 @@
+/target
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+.env
+.env.*
