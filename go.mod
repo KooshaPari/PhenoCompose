@@ -1,3 +1,3 @@
-module github.com/kooshapari/nanovms
+module github.com/kooshapari/phenocompose
 
 go 1.23
