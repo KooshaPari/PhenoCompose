@@ -1,6 +1,8 @@
 //! NVMS Instance management
 
-use nvms_ffi::{Instance as FfiInstance, NvmsError, Status as FfiStatus, Tier as FfiTier};
+use std::ptr::NonNull;
+
+use nvms_ffi::{NvmsError, Status as FfiStatus, Tier as FfiTier};
 
 /// Instance tier levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,37 +57,43 @@ impl From<FfiStatus> for InstanceStatus {
     }
 }
 
-/// NVMS Instance wrapper
+/// NVMS Instance wrapper with safe FFI boundary
 pub struct Instance {
-    inner: FfiInstance,
+    inner: NonNull<nvms_ffi::sys::NvmsInstance>,
     tier: Tier,
 }
 
 impl Instance {
     /// Create from FFI instance (internal use)
-    pub(crate) fn from_ffi(inner: FfiInstance) -> Self {
-        let tier = inner.tier().into();
-        Self { inner, tier }
+    ///
+    /// # Safety
+    /// The pointer must be non-null and valid for the lifetime of the Instance.
+    pub(crate) unsafe fn from_ffi_ptr(ptr: *mut nvms_ffi::sys::NvmsInstance) -> Result<Self, NvmsError> {
+        let inner = NonNull::new(ptr).ok_or(NvmsError::CreateFailed)?;
+        let tier = (*ptr).tier.into();
+        Ok(Self { inner, tier })
     }
 
     /// Start the instance
     pub fn start(&mut self) -> Result<(), NvmsError> {
-        self.inner.start()
+        unsafe { nvms_ffi::sys::nvms_instance_start(self.inner.as_ptr()) };
+        Ok(())
     }
 
     /// Stop the instance
     pub fn stop(&mut self) -> Result<(), NvmsError> {
-        self.inner.stop()
+        unsafe { nvms_ffi::sys::nvms_instance_stop(self.inner.as_ptr()) };
+        Ok(())
     }
 
     /// Get instance status
     pub fn status(&self) -> InstanceStatus {
-        self.inner.status().into()
+        unsafe { nvms_ffi::sys::nvms_instance_status(self.inner.as_ptr()).into() }
     }
 
     /// Get instance ID
     pub fn id(&self) -> u64 {
-        self.inner.id()
+        unsafe { (*self.inner.as_ptr()).id as u64 }
     }
 
     /// Get instance tier
@@ -95,7 +103,16 @@ impl Instance {
 
     /// Get instance name
     pub fn name(&self) -> String {
-        self.inner.name()
+        unsafe {
+            let ptr = (*self.inner.as_ptr()).name;
+            if ptr.is_null() {
+                String::new()
+            } else {
+                std::ffi::CStr::from_ptr(ptr)
+                    .to_string_lossy()
+                    .into_owned()
+            }
+        }
     }
 
     /// Check if instance is running
@@ -115,6 +132,6 @@ impl Instance {
 
 impl Drop for Instance {
     fn drop(&mut self) {
-        // FFI instance is automatically destroyed when dropped
+        unsafe { nvms_ffi::sys::nvms_instance_destroy(self.inner.as_ptr()) };
     }
 }

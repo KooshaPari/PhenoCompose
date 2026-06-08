@@ -29,7 +29,7 @@ mod instance;
 pub use config::NvmsConfig;
 pub use instance::{Instance, InstanceStatus, Tier};
 
-use nvms_ffi::{init as ffi_init, version as ffi_version, NvmsError, Tier as FfiTier};
+use nvms_ffi::{NvmsError, Tier as FfiTier};
 
 /// NVMS Driver for PhenoCompose
 ///
@@ -41,7 +41,7 @@ pub struct NvmsDriver {
 impl NvmsDriver {
     /// Create a new NVMS driver
     pub fn new() -> Result<Self, NvmsError> {
-        ffi_init()?;
+        nvms_ffi::init()?;
         Ok(Self {
             version: nvms_ffi::version(),
         })
@@ -59,10 +59,12 @@ impl NvmsDriver {
         name: &str,
     ) -> Result<Instance, NvmsError> {
         let ffi_tier: FfiTier = tier.into();
-        let ffi_instance =
-            unsafe { nvms_ffi::Instance::create(ffi_tier, name) }.ok_or(NvmsError::CreateFailed)?;
-
-        Ok(Instance::from_ffi(ffi_instance))
+        let c_name = std::ffi::CString::new(name).map_err(|_| NvmsError::CreateFailed)?;
+        let ptr = unsafe { nvms_ffi::sys::nvms_instance_create(ffi_tier.into(), c_name.as_ptr()) };
+        if ptr.is_null() {
+            return Err(NvmsError::CreateFailed);
+        }
+        unsafe { Instance::from_ffi_ptr(ptr) }
     }
 
     /// Create instance with full configuration
