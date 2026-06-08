@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/kooshapari/nanovms/internal/domain"
+	"github.com/kooshapari/phenocompose/internal/domain"
 )
 
 // WASMAdapter implements ports.WASMModulePort for WASM runtime environments

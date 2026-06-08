@@ -1,6 +1,6 @@
 package ports
 
-import "github.com/kooshapari/nanovms/internal/domain"
+import "github.com/kooshapari/phenocompose/internal/domain"
 
 // VMTier represents the VM tier level.
 type VMTier = domain.VMFlavor

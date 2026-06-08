@@ -15,8 +15,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/kooshapari/nanovms/internal/domain"
-	"github.com/kooshapari/nanovms/internal/ports"
+	"github.com/kooshapari/phenocompose/internal/domain"
+	"github.com/kooshapari/phenocompose/internal/ports"
 )
 
 // Adapter implements RuntimePort for macOS with 3-tier VM support.

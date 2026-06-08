@@ -1,6 +1,7 @@
 name: OpenSSF Scorecard
 on:
   branch_protection_rule:
+  timeout-minutes: 10
   schedule:
     - cron: '17 3 * * 6'
   push:
