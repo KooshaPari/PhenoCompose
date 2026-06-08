@@ -1,3 +1,14 @@
+## Work State
+
+| Field | Value |
+|---|---|
+| Last commit | 2026-06-07 |
+| Open issues | 0 |
+| Open PRs | 1 |
+| Focus | workflow hygiene + module path fix |
+
+Progress: █████░░░░░ 50%
+
 # NVMS - NanoVM Service (Unified)
 
 [![Build](https://img.shields.io/github/actions/workflow/status/KooshaPari/PhenoCompose/quality-gate.yml?branch=main&label=build)](https://github.com/KooshaPari/PhenoCompose/actions)
