@@ -10,11 +10,6 @@ import (
 	"github.com/kooshapari/phenocompose/internal/domain"
 )
 
-// Deunan provides multi-platform VM and sandbox orchestration.
-type Deunan struct {
-	vmAdapters map[string]domain.VMAdapter
-}
-
 var (
 	platform   string
 	vmTier     string
