@@ -6,7 +6,7 @@
 //! - AMD (ROCm, Matrix Cores)
 //! - ARM64 NEON/SIMD optimizations
 
-use std::ffi::{c_char, c_int, c_ulonglong};
+use std::ffi::c_char;
 
 // C types from Go
 pub mod sys {
