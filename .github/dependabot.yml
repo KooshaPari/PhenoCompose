@@ -18,30 +18,8 @@ updates:
       cargo:
         patterns: ["*"]
     open-pull-requests-limit: 5
-  - package-ecosystem: "gomod"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "tuesday"
-    groups:
-      gomod:
-        patterns: ["*"]
-    open-pull-requests-limit: 10
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "wednesday"
-    groups:
-      npm:
-        patterns: ["*"]
-    open-pull-requests-limit: 10
-  - package-ecosystem: "npm"
-    directory: "/tests/playwright"
-    schedule:
-      interval: "weekly"
-      day: "wednesday"
-    groups:
-      npm:
-        patterns: ["*"]
-    open-pull-requests-limit: 5
+# gomod watcher at / removed 2026-06-08 — PhenoCompose no longer carries
+# a Go module; the canonical Go tree lives in KooshaPari/nanovms.
+# npm watchers at / and /tests/playwright removed 2026-06-08 — the
+# Playwright harness moved to nanovms/tests/playwright as part of the
+# PhenoCompose ↔ nanovms consolidation. See CONSOLIDATION.md.

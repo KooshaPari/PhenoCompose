@@ -12,10 +12,6 @@ repository = "https://github.com/KooshaPari/nanovms"
 [build-dependencies]
 bindgen = "0.68"
 
-[target.'cfg(not(test))'.dependencies]
-# Only link when not in test mode
-nvms-core-sys = { path = "../nvms-core-sys" }
-
 [features]
 default = []
 cuda = []  # Enable CUDA support for ML workloads
