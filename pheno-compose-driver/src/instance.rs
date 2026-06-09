@@ -5,7 +5,7 @@ use std::ptr::NonNull;
 use nvms_ffi::{NvmsError, Status as FfiStatus, Tier as FfiTier};
 
 /// Instance tier levels
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Tier {
     /// Tier 1: WASM sandbox (~1ms startup)
     Wasm,
@@ -13,6 +13,16 @@ pub enum Tier {
     Gvisor,
     /// Tier 3: Firecracker microVM (~125ms startup)
     Firecracker,
+}
+
+impl From<nvms_ffi::sys::NvmsTier> for Tier {
+    fn from(tier: nvms_ffi::sys::NvmsTier) -> Self {
+        match tier {
+            nvms_ffi::sys::NvmsTier::Wasm => Tier::Wasm,
+            nvms_ffi::sys::NvmsTier::Gvisor => Tier::Gvisor,
+            nvms_ffi::sys::NvmsTier::Firecracker => Tier::Firecracker,
+        }
+    }
 }
 
 impl From<Tier> for FfiTier {
@@ -36,13 +46,25 @@ impl From<FfiTier> for Tier {
 }
 
 /// Instance status
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum InstanceStatus {
     Stopped,
     Starting,
     Running,
     Stopping,
     Error,
+}
+
+impl From<nvms_ffi::sys::NvmsStatus> for InstanceStatus {
+    fn from(status: nvms_ffi::sys::NvmsStatus) -> Self {
+        match status {
+            nvms_ffi::sys::NvmsStatus::Stopped => InstanceStatus::Stopped,
+            nvms_ffi::sys::NvmsStatus::Starting => InstanceStatus::Starting,
+            nvms_ffi::sys::NvmsStatus::Running => InstanceStatus::Running,
+            nvms_ffi::sys::NvmsStatus::Stopping => InstanceStatus::Stopping,
+            nvms_ffi::sys::NvmsStatus::Error => InstanceStatus::Error,
+        }
+    }
 }
 
 impl From<FfiStatus> for InstanceStatus {
