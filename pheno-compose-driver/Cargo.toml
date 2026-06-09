@@ -8,7 +8,7 @@ license = "Apache-2.0"
 repository = "https://github.com/KooshaPari/nanovms"
 
 [dependencies]
-nvms-ffi = { path = "../bindings/rust-ffi" }
+nvms-ffi = { path = "../bindings/rust-ffi", optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
@@ -17,7 +17,7 @@ thiserror = "1.0"
 tempfile = "3.8"
 
 [features]
-default = []
+default = ["nvms"]
 nvms = ["nvms-ffi"]  # Enable NVMS backend
 mock = []            # Use mock backend for testing
 

@@ -6,13 +6,14 @@
 //! - AMD (ROCm, Matrix Cores)
 //! - ARM64 NEON/SIMD optimizations
 
-use std::ffi::{c_char, c_int, c_uint64_t};
+use std::ffi::{c_char, c_int, c_ulonglong};
 
 // C types from Go
-mod sys {
-    use std::os::raw::{c_char, c_int, c_uint64_t};
+pub mod sys {
+    use std::os::raw::{c_char, c_int, c_ulonglong};
 
     #[repr(C)]
+    #[derive(Clone, Copy)]
     pub enum NvmsTier {
         Wasm = 1,
         Gvisor = 2,
@@ -20,6 +21,7 @@ mod sys {
     }
 
     #[repr(C)]
+    #[derive(Clone, Copy)]
     pub enum NvmsStatus {
         Stopped = 0,
         Starting = 1,
@@ -29,6 +31,7 @@ mod sys {
     }
 
     #[repr(C)]
+    #[derive(Clone, Copy)]
     pub enum NvmsGpuBackend {
         None = 0,
         AppleMetal = 1,
@@ -38,6 +41,7 @@ mod sys {
     }
 
     #[repr(C)]
+    #[derive(Clone, Copy)]
     pub enum NvmsMemoryType {
         Cpu = 0,
         Gpu = 1,
@@ -46,28 +50,28 @@ mod sys {
 
     #[repr(C)]
     pub struct NvmsInstance {
-        pub id: c_uint64_t,
+        pub id: c_ulonglong,
         pub tier: NvmsTier,
         pub status: NvmsStatus,
         pub name: *const c_char,
         pub gpu_backend: NvmsGpuBackend,
         pub memory_type: NvmsMemoryType,
-        pub gpu_memory_bytes: c_uint64_t,
+        pub gpu_memory_bytes: c_ulonglong,
     }
 
     #[repr(C)]
     pub struct NvmsGpuDevice {
         pub name: [c_char; 256],
         pub backend: NvmsGpuBackend,
-        pub memory_bytes: c_uint64_t,
+        pub memory_bytes: c_ulonglong,
         pub compute_units: c_int,
         pub supports_unified_memory: bool,
     }
 
     #[repr(C)]
     pub struct NvmsPerfStats {
-        pub startup_time_ns: c_uint64_t,
-        pub memory_used_bytes: c_uint64_t,
+        pub startup_time_ns: c_ulonglong,
+        pub memory_used_bytes: c_ulonglong,
         pub gpu_utilization: f64,
     }
 
@@ -83,11 +87,11 @@ mod sys {
 
         pub fn nvms_apple_silicon_init() -> c_int;
         pub fn nvms_apple_ane_available() -> bool;
-        pub fn nvms_apple_unified_memory_alloc(size: c_uint64_t) -> *mut std::ffi::c_void;
+        pub fn nvms_apple_unified_memory_alloc(size: c_ulonglong) -> *mut std::ffi::c_void;
 
         pub fn nvms_cuda_init() -> c_int;
         pub fn nvms_cuda_device_count() -> c_int;
-        pub fn nvms_cuda_alloc_unified(size: c_uint64_t) -> *mut std::ffi::c_void;
+        pub fn nvms_cuda_alloc_unified(size: c_ulonglong) -> *mut std::ffi::c_void;
 
         pub fn nvms_rocm_init() -> c_int;
         pub fn nvms_rocm_device_count() -> c_int;
