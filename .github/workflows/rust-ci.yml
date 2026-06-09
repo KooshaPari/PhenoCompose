@@ -1,0 +1,59 @@
+name: Rust CI
+
+permissions:
+  contents: read
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Check pheno-compose-driver
+        run: |
+          cargo fmt --manifest-path pheno-compose-driver/Cargo.toml --all --check
+          cargo clippy --manifest-path pheno-compose-driver/Cargo.toml --all-targets --all-features -- -D warnings
+          cargo check --manifest-path pheno-compose-driver/Cargo.toml
+
+      - name: Check bindings/rust-ffi
+        run: |
+          cargo fmt --manifest-path bindings/rust-ffi/Cargo.toml --all --check
+          cargo clippy --manifest-path bindings/rust-ffi/Cargo.toml --all-targets --all-features -- -D warnings
+          cargo check --manifest-path bindings/rust-ffi/Cargo.toml
+
+      - name: Run Rust tests
+        run: |
+          cargo test --manifest-path pheno-compose-driver/Cargo.toml
+          cargo test --manifest-path bindings/rust-ffi/Cargo.toml
+
+  cargo-deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install cargo-deny
+      - name: Check pheno-compose-driver
+        run: cargo deny check --manifest-path pheno-compose-driver/Cargo.toml
+      - name: Check bindings/rust-ffi
+        run: cargo deny check --manifest-path bindings/rust-ffi/Cargo.toml
+
+  go-race:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
+        with: { go-version: '1.24' }
+      - run: go test -race ./cmd/... ./internal/...
+        continue-on-error: true
