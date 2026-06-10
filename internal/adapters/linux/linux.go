@@ -89,7 +89,7 @@ func (a *Adapter) initializeMicroVM(ctx context.Context) error {
 func (a *Adapter) initializeWASM(ctx context.Context) error {
 	// Check for Wasmtime
 	if err := exec.CommandContext(ctx, "which", "wasmtime").Run(); err != nil {
-		return fmt.Errorf("Wasmtime not found: %w", err)
+		return fmt.Errorf("wasmtime not found: %w", err)
 	}
 	return nil
 }

@@ -67,7 +67,7 @@ func NewWithTier(tier WindowsTier) (*Adapter, error) {
 		}
 	case WindowsTierMicroVM:
 		if adapter.microVMPath == "" {
-			return nil, fmt.Errorf("Cloud Hypervisor not installed")
+			return nil, fmt.Errorf("cloud hypervisor not installed")
 		}
 	}
 
@@ -277,7 +277,7 @@ func (a *Adapter) ApplySandbox(ctx context.Context, name, sandboxType string) er
 	case "gvisor", "runsc":
 		// Configure gVisor as the runtime for a specific container/pod
 		cmd := exec.CommandContext(ctx, a.wslPath, "-d", name, "--", "bash", "-c",
-			fmt.Sprintf("echo 'runtime: runsc' >> /etc/containerd/config.toml && systemctl restart containerd"))
+			"echo 'runtime: runsc' >> /etc/containerd/config.toml && systemctl restart containerd")
 		return cmd.Run()
 	case "landlock":
 		// Landlock is a Linux kernel feature - enabled via sysctl

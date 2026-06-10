@@ -38,19 +38,13 @@ type gvisorAdapter struct {
 }
 
 // landlockAdapter implements sandboxing using Linux landlock.
-type landlockAdapter struct {
-	noNewPrivs bool
-}
+type landlockAdapter struct{}
 
 // seccompAdapter implements sandboxing using seccomp.
-type seccompAdapter struct {
-	defaultAction string
-}
+type seccompAdapter struct{}
 
 // wasmtimeAdapter implements sandboxing using wasmtime.
-type wasmtimeAdapter struct {
-	wasmEngine string
-}
+type wasmtimeAdapter struct{}
 
 // Create creates a new sandbox with the specified configuration.
 func (a *Adapter) Create(ctx context.Context, config domain.SandboxConfig) (*domain.Sandbox, error) {

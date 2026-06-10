@@ -11,9 +11,7 @@ import (
 )
 
 // Deunan provides multi-platform VM and sandbox orchestration.
-type Deunan struct {
-	vmAdapters map[string]domain.VMAdapter
-}
+type Deunan struct{}
 
 var (
 	platform   string

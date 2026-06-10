@@ -108,3 +108,11 @@ func ParseStatus(s string) SandboxStatus {
 
 // VMTier represents the VM tier level (alias for compatibility).
 type VMTier = VMFlavor
+
+// Stub is a minimal placeholder type used in tests and wiring code to
+// stand in for a concrete adapter or configuration that has not yet
+// been implemented. It carries a human-readable Name so that error
+// messages and log lines can identify which stub was used.
+type Stub struct {
+	Name string `json:"name"`
+}
