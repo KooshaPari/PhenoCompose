@@ -1,1 +1,41 @@
-github: kooshapari
+# These are supported funding model platforms for @KooshaPari / PhenoCompose.
+#
+# Phenotype-org governance baseline — kept identical across all focus
+# repos. Enable additional platforms by uncommenting and filling in.
+# Documented at: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+# Primary: GitHub Sponsors
+github: [KooshaPari]
+
+# Optional: Patreon
+# patreon: KooshaPari
+
+# Optional: Open Source Collective / Open Collective
+# open_collective: kooshapari
+
+# Optional: Ko-fi
+# ko_fi: kooshapari
+
+# Optional: Tidelift (for libraries / SDKs)
+# tidelift: cargo/phenocompose
+
+# Optional: Community Bridge (for larger projects, gated by Phenotype-org)
+# community_bridge: phenocompose
+
+# Optional: Liberapay
+# liberapay: KooshaPari
+
+# Optional: IssueHunt
+# issuehunt: KooshaPari
+
+# Optional: Polar (replaces legacy GitHub Sponsors-only flows)
+# polar: KooshaPari
+
+# Optional: Buy Me a Coffee
+# buy_me_a_coffee: kooshapari
+
+# Optional: Thanks.dev (multi-platform splitter)
+# thanks_dev: kooshapari
+
+# Optional: Custom / direct URL (shown as a generic "Sponsor" link)
+# custom: https://phenotype.internal/sponsor

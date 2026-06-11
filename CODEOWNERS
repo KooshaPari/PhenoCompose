@@ -1,3 +1,49 @@
-/crates/ @kooshapari
-/bindings/ @kooshapari
-/* @kooshapari
+# CODEOWNERS — PhenoCompose
+# Canonical reviewer: @KooshaPari
+#
+# GitHub CODEOWNERS location priority:
+#   1. .github/CODEOWNERS  (already present, more detailed)
+#   2. /CODEOWNERS         (this file — kept in sync as a root-level alias)
+#   3. /docs/CODEOWNERS
+#
+# See: https://docs.github.com/en/repositories/creating-and-managing-repositories/about-code-owners
+
+# Default catch-all
+* @KooshaPari
+
+# Per-language drill-down
+/*.rs @KooshaPari
+/*.go @KooshaPari
+/*.ts @KooshaPari
+/*.py @KooshaPari
+/*.c @KooshaPari
+/*.h @KooshaPari
+
+# Core source tree
+/src/ @KooshaPari
+/crates/ @KooshaPari
+/bindings/ @KooshaPari
+/cmd/ @KooshaPari
+/adapters/ @KooshaPari
+/tests/ @KooshaPari
+/docs/ @KooshaPari
+/examples/ @KooshaPari
+
+# Build / module config
+/Cargo.toml @KooshaPari
+/Cargo.lock @KooshaPari
+/package.json @KooshaPari
+/go.mod @KooshaPari
+/Taskfile.yml @KooshaPari
+/justfile @KooshaPari
+
+# Governance + CI
+/SECURITY.md @KooshaPari
+/CODEOWNERS @KooshaPari
+/CONTRIBUTING.md @KooshaPari
+/CHANGELOG.md @KooshaPari
+/LICENSE @KooshaPari
+/.github/ @KooshaPari
+/.github/workflows/ @KooshaPari
+/.github/dependabot.yml @KooshaPari
+/.github/FUNDING.yml @KooshaPari
