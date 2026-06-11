@@ -1,47 +1,200 @@
+# ============================================================================
+# PhenoCompose — Dependabot configuration
+# ============================================================================
+#
+# L2 #29 (FLEET_100TASK_DAG_V3.md) — canonical dependabot baseline.
+# Ecosystems:
+#   - cargo (4 locations: root, pheno-compose-driver/, bindings/rust-ffi/,
+#     bindings/nvms-core-sys/)
+#   - gomod            (root — Go orchestration layer)
+#   - docker           (root — Dockerfile base-image bumps)
+#   - github-actions   (.github/workflows/)
+#
+# Schedule: weekly, staggered across the week.
+# ============================================================================
+
 version: 2
+
 updates:
+  # --------------------------------------------------------------------------
+  # Rust — root driver crate
+  # --------------------------------------------------------------------------
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "rust"
+      - "phenocompose"
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      major:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # --------------------------------------------------------------------------
+  # Rust — pheno-compose-driver/ (dedicated driver sub-crate)
+  # --------------------------------------------------------------------------
   - package-ecosystem: "cargo"
     directory: "/pheno-compose-driver"
     schedule:
       interval: "weekly"
       day: "monday"
-    groups:
-      cargo:
-        patterns: ["*"]
+      time: "06:00"
+      timezone: "UTC"
     open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "rust"
+      - "phenocompose"
+    groups:
+      driver:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore(driver-deps)"
+      include: "scope"
+
+  # --------------------------------------------------------------------------
+  # Rust — bindings/rust-ffi/ (C↔Rust FFI surface)
+  # --------------------------------------------------------------------------
   - package-ecosystem: "cargo"
     directory: "/bindings/rust-ffi"
     schedule:
       interval: "weekly"
       day: "monday"
-    groups:
-      cargo:
-        patterns: ["*"]
+      time: "06:00"
+      timezone: "UTC"
     open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "rust"
+      - "phenocompose"
+      - "ffi"
+    groups:
+      ffi:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore(ffi-deps)"
+      include: "scope"
+
+  # --------------------------------------------------------------------------
+  # Rust — bindings/nvms-core-sys/ (low-level sys bindings to NVMS Go core)
+  # --------------------------------------------------------------------------
+  - package-ecosystem: "cargo"
+    directory: "/bindings/nvms-core-sys"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "rust"
+      - "phenocompose"
+      - "nvms-core-sys"
+    groups:
+      nvms-sys:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore(nvms-sys-deps)"
+      include: "scope"
+
+  # --------------------------------------------------------------------------
+  # Go modules (orchestration layer)
+  # --------------------------------------------------------------------------
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "tuesday"
-    groups:
-      gomod:
-        patterns: ["*"]
+      time: "06:00"
+      timezone: "UTC"
     open-pull-requests-limit: 10
-  - package-ecosystem: "npm"
+    labels:
+      - "dependencies"
+      - "go"
+      - "phenocompose"
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      major:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+    commit-message:
+      prefix: "chore(go-deps)"
+      include: "scope"
+
+  # --------------------------------------------------------------------------
+  # Docker (base-image bumps for pheno-compose-driver image, etc.)
+  # --------------------------------------------------------------------------
+  - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "wednesday"
+      time: "06:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
+      - "phenocompose"
     groups:
-      npm:
-        patterns: ["*"]
-    open-pull-requests-limit: 10
-  - package-ecosystem: "npm"
-    directory: "/tests/playwright"
+      docker:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore(docker)"
+      include: "scope"
+
+  # --------------------------------------------------------------------------
+  # GitHub Actions (CI)
+  # --------------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/.github/workflows"
     schedule:
       interval: "weekly"
-      day: "wednesday"
-    groups:
-      npm:
-        patterns: ["*"]
+      day: "friday"
+      time: "06:00"
+      timezone: "UTC"
     open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+      - "phenocompose"
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci(deps)"
+      include: "scope"
