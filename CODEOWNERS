@@ -1,2 +1,3 @@
-# Default owners
-* @KooshaPari
+/crates/ @kooshapari
+/bindings/ @kooshapari
+/* @kooshapari

@@ -2,36 +2,16 @@
 
 ## Supported Versions
 
-| Version | Supported          |
-|---------|--------------------|
-| 1.x     | :white_check_mark: |
-| < 1.0   | :x:                |
+| Version | Supported |
+| ------- | --------- |
+| main | Yes |
+| older branches | No |
 
 ## Reporting a Vulnerability
 
-We take the security of **[01;31m[K# [m[KNanoVMS - Nano Virtual Machine Services** seriously. If you discover a security vulnerability, please do NOT open a public issue. Instead, report it privately.
+Please report suspected vulnerabilities by email to security@phenotype.dev.
+Include the affected version or commit, reproduction steps, impact, and any
+known mitigations.
 
-### What to include
-
-- A detailed description of the vulnerability
-- Steps to reproduce (proof of concept)
-- Potential impact
-- Any suggested fixes or mitigations
-
-We will acknowledge your report within 48 hours and provide a timeline for resolution.
-
-## Security Best Practices
-
-Keep dependencies updated and review security advisories regularly.
-
-## Dependency Scanning
-
-[01;31m[K# [m[KNanoVMS - Nano Virtual Machine Services regularly scans dependencies for known vulnerabilities:
-
-- govulncheck ./...
-- Dependabot for automated updates
-- Security advisories from Go Vulnerability Database
-
----
-
-Thank you for helping keep the community secure!
+If you need encrypted email, request the current PGP public key at the same
+address before sending sensitive details.
