@@ -1,0 +1,261 @@
+# PhenoCompose canonical Taskfile (L2 #23).
+#
+# This file wraps the canonical build/test/lint/fmt/cov commands for the
+# PhenoCompose polyglot workspace (Rust + Go + Zig + Python + VitePress).
+# Long-running recipes (build, test) carry explicit timeouts because the
+# L1 audit (`PhenoCompose/STATUS_2026_06_10.md`) reports cargo check
+# hangs in bounded local runs; the timeout guarantees we surface a clean
+# failure rather than letting CI hangs cascade.
+#
+# Stack map (per the L1 audit + `bindings/`):
+#   Rust crates (3, all with empty [workspace] tables per L1 fix):
+#     - pheno-compose-driver  (Rust driver, lib + staticlib + cdylib)
+#     - bindings/rust-ffi     (Rust FFI bindings, staticlib + cdylib + rlib)
+#     - bindings/nvms-core-sys (Rust sys bindings, when present)
+#   Go:
+#     - bindings/go-c-export  (Go c-archive layer, single .go file with //go:build ignore)
+#   Cross-platform Python build orchestrator:
+#     - bindings/build_cross_platform.py
+#   Docs:
+#     - docs/ (VitePress, package.json scripts: docs:dev, docs:build, docs:preview)
+#
+# Pair with the sibling `justfile` for CI consumers that prefer `just`.
+# Both files are kept in lockstep per the L2 #23 brief.
+#
+# Usage: `task <recipe>` (run from the repo root).
+version: '3'
+
+env:
+  # Pin GOCACHE to a stable, repo-scoped location so Go builds are
+  # hermetic + reproducible across local + CI runs (same convention as
+  # the nanovms L2 #22 Taskfile).
+  GOCACHE: /private/tmp/phenocompose-gocache
+  GOFLAGS: -mod=readonly
+  CGO_ENABLED: "1"
+  # CARGO_TERM_COLOR=never keeps cargo output pipe-friendly for CI logs.
+  CARGO_TERM_COLOR: never
+
+vars:
+  CARGO: 'cargo'
+  CARGO_TGT: 'pheno-compose-driver bindings/rust-ffi bindings/nvms-core-sys'
+  GO_BINDINGS_DIR: 'bindings/go-c-export'
+  CROSS_PLATFORM_PY: 'bindings/build_cross_platform.py'
+  # Per L1 audit: cargo check on the polyglot crate set does not
+  # complete within bounded local runs; allow 10m for the long-running
+  # recipes so we surface a clean failure instead of a CLI-level kill.
+  LONG_TIMEOUT: '10m'
+  HAS_NVMS_CORE_SYS:
+    sh: 'if [ -f bindings/nvms-core-sys/Cargo.toml ]; then printf true; else printf false; fi'
+  HAS_PYTHON_BINDINGS:
+    sh: 'if find . -maxdepth 4 -name "nvms_ml*" -print -quit 2>/dev/null | grep -q .; then printf true; else printf false; fi'
+  NODE_PM:
+    sh: |
+      if [ -f bun.lockb ] || [ -f bun.lock ]; then
+        printf bun
+      elif [ -f pnpm-lock.yaml ]; then
+        printf pnpm
+      elif [ -f yarn.lock ]; then
+        printf yarn
+      else
+        printf npm
+      fi
+
+tasks:
+  # -------------------------------------------------------------------------
+  # Default
+  # -------------------------------------------------------------------------
+  default:
+    desc: List available tasks and detected polyglot stack.
+    cmds:
+      - 'task --list'
+      - 'echo "rust crates: pheno-compose-driver, bindings/rust-ffi{{if eq .HAS_NVMS_CORE_SYS \"true\" }}, bindings/nvms-core-sys{{end}}"'
+      - 'echo "go bindings: {{.GO_BINDINGS_DIR}}"'
+      - 'echo "GOCACHE=$GOCACHE"'
+
+  # -------------------------------------------------------------------------
+  # L2-23 canonical tasks
+  # -------------------------------------------------------------------------
+  build:
+    desc: 'Run `cargo check` over the 3 Rust crates (pheno-compose-driver + bindings/rust-ffi + bindings/nvms-core-sys) and the Python cross-platform build orchestrator. Timeout: {{.LONG_TIMEOUT}}.'
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        set -e
+        for crate in pheno-compose-driver bindings/rust-ffi{{if eq .HAS_NVMS_CORE_SYS "true" }} bindings/nvms-core-sys{{end}}; do
+          if [ -f "$crate/Cargo.toml" ]; then
+            echo "==> cargo check -p $crate"
+            timeout {{.LONG_TIMEOUT}} {{.CARGO}} check --manifest-path "$crate/Cargo.toml"
+          else
+            echo "skip: $crate/Cargo.toml not present"
+          fi
+        done
+      - |
+        if [ -f "{{.CROSS_PLATFORM_PY}}" ]; then
+          echo "==> python3 {{.CROSS_PLATFORM_PY}}"
+          python3 "{{.CROSS_PLATFORM_PY}}"
+        else
+          echo "skip: {{.CROSS_PLATFORM_PY}} not present"
+        fi
+    timeout: '{{.LONG_TIMEOUT}}'
+
+  test:
+    desc: 'Run `cargo test --workspace` over the Rust crates + `go test ./...` in bindings/go-c-export. Timeout: {{.LONG_TIMEOUT}}.'
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        set -e
+        for crate in pheno-compose-driver bindings/rust-ffi{{if eq .HAS_NVMS_CORE_SYS "true" }} bindings/nvms-core-sys{{end}}; do
+          if [ -f "$crate/Cargo.toml" ]; then
+            echo "==> cargo test --manifest-path $crate/Cargo.toml"
+            timeout {{.LONG_TIMEOUT}} {{.CARGO}} test --manifest-path "$crate/Cargo.toml" --workspace
+          else
+            echo "skip: $crate/Cargo.toml not present"
+          fi
+        done
+      - |
+        if [ -d "{{.GO_BINDINGS_DIR}}" ]; then
+          echo "==> go test ./... in {{.GO_BINDINGS_DIR}}"
+          (cd "{{.GO_BINDINGS_DIR}}" && timeout {{.LONG_TIMEOUT}} go test ./...)
+        else
+          echo "skip: {{.GO_BINDINGS_DIR}} not present"
+        fi
+    timeout: '{{.LONG_TIMEOUT}}'
+
+  lint:
+    desc: 'Run `cargo clippy` over the Rust crates + `go vet ./...` on bindings/go-c-export.'
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        set -e
+        for crate in pheno-compose-driver bindings/rust-ffi{{if eq .HAS_NVMS_CORE_SYS "true" }} bindings/nvms-core-sys{{end}}; do
+          if [ -f "$crate/Cargo.toml" ]; then
+            echo "==> cargo clippy -p $crate"
+            {{.CARGO}} clippy --manifest-path "$crate/Cargo.toml" --all-targets --all-features -- -D warnings
+          fi
+        done
+      - |
+        if [ -d "{{.GO_BINDINGS_DIR}}" ]; then
+          echo "==> go vet ./... in {{.GO_BINDINGS_DIR}}"
+          (cd "{{.GO_BINDINGS_DIR}}" && go vet ./...)
+        else
+          echo "skip: {{.GO_BINDINGS_DIR}} not present"
+        fi
+
+  fmt:
+    desc: 'Verify formatting: `cargo fmt --all -- --check` + `gofmt -l .` on bindings/go-c-export.'
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        set -e
+        for crate in pheno-compose-driver bindings/rust-ffi{{if eq .HAS_NVMS_CORE_SYS "true" }} bindings/nvms-core-sys{{end}}; do
+          if [ -f "$crate/Cargo.toml" ]; then
+            echo "==> cargo fmt --manifest-path $crate/Cargo.toml --all --check"
+            {{.CARGO}} fmt --manifest-path "$crate/Cargo.toml" --all -- --check
+          fi
+        done
+      - |
+        if [ -d "{{.GO_BINDINGS_DIR}}" ]; then
+          echo "==> gofmt -l in {{.GO_BINDINGS_DIR}}"
+          cd "{{.GO_BINDINGS_DIR}}" && gofmt -l .
+        else
+          echo "skip: {{.GO_BINDINGS_DIR}} not present"
+        fi
+
+  fmt-fix:
+    desc: 'Apply formatting: `cargo fmt --all` + `gofmt -w .` on bindings/go-c-export.'
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        set -e
+        for crate in pheno-compose-driver bindings/rust-ffi{{if eq .HAS_NVMS_CORE_SYS "true" }} bindings/nvms-core-sys{{end}}; do
+          if [ -f "$crate/Cargo.toml" ]; then
+            echo "==> cargo fmt --manifest-path $crate/Cargo.toml --all"
+            {{.CARGO}} fmt --manifest-path "$crate/Cargo.toml" --all
+          fi
+        done
+      - |
+        if [ -d "{{.GO_BINDINGS_DIR}}" ]; then
+          echo "==> gofmt -w in {{.GO_BINDINGS_DIR}}"
+          cd "{{.GO_BINDINGS_DIR}}" && gofmt -w .
+        fi
+
+  cov:
+    desc: 'Run `cargo llvm-cov --workspace` over the Rust crates (requires cargo-llvm-cov).'
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        set -e
+        if ! command -v cargo-llvm-cov >/dev/null 2>&1; then
+          echo "cargo-llvm-cov not installed; install via 'cargo install cargo-llvm-cov'"
+          exit 1
+        fi
+        for crate in pheno-compose-driver bindings/rust-ffi{{if eq .HAS_NVMS_CORE_SYS "true" }} bindings/nvms-core-sys{{end}}; do
+          if [ -f "$crate/Cargo.toml" ]; then
+            echo "==> cargo llvm-cov --manifest-path $crate/Cargo.toml --workspace"
+            cargo llvm-cov --manifest-path "$crate/Cargo.toml" --workspace
+          fi
+        done
+
+  ci:
+    desc: Full local CI sweep (lint + test + fmt). Mirrors the gate CI runs.
+    dir: '{{.TASKFILE_DIR}}'
+    deps: [lint, test, fmt]
+    cmds:
+      - 'echo "ci: lint + test + fmt all passed"'
+
+  # -------------------------------------------------------------------------
+  # Bindings & docs
+  # -------------------------------------------------------------------------
+  bindings:
+    desc: Run the FFI bindings build (delegates to `just bindings` for the cross-platform Python orchestrator).
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        if command -v just >/dev/null 2>&1; then
+          just bindings
+        else
+          echo "just not installed; falling back to direct invocation"
+          python3 "{{.CROSS_PLATFORM_PY}}"
+        fi
+
+  docs:
+    desc: Run the VitePress dev server for the PhenoCompose docs site (`docs/`).
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        if [ -f package.json ] && grep -q '"docs:dev"' package.json; then
+          {{.NODE_PM}} run docs:dev
+        else
+          echo "no docs:dev script in package.json; cannot start VitePress"
+          exit 1
+        fi
+
+  docs-build:
+    desc: Build the VitePress docs site (`docs/`) for static hosting.
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        if [ -f package.json ] && grep -q '"docs:build"' package.json; then
+          {{.NODE_PM}} run docs:build
+        else
+          echo "no docs:build script in package.json; cannot build VitePress"
+          exit 1
+        fi
+
+  clean:
+    desc: Remove Rust + Go build artifacts (target/ dirs, Go test cache, coverage files).
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        set -e
+        for crate in pheno-compose-driver bindings/rust-ffi{{if eq .HAS_NVMS_CORE_SYS "true" }} bindings/nvms-core-sys{{end}}; do
+          if [ -f "$crate/Cargo.toml" ]; then
+            echo "==> cargo clean -p $crate"
+            (cd "$crate" && {{.CARGO}} clean) || true
+          fi
+        done
+      - |
+        if [ -d "{{.GO_BINDINGS_DIR}}" ]; then
+          (cd "{{.GO_BINDINGS_DIR}}" && go clean -testcache) || true
+        fi
+      - 'find . \( -name coverage.out -o -name coverage.html -o -name coverage.xml -o -name coverage.lcov -o -name llvm-cov-target \) -type f -delete 2>/dev/null || true'
