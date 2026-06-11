@@ -10,7 +10,7 @@ repository = "https://github.com/KooshaPari/nanovms"
 [dependencies]
 
 [build-dependencies]
-bindgen = "0.68"
+bindgen = "0.72"
 
 [features]
 default = []
