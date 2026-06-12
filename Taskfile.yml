@@ -1,0 +1,26 @@
+version: '3'
+
+vars:
+  JS_RUNNER:
+    sh: |
+      if command -v bun >/dev/null 2>&1; then
+        echo bun
+      else
+        echo npm
+      fi
+
+tasks:
+  test:
+    desc: Build VitePress docs and run Vitest unit tests
+    cmds:
+      - '{{.JS_RUNNER}} run test'
+
+  test-unit:
+    desc: Run Vitest unit tests
+    cmds:
+      - '{{.JS_RUNNER}} run test:unit'
+
+  test-coverage:
+    desc: Run Vitest with V8 coverage reporting
+    cmds:
+      - '{{.JS_RUNNER}} run test:coverage'
