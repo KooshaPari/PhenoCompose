@@ -1,11 +1,9 @@
 //! NVMS Configuration
 
-use serde::{Deserialize, Serialize};
-
 use super::Tier;
 
 /// NVMS Instance Configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct NvmsConfig {
     /// Instance name
     pub name: String,
@@ -14,28 +12,23 @@ pub struct NvmsConfig {
     pub tier: Tier,
 
     /// Number of CPUs (optional, for Firecracker)
-    #[serde(default)]
     pub cpu_count: Option<u32>,
 
     /// Memory in bytes (optional, for Firecracker)
-    #[serde(default)]
     pub memory_bytes: Option<u64>,
 
     /// Network configuration (optional)
-    #[serde(default)]
     pub network: Option<String>,
 
     /// Image or binary to run
-    #[serde(default)]
     pub image: Option<String>,
 
     /// Environment variables
-    #[serde(default)]
     pub env: Vec<EnvVar>,
 }
 
 /// Environment variable
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct EnvVar {
     pub key: String,
     pub value: String,

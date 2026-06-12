@@ -5,7 +5,7 @@ use std::ptr::NonNull;
 use nvms_ffi::{NvmsError, Status as FfiStatus, Tier as FfiTier};
 
 /// Instance tier levels
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tier {
     /// Tier 1: WASM sandbox (~1ms startup)
     Wasm,
@@ -46,7 +46,7 @@ impl From<FfiTier> for Tier {
 }
 
 /// Instance status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InstanceStatus {
     Stopped,
     Starting,

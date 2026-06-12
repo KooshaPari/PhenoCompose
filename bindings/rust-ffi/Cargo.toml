@@ -9,9 +9,6 @@ repository = "https://github.com/KooshaPari/nanovms"
 
 [dependencies]
 
-[build-dependencies]
-bindgen = "0.68"
-
 [features]
 default = []
 cuda = []  # Enable CUDA support for ML workloads

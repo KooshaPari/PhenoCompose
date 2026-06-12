@@ -16,11 +16,14 @@
 //! # Usage
 //!
 //! ```rust
-//! use pheno_compose_driver::NvmsDriver;
+//! use pheno_compose_driver::{NvmsDriver, Tier};
 //!
+//! # fn main() -> Result<(), pheno_compose_driver::nvms_ffi::NvmsError> {
 //! let driver = NvmsDriver::new()?;
-//! let instance = driver.create_instance(Tier::Wasm, "my-service")?;
+//! let mut instance = driver.create_instance(Tier::Wasm, "my-service")?;
 //! instance.start()?;
+//! # Ok(())
+//! # }
 //! ```
 
 mod config;
@@ -29,6 +32,7 @@ mod instance;
 pub use config::NvmsConfig;
 pub use instance::{Instance, InstanceStatus, Tier};
 
+pub use nvms_ffi;
 use nvms_ffi::{NvmsError, Tier as FfiTier};
 
 /// NVMS Driver for PhenoCompose

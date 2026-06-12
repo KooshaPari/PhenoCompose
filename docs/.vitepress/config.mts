@@ -168,7 +168,44 @@ export default defineConfig({
     },
 
     search: {
-      provider: 'local'
+      provider: 'local',
+      options: {
+        detailedView: true,
+        translations: {
+          button: {
+            buttonText: 'Search docs',
+            buttonAriaLabel: 'Search documentation',
+          },
+          modal: {
+            displayDetails: 'Display detailed list',
+            resetButtonTitle: 'Reset search',
+            backButtonTitle: 'Close search',
+            noResultsText: 'No matching documentation found',
+            footer: {
+              selectText: 'Select',
+              navigateText: 'Navigate',
+              closeText: 'Close',
+            },
+          },
+        },
+        miniSearch: {
+          options: {
+            tokenize: (text) =>
+              text
+                .toLowerCase()
+                .split(/[\s/.:_-]+/)
+                .filter(Boolean),
+            processTerm: (term) => term.toLowerCase(),
+            fields: ['title', 'titles', 'text'],
+            storeFields: ['title', 'titles', 'text'],
+            searchOptions: {
+              boost: { title: 4, titles: 2, text: 1 },
+              fuzzy: 0.2,
+              prefix: true,
+            },
+          },
+        },
+      },
     },
 
     socialLinks: [

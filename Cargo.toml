@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "bindings/rust-ffi",
+    "pheno-compose-driver",
+]
+resolver = "2"
+
