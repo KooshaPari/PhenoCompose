@@ -1,0 +1,29 @@
+{
+  "status": "blocked",
+  "task_id": "QC2-005",
+  "agent_id": "codex-exec-2026-06-11",
+  "files_changed": [
+    ".github/workflows/release.yml",
+    ".releaserc.json",
+    "CONTRIBUTING.md",
+    "docs/sessions/20260611-qc2-005-semantic-release/00_SESSION_OVERVIEW.md",
+    "docs/sessions/20260611-qc2-005-semantic-release/01_RESEARCH.md",
+    "docs/sessions/20260611-qc2-005-semantic-release/02_SPECIFICATIONS.md",
+    "docs/sessions/20260611-qc2-005-semantic-release/03_DAG_WBS.md",
+    "docs/sessions/20260611-qc2-005-semantic-release/04_IMPLEMENTATION_STRATEGY.md",
+    "docs/sessions/20260611-qc2-005-semantic-release/05_KNOWN_ISSUES.md",
+    "docs/sessions/20260611-qc2-005-semantic-release/06_TESTING_STRATEGY.md",
+    "package.json"
+  ],
+  "commit_sha": null,
+  "verification_result": {
+    "status": "partial",
+    "commands": [
+      "node -e \"JSON.parse(require('fs').readFileSync('package.json','utf8')); JSON.parse(require('fs').readFileSync('.releaserc.json','utf8')); console.log('json ok')\"",
+      "python -c \"import yaml; yaml.safe_load(open('.github/workflows/release.yml')); print('yaml ok')\""
+    ],
+    "notes": "Semantic-release config and release workflow added. Git commit was blocked by sandbox restrictions because the worktree index lock path resolves under the parent repository .git/worktrees directory outside the writable root."
+  },
+  "started_at": null,
+  "completed_at": "2026-06-11T00:00:00Z"
+}

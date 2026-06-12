@@ -251,11 +251,11 @@ Fixes #1307
 ## 11. Release Process
 
 PhenoCompose follows semver. Releases are cut from `main` by the
-release-please GitHub App configured in
-`.github/release-please-config.json`. The maintainer approves the
-release PR, which is auto-generated and bumps versions, CHANGELOG,
-and tags. Cross-language artifacts (Rust crates, npm packages,
-PyPI wheels, OCI images) are published in a single coordinated
+GitHub Actions semantic-release workflow in
+`.github/workflows/release.yml` using `.releaserc.json`. Conventional
+Commits drive version calculation, `CHANGELOG.md` updates, npm
+publishing, and GitHub release creation in one pass. Cross-language
+artifacts can continue to be coordinated around the same tagged
 release.
 
 ## 12. Getting Help
