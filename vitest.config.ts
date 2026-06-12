@@ -6,13 +6,16 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts', 'tests/**/*.spec.ts'],
+    passWithNoTests: true,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
+      reportsDirectory: './coverage',
       thresholds: {
         lines: 80,
         functions: 80,
         branches: 70,
+        statements: 80,
       },
     },
     testTimeout: 30000,

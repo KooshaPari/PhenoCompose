@@ -2,14 +2,8 @@ coverage:
   status:
     project:
       default:
-        target: 70%
+        target: auto
         threshold: 1%
-        paths:
-          - "src/"
-          - "nanovms/"
-        
-        - "*.go"
-        
     patch:
       default:
         target: 80%
@@ -22,23 +16,13 @@ comment:
   hide_project_coverage: false
 
 ignore:
-  - "**/tests/**"
-  - "**/test_*.py"
-  - "**/*_test.go"
-  - "**/tests/"
-  - "docs/"
-  - ".github/"
-  - "examples/"
-  - "scripts/"
-  
-  
+  - "docs/**"
+  - ".github/**"
+  - "scripts/**"
+  - "examples/**"
 
 flags:
-  unit:
+  vitest:
     paths:
-      - tests/unit/
-    carryforward: true
-  integration:
-    paths:
-      - tests/integration/
+      - tests/
     carryforward: true

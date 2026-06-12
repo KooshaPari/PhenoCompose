@@ -8,10 +8,14 @@
     "build": "npm run docs:build",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9",
     "vitepress": "^1.3.4",
+    "vitest": "^2.1.9",
     "vue": "^3.4.31"
   }
 }

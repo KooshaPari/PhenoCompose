@@ -12,6 +12,7 @@ Progress: █████░░░░░ 50%
 # NVMS - NanoVM Service (Unified)
 
 [![Build](https://img.shields.io/github/actions/workflow/status/KooshaPari/PhenoCompose/quality-gate.yml?branch=main&label=build)](https://github.com/KooshaPari/PhenoCompose/actions)
+[![Codecov](https://codecov.io/gh/KooshaPari/PhenoCompose/branch/main/graph/badge.svg)](https://codecov.io/gh/KooshaPari/PhenoCompose)
 [![Release](https://img.shields.io/github/v/release/KooshaPari/PhenoCompose?include_prereleases&sort=semver)](https://github.com/KooshaPari/PhenoCompose/releases)
 [![License](https://img.shields.io/github/license/KooshaPari/PhenoCompose)](LICENSE)
 [![Phenotype](https://img.shields.io/badge/Phenotype-org-blueviolet)](https://github.com/KooshaPari)
