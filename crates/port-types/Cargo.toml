@@ -1,0 +1,15 @@
+[workspace]
+
+[package]
+name = "phenocompose-port-types"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Phenotype Compose port type definitions (Manifest, ComposedArtifact, PublishTarget, PublishReceipt, ImageRef, ContainerId, ContainerStatus) — the shared value types that flow across the Composer / Publisher / Runtime port traits."
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+thiserror = "2.0"
