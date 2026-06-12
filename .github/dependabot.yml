@@ -7,6 +7,7 @@
 #   - cargo (4 locations: root, pheno-compose-driver/, bindings/rust-ffi/,
 #     bindings/nvms-core-sys/)
 #   - gomod            (root — Go orchestration layer)
+#   - npm              (root — VitePress docs toolchain)
 #   - docker           (root — Dockerfile base-image bumps)
 #   - github-actions   (.github/workflows/)
 #
@@ -151,6 +152,40 @@ updates:
           - "major"
     commit-message:
       prefix: "chore(go-deps)"
+      include: "scope"
+
+  # --------------------------------------------------------------------------
+  # npm (docs frontend toolchain)
+  # --------------------------------------------------------------------------
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+      time: "06:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "npm"
+      - "docs"
+      - "phenocompose"
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      major:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+    commit-message:
+      prefix: "chore(npm-deps)"
       include: "scope"
 
   # --------------------------------------------------------------------------
