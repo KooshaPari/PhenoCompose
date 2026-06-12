@@ -1,0 +1,24 @@
+version: "3"
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+
+  dev:
+    desc: Run the VitePress docs development server
+    cmds:
+      - npm run docs:dev
+
+  build:
+    desc: Build the VitePress docs site
+    cmds:
+      - npm run docs:build
+
+  preview:
+    desc: Preview the built VitePress docs site
+    deps:
+      - build
+    cmds:
+      - npm run docs:preview
