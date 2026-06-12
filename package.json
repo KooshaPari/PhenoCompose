@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "license": "MIT OR Apache-2.0",
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "npm run docs:build",
     "docs:dev": "vitepress dev docs",
