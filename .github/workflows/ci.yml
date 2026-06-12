@@ -6,6 +6,8 @@ permissions:
 on:
   push:
   pull_request:
+  schedule:
+    - cron: '37 4 * * 1'
   workflow_dispatch:
 
 concurrency:
@@ -23,3 +25,18 @@ jobs:
       - run: npm install
       - run: npm run build 2>/dev/null || echo "no build"
       - run: npm test 2>/dev/null || npm run test:unit 2>/dev/null || echo "no tests"
+
+  dependency_audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm install
+      - run: npm audit --audit-level=high
+      - uses: google/osv-scanner-action@v2
+        with:
+          scan-args: |-
+            --recursive
+            .
