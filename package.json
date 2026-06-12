@@ -4,11 +4,17 @@
   "version": "0.1.0",
   "license": "MIT OR Apache-2.0",
   "type": "module",
+  "workspaces": [
+    "bindings/ts"
+  ],
   "scripts": {
     "build": "npm run docs:build",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "test": "npm run test:unit",
+    "test:unit": "npm --prefix bindings/ts run test -- --run",
+    "build:ts": "npm --prefix bindings/ts run build"
   },
   "devDependencies": {
     "vitepress": "^1.3.4",

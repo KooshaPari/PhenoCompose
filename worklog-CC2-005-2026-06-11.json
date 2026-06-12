@@ -1,0 +1,30 @@
+{
+  "status": "completed",
+  "task_id": "CC2-005",
+  "agent_id": "codex-exec-2026-06-11",
+  "files_changed": [
+    "bindings/README.md",
+    "bindings/ts/package.json",
+    "bindings/ts/src/index.ts",
+    "bindings/ts/test/index.test.ts",
+    "bindings/ts/tsconfig.json",
+    "docs/sessions/20260611-cc2-005-pheno-error/00_SESSION_OVERVIEW.md",
+    "docs/sessions/20260611-cc2-005-pheno-error/01_RESEARCH.md",
+    "docs/sessions/20260611-cc2-005-pheno-error/02_SPECIFICATIONS.md",
+    "docs/sessions/20260611-cc2-005-pheno-error/03_DAG_WBS.md",
+    "docs/sessions/20260611-cc2-005-pheno-error/04_IMPLEMENTATION_STRATEGY.md",
+    "docs/sessions/20260611-cc2-005-pheno-error/05_KNOWN_ISSUES.md",
+    "docs/sessions/20260611-cc2-005-pheno-error/06_TESTING_STRATEGY.md",
+    "package.json"
+  ],
+  "commit_sha": "",
+  "verification_result": {
+    "status": "blocked",
+    "commands": [
+      "tsc -p bindings/ts/tsconfig.json --noEmit"
+    ],
+    "notes": "TypeScript source was reduced to a single remaining compiler blocker: missing installed dependency 'neverthrow'. Root npm install and git commit were not possible in this sandboxed session; npm dependency resolution did not complete, and git could not create the worktree index.lock under the parent repository .git directory outside the writable root."
+  },
+  "started_at": null,
+  "completed_at": "2026-06-11T00:00:00-07:00"
+}

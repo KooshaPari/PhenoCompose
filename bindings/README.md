@@ -6,6 +6,7 @@ This directory contains FFI/binding implementations for the unified NVMS project
 
 ```
 bindings/
+├── ts/                   # TypeScript SDK primitives and Result helpers
 ├── go-c-export/          # Go C-export layer (build with cgo)
 ├── rust-ffi/             # Rust FFI bindings to Go library
 ├── zig/                  # Zig memory allocator module
@@ -41,6 +42,18 @@ Requires `nvms_core.h` from Go C-export build.
 cd zig
 zig build
 ```
+
+### TypeScript
+
+```bash
+cd ts
+npm run build
+npm run test -- --run
+```
+
+The TypeScript package standardizes on the `Result<T, E>` pattern via
+`neverthrow` and exposes a repo-local `pheno-error` helper module for typed
+error normalization.
 
 ## Usage
 
