@@ -16,6 +16,39 @@ NanoVMS provides **state-of-the-art cloud infrastructure** optimized for **consu
 - **Edge Computing**: Distributed workloads on commodity hardware
 - **Research HPC**: GPU-accelerated workloads on consumer GPUs
 
+## Stack
+
+| Layer | Technology | Notes |
+|-------|-----------|-------|
+| Core Runtime | Go 1.23 | NVMS CLI and orchestration |
+| Driver | Rust 2021 edition | `pheno-compose-driver` for performance-critical paths |
+| Isolation Tier 1 | WASM | ~1ms startup, fast tools, trusted code |
+| Isolation Tier 2 | gVisor | ~90ms startup, browser automation, semi-trusted |
+| Isolation Tier 3 | Firecracker | ~125ms startup, full isolation, untrusted code |
+| Task Runner | just | Canonical task runner for Go + Rust pipelines |
+
+## Key Commands
+
+| Command | Description |
+|---------|-------------|
+| `go build ./cmd/... ./internal/...` | Build all Go packages |
+| `go test ./...` | Run all Go tests |
+| `cargo build --manifest-path pheno-compose-driver/Cargo.toml` | Build Rust driver |
+| `cargo test --manifest-path pheno-compose-driver/Cargo.toml` | Run Rust driver tests |
+| `just build` | Auto-detected build (Go + Rust) |
+| `just test` | Auto-detected test (Go + Rust) |
+| `just lint` | Run linting across all detected languages |
+
+## Design Decisions
+
+- **3-tier isolation for different trust levels**: Tier 1 (WASM) for trusted fast tools, Tier 2 (gVisor) for semi-trusted browser automation, Tier 3 (Firecracker) for untrusted full isolation.
+- **Unified NVMS stack across Go and Rust**: Go handles CLI and orchestration; Rust handles performance-critical driver paths. Both share the same NVMS core contracts.
+- **Merged implementation from nanovms + BytePort/nvms + PhenoCompose driver**: Consolidated three separate codebases into a single unified repository to eliminate drift and reduce maintenance overhead.
+
+## Integration Points
+
+- `pheno-compose-driver` — Internal Rust driver crate for performance-critical NVMS orchestration paths
+
 ---
 
 ## Part I: SOTA Cloud Computing Landscape (2024-2026)
