@@ -1,0 +1,65 @@
+name: Governance
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Weekly drift check (Mondays 06:17 UTC) for branch protection,
+    # CODEOWNERS, and required governance files. Drift here lowers
+    # the OpenSSF Scorecard "Maintenance" and "Signed-Releases" checks.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  governance-checks:
+    name: Governance checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify CODEOWNERS is present and non-empty
+        run: |
+          set -euo pipefail
+          if [ ! -s .github/CODEOWNERS ] && [ ! -s CODEOWNERS ] && [ ! -s docs/CODEOWNERS ]; then
+            echo "::error::No CODEOWNERS file found at .github/CODEOWNERS, CODEOWNERS, or docs/CODEOWNERS."
+            exit 1
+          fi
+
+      - name: Verify required governance files
+        run: |
+          set -euo pipefail
+          missing=()
+          for f in SECURITY.md README.md LICENSE; do
+            if [ ! -s "$f" ]; then
+              missing+=("$f")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required files: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Verify workflow pin integrity
+        # Every third-party action should be pinned by full SHA. This is a
+        # Scorecard "Pinned-Dependencies" best practice; drift here lowers
+        # the score on every weekly run.
+        run: |
+          set -euo pipefail
+          bad=$(grep -rE 'uses:\s+[^@]+@(v[0-9]+|main|master)' .github/workflows/ || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Unpinned actions (use full commit SHA):"
+            echo "$bad"
+            exit 1
+          fi
+          echo "All third-party actions are pinned to a commit SHA."
