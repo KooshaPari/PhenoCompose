@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "ignoreDeprecations": "6.0",
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@phenotype/pheno-errors": ["../pheno-errors/src/index.ts"],
+      "@phenotype/pheno-tracing": ["../pheno-tracing/src/index.ts"],
+      "@phenotype/pheno-config": ["../pheno-config/src/index.ts"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "tests/**/*",
+    "../pheno-errors/src/**/*",
+    "../pheno-tracing/src/**/*",
+    "../pheno-config/src/**/*"
+  ]
+}
