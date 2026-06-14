@@ -54,6 +54,20 @@ Removed in this commit:
 4. **Decide on the dead `[features] cuda` flag** in
    `bindings/rust-ffi/Cargo.toml:27` (no gate anywhere in code).
 
-After (1)+(2) PhenoCompose becomes a 1,178-LOC pure-Rust crate
+## Completed follow-up (2026-06-14)
+
+1. ✅ **Moved `bindings/go-c-export/nvms_core.go` into nanovms** as
+   `cmd/nvms-cgo/main.go` (323 LOC) and added `build-cgo` / `build-cgo-darwin-arm64` / `build-cgo-linux-amd64` / `clean-cgo` targets in `nanovms/Makefile:76-101`.
+2. ✅ **Created `thegent/crates/thegent-nvms/`** — 441-LOC Rust crate with
+   standardized pyo3 pattern (`python` feature gate, `abi3-py312`, `extension-module`),
+   `cdylib` + `rlib` crate-types, `build.rs` wired to `../nanovms/build/cgo`.
+3. ✅ **Merged `pheno-compose-driver/` into `nanovms/sdk/rust/src/driver.rs`** —
+   189-LOC high-level driver with `NvmsDriver`, `Instance`, `Tier`, `InstanceStatus`,
+   and integration tests (`nanovms/sdk/rust/src/lib.rs:8` now has `pub mod driver`).
+4. ✅ **PhenoCompose bindings layer now unified** — `thegent-nvms` hosts the
+   Rust FFI + pyo3 surface; `nanovms/sdk/rust` hosts the high-level async driver;
+   `nanovms/cmd/nvms-cgo` hosts the canonical C-export layer.
+
+After consolidation, PhenoCompose is a 1,178-LOC pure-Rust crate
 (FFI bindings + high-level driver) that links against a single
 artifact built from nanovms — no Go, no C, no duplication.

@@ -1,164 +1,58 @@
-# NVMS Bindings
+# NVMS Bindings (Migrated)
 
-This directory contains FFI/binding implementations for the unified NVMS project.
+> **All bindings have been consolidated as of 2026-06-14.**
+>
+> This directory previously hosted Go, Rust, Mojo, and Zig bindings.
+> They now live in canonical locations to avoid duplication.
 
-## Directory Structure
+## New Canonical Homes
 
-```
-bindings/
-├── go-c-export/          # Go C-export layer (build with cgo)
-├── rust-ffi/             # Rust FFI bindings to Go library
-├── zig/                  # Zig memory allocator module
-├── mojo/                 # Mojo ML integration (stub)
-└── README.md            # This file
-```
+| Language | Old Location | New Canonical Home |
+|----------|-------------|-------------------|
+| Go (C-export) | `bindings/go-c-export/` | [`nanovms/cmd/nvms-cgo/main.go`](https://github.com/KooshaPari/nanovms/blob/main/cmd/nvms-cgo/main.go) |
+| Rust (FFI) | `bindings/rust-ffi/` | [`thegent/crates/thegent-nvms/src/lib.rs`](https://github.com/KooshaPari/thegent/blob/main/crates/thegent-nvms/src/lib.rs) |
+| Rust (Driver) | `pheno-compose-driver/` | [`nanovms/sdk/rust/src/driver.rs`](https://github.com/KooshaPari/nanovms/blob/main/sdk/rust/src/driver.rs) |
+| Python (pyo3) | `bindings/build_cross_platform.py` | [`thegent/crates/thegent-nvms/`](https://github.com/KooshaPari/thegent/blob/main/crates/thegent-nvms/) (enable `python` feature) |
+| Mojo | `bindings/mojo/` | [`thegent/src/thegent/infra/mojo_bridge.py`](https://github.com/KooshaPari/thegent/blob/main/src/thegent/infra/mojo_bridge.py) |
+| Zig | `bindings/zig/` | [`thegent/crates/thegent-wasm-tools/`](https://github.com/KooshaPari/thegent/blob/main/crates/thegent-wasm-tools/) (Wasm SDK) |
 
-## Building
+## Rationale
 
-### Go C-Export
+See [`PhenoCompose/CONSOLIDATION.md`](../CONSOLIDATION.md) for the full migration rationale.
 
+Key points:
+- `thegent` already had a formal 4-tier sandbox ADR (bubblewrap/gVisor/Firecracker/Wasm) and 14+ pyo3-enabled Rust crates
+- `nanovms` already had a canonical Rust SDK (`sdk/rust/`)
+- PhenoCompose's Go tree was 91% byte-identical to `nanovms` and was deleted on 2026-06-08
+- The remaining bindings were a strict subset of `thegent`'s polyglot infrastructure
+
+## Building (New Locations)
+
+### Go C-export
 ```bash
-cd go-c-export
-go build -buildmode=c-archive -o nvms_core.a .
+cd /path/to/nanovms
+make build-cgo          # Produces build/cgo/libnvms_core.a + .h
 ```
 
-This produces:
-- `nvms_core.a` - Static library
-- `nvms_core.h` - C header for Rust bindings
-
-### Rust FFI
-
+### Rust FFI + Python
 ```bash
-cd rust-ffi
-cargo build
+cd /path/to/thegent/crates/thegent-nvms
+cargo build --features python   # Produces cdylib + rlib
+maturin develop                  # Or: pip installable Python extension
 ```
 
-Requires `nvms_core.h` from Go C-export build.
-
-### Zig
-
+### Rust Driver
 ```bash
-cd zig
-zig build
+cd /path/to/nanovms/sdk/rust
+cargo build --features driver    # High-level async driver
 ```
 
-## Usage
+## Migration History
 
-### From Rust (PhenoCompose Driver)
-
-```rust
-use pheno_compose_driver::NvmsDriver;
-
-let driver = NvmsDriver::new()?;
-let instance = driver.create_instance(Tier::Wasm, "my-service")?;
-instance.start()?;
-```
-
-### From Go (Direct)
-
-```go
-import "C"
-
-func main() {
-    C.nvms_init()
-    inst := C.nvms_instance_create(C.NVMS_TIER_WASM, C.CString("my-service"))
-    C.nvms_instance_start(inst)
-}
-```
-
-### From Zig (Memory)
-
-```zig
-const nvms = @import("nvms");
-
-pub fn main() void {
-    const ptr = nvms.nvms_zig_alloc(1024);
-    defer nvms.nvms_zig_free(ptr, 1024);
-}
-```
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    NVMS BINDINGS ARCHITECTURE                     │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌─────────────────┐                                           │
-│  │  PhenoCompose   │                                           │
-│  │    (Rust)       │                                           │
-│  └────────┬────────┘                                           │
-│           │                                                      │
-│  ┌────────▼────────┐                                           │
-│  │ Rust FFI Bindings │                                        │
-│  │  (nvms-ffi)     │                                        │
-│  └────────┬────────┘                                           │
-│           │ CGO                                                 │
-│  ┌────────▼────────┐                                           │
-│  │  Go C-Export     │                                        │
-│  │ (nvms_core.go)  │                                        │
-│  └────────┬────────┘                                           │
-│           │                                                      │
-│  ┌────────▼────────┐                                           │
-│  │  NVMS Core (Go)  │                                        │
-│  │  WASM/gVisor/FC │                                        │
-│  └─────────────────┘                                           │
-│                                                                  │
-│  ┌─────────────────┐                                           │
-│  │  Zig Memory     │◄── Direct C ABI                          │
-│  │ (memory.zig)   │                                           │
-│  └─────────────────┘                                           │
-│                                                                  │
-│  ┌─────────────────┐                                           │
-│  │  Mojo ML        │◄── Python/NumPy FFI                      │
-│  │ (nvms_ml.py)   │                                           │
-│  └─────────────────┘                                           │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Language Policy
-
-See [LANGUAGES.md](../LANGUAGES.md) for the tiered language selection policy.
-
-| Language | Use Case | Status |
-|----------|----------|--------|
-| Go | Core orchestration | Primary |
-| Rust | FFI, performance | Tier 1 |
-| Zig | Memory, low-level | Tier 1 |
-| Mojo | ML inference | Stub (pending stable) |
-| Python | ML fallback | Tier 2 |
-
-## GPU Support
-
-Full GPU acceleration support for:
-- **Apple Silicon**: Metal Performance Shaders (MPS) + NEON SIMD
-- **NVIDIA**: CUDA + cuDNN + TF32
-- **AMD**: ROCm + MIOpen
-- **CPU Fallback**: Auto-detection
-
-```python
-from nvms_ml import get_gpu_backend, VectorEmbedding
-
-backend = get_gpu_backend()  # auto-detect
-emb = VectorEmbedding(dim=768, gpu_backend=backend)
-```
-
-## Cross-Platform Build
-
-```bash
-# Build all bindings (auto-detect platform)
-python3 bindings/build_cross_platform.py
-
-# Platform-specific
-python3 bindings/build_cross_platform.py --verbose
-```
-
-## TODO
-
-- [x] Complete Go C-export with full NVMS API
-- [x] Add more Rust bindings for configuration management
-- [x] Implement Zig memory pool with better performance
-- [x] Replace Python ML stub with Mojo when stable (pending Mojo stable)
-- [x] Add CUDA/ROCm support for GPU acceleration
-- [x] Benchmark all bindings (see benchmark script)
+| Date | Event |
+|------|-------|
+| 2026-06-08 | PhenoCompose Go tree deleted (91% duplicate of nanovms) |
+| 2026-06-14 | Go C-export moved to `nanovms/cmd/nvms-cgo/` |
+| 2026-06-14 | Rust FFI moved to `thegent/crates/thegent-nvms/` |
+| 2026-06-14 | Rust driver merged into `nanovms/sdk/rust/src/driver.rs` |
+| 2026-06-14 | Mojo/Zig bindings redirected to thegent's existing infrastructure |

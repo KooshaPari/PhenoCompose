@@ -43,22 +43,26 @@ Progress: █████░░░░░ 50%
 
 > **Merged Implementation**: KooshaPari/nanovms + BytePort/nvms + PhenoCompose Driver
 
+> **Consolidated**: As of 2026-06-14, all polyglot bindings (Rust, Go, Mojo, Zig) have been migrated. See thegent/nvms and nanovms/sdk/rust for the canonical implementations.
+
 NVMS provides **3-tier isolation** for secure, efficient application deployment:
 - **Tier 1 (WASM)**: ~1ms startup, fast tools, trusted code
 - **Tier 2 (gVisor)**: ~90ms startup, browser automation, semi-trusted
 - **Tier 3 (Firecracker)**: ~125ms startup, full isolation, untrusted code
 
-## Quick Start
+## Migration Status
 
-```bash
-# Deploy with NVMS
-nvms deploy --tier 1 --config nvms.yaml  # WASM
-nvms deploy --tier 2 --config nvms.yaml  # gVisor
-nvms deploy --tier 3 --config nvms.yaml  # Firecracker
+| Component | New Home | Status |
+|-----------|----------|--------|
+| Rust FFI + driver | `thegent/crates/thegent-nvms` | Migrated |
+| Go C-export | `nanovms/cmd/nvms-cgo` | Migrated |
+| Python bindings | `thegent/crates/thegent-nvms` (pyo3) | Migrated |
+| Mojo bindings | `thegent/src/thegent/infra/mojo_bridge.py` | Replaced by bridge |
+| Zig bindings | `thegent/crates/thegent-wasm-tools` | Replaced by Wasm SDK |
 
-# Or use PhenoCompose (unified interface)
-pheno-compose deploy --runtime nvms --config nvms.yaml
-```
+## Quick Start (Legacy)
+
+> **Note**: The unified interface is now `thegent` or `nvms-sdk` (Rust).
 
 ## Architecture
 
