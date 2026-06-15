@@ -7,6 +7,7 @@ Accepted
 ## Context
 
 NanoVMS must provide strong isolation for:
+
 - Multi-tenant workloads
 - Untrusted code execution
 - GPU passthrough
@@ -158,16 +159,16 @@ bwrap \
 
 ### Threat Model
 
-| Threat | Mitigation | Layer |
-|--------|------------|-------|
-| VM escape | KVM isolation, IOMMU | Hypervisor |
-| Container breakout | namespaces, seccomp | OS |
-| Syscall exploitation | gVisor, landlock | User-space |
-| Privilege escalation | Drop capabilities | Capability |
-| Resource exhaustion | cgroups limits | Resource |
-| Network attack | Network namespaces | Network |
-| File system access | Read-only binds | Filesystem |
-| Hardware access | VFIO isolation | PCI |
+| Threat               | Mitigation           | Layer      |
+| -------------------- | -------------------- | ---------- |
+| VM escape            | KVM isolation, IOMMU | Hypervisor |
+| Container breakout   | namespaces, seccomp  | OS         |
+| Syscall exploitation | gVisor, landlock     | User-space |
+| Privilege escalation | Drop capabilities    | Capability |
+| Resource exhaustion  | cgroups limits       | Resource   |
+| Network attack       | Network namespaces   | Network    |
+| File system access   | Read-only binds      | Filesystem |
+| Hardware access      | VFIO isolation       | PCI        |
 
 ### Compliance
 
@@ -270,12 +271,14 @@ var auditedActions = map[string]bool{
 ## Consequences
 
 ### Positive
+
 - Defense in depth
 - Multiple isolation layers
 - Compliance-ready
 - Audit trail
 
 ### Negative
+
 - Performance overhead from security layers
 - Complexity in configuration
 - Potential for security misconfiguration

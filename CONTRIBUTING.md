@@ -41,24 +41,24 @@ orchestrate them.
 
 ### 3.1 Required Toolchains
 
-| Tool          | Version  | Why                                |
-|---------------|----------|------------------------------------|
-| Rust          | `stable` | Core, type system, solver          |
-| `cargo`       | ≥ 1.78   | Build, test, fmt, clippy           |
-| `rustfmt`     | stable   | Formatting                         |
-| `clippy`      | stable   | Lints (CI fails on warnings)       |
-| `cargo-deny`  | ≥ 0.14   | License + advisory gating          |
-| `cargo-audit` | ≥ 0.20   | Vulnerability scan                 |
-| Go            | ≥ 1.22   | OPA / Cedar / Rego adapters        |
-| `golangci-lint` | ≥ 1.55 | Aggregated Go lints                |
-| Node.js       | ≥ 20 LTS | TypeScript SDK build               |
-| `pnpm`        | ≥ 9      | TypeScript SDK package manager     |
-| Python        | ≥ 3.11   | Python SDK                         |
-| `uv`          | ≥ 0.4    | Python env + dep manager           |
-| `maturin`     | ≥ 1.7    | Build Python wheels from Rust      |
-| `ruff`        | ≥ 0.5    | Python linter + formatter          |
-| `mypy`        | ≥ 1.10   | Python type-check                  |
-| Task          | ≥ 3      | Cross-language task runner         |
+| Tool            | Version  | Why                            |
+| --------------- | -------- | ------------------------------ |
+| Rust            | `stable` | Core, type system, solver      |
+| `cargo`         | ≥ 1.78   | Build, test, fmt, clippy       |
+| `rustfmt`       | stable   | Formatting                     |
+| `clippy`        | stable   | Lints (CI fails on warnings)   |
+| `cargo-deny`    | ≥ 0.14   | License + advisory gating      |
+| `cargo-audit`   | ≥ 0.20   | Vulnerability scan             |
+| Go              | ≥ 1.22   | OPA / Cedar / Rego adapters    |
+| `golangci-lint` | ≥ 1.55   | Aggregated Go lints            |
+| Node.js         | ≥ 20 LTS | TypeScript SDK build           |
+| `pnpm`          | ≥ 9      | TypeScript SDK package manager |
+| Python          | ≥ 3.11   | Python SDK                     |
+| `uv`            | ≥ 0.4    | Python env + dep manager       |
+| `maturin`       | ≥ 1.7    | Build Python wheels from Rust  |
+| `ruff`          | ≥ 0.5    | Python linter + formatter      |
+| `mypy`          | ≥ 1.10   | Python type-check              |
+| Task            | ≥ 3      | Cross-language task runner     |
 
 ### 3.2 Clone + Bootstrap
 
@@ -119,16 +119,16 @@ Useful binary outputs:
 
 PhenoCompose has a tiered test pyramid:
 
-| Tier          | Command                                  | Owner       | Wall-clock |
-|---------------|------------------------------------------|-------------|------------|
-| Unit (Rust)   | `cargo test --workspace`                 | Core team   | < 3 min    |
-| Unit (Go)     | `(cd adapters && go test ./...)`         | Adapter     | < 1 min    |
-| Unit (TS)     | `(cd bindings/ts && pnpm test)`          | TS SDK      | < 2 min    |
-| Unit (Py)     | `(cd bindings/py && uv run pytest)`      | Py SDK      | < 2 min    |
-| Conformance   | `task test:conformance`                  | Core team   | < 10 min   |
-| Property      | `cargo test --features proptest`         | Core team   | < 5 min    |
-| Fuzz          | `cargo +nightly fuzz run parser -- -max_total_time=600` | Security | 10 min   |
-| Cross-lang    | `task test:cross-language`               | Core team   | < 15 min   |
+| Tier        | Command                                                 | Owner     | Wall-clock |
+| ----------- | ------------------------------------------------------- | --------- | ---------- |
+| Unit (Rust) | `cargo test --workspace`                                | Core team | < 3 min    |
+| Unit (Go)   | `(cd adapters && go test ./...)`                        | Adapter   | < 1 min    |
+| Unit (TS)   | `(cd bindings/ts && pnpm test)`                         | TS SDK    | < 2 min    |
+| Unit (Py)   | `(cd bindings/py && uv run pytest)`                     | Py SDK    | < 2 min    |
+| Conformance | `task test:conformance`                                 | Core team | < 10 min   |
+| Property    | `cargo test --features proptest`                        | Core team | < 5 min    |
+| Fuzz        | `cargo +nightly fuzz run parser -- -max_total_time=600` | Security  | 10 min     |
+| Cross-lang  | `task test:cross-language`                              | Core team | < 15 min   |
 
 CI runs unit + conformance on every PR. Property, fuzz, and
 cross-language run nightly and on release tags.
@@ -192,19 +192,19 @@ PhenoCompose uses [Conventional Commits 1.0.0](https://www.conventionalcommits.o
 
 ### Allowed types
 
-| Type       | Semantics                                                    |
-|------------|--------------------------------------------------------------|
-| `feat`     | A new user-facing feature                                    |
-| `fix`      | A bug fix                                                    |
-| `docs`     | Documentation only                                           |
-| `style`    | Whitespace/formatting, no code change                        |
-| `refactor` | Code change that neither fixes a bug nor adds a feature      |
-| `perf`     | Performance improvement                                      |
-| `test`     | Add or correct tests                                         |
-| `build`    | Build system, CI, or dependency change                       |
-| `chore`    | Tooling, repo hygiene, governance (this PR)                  |
-| `revert`   | Reverts a previous commit (include `Reverts: <sha>`)         |
-| `security` | Security fix (also notify `security@phenotype.internal`)     |
+| Type       | Semantics                                                |
+| ---------- | -------------------------------------------------------- |
+| `feat`     | A new user-facing feature                                |
+| `fix`      | A bug fix                                                |
+| `docs`     | Documentation only                                       |
+| `style`    | Whitespace/formatting, no code change                    |
+| `refactor` | Code change that neither fixes a bug nor adds a feature  |
+| `perf`     | Performance improvement                                  |
+| `test`     | Add or correct tests                                     |
+| `build`    | Build system, CI, or dependency change                   |
+| `chore`    | Tooling, repo hygiene, governance (this PR)              |
+| `revert`   | Reverts a previous commit (include `Reverts: <sha>`)     |
+| `security` | Security fix (also notify `security@phenotype.internal`) |
 
 ### Scopes (non-exhaustive)
 
@@ -261,7 +261,7 @@ release.
 ## 12. Getting Help
 
 - **Discord**: `#phenocompose` on the Phenotype Discord.
-- **Discussions**: GitHub Discussions → *Q&A*.
+- **Discussions**: GitHub Discussions → _Q&A_.
 - **Office hours**: Mondays 16:00 UTC, calendar link in the
   pinned issue.
 

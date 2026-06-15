@@ -64,6 +64,7 @@ GET /vms
 ```
 
 Query parameters:
+
 - `flavor` - Filter by flavor
 - `status` - Filter by status
 
@@ -218,6 +219,7 @@ DELETE /vms/{id}
 ```
 
 Query parameters:
+
 - `force` - Force delete (default: false)
 
 Response: `204 No Content`
@@ -382,6 +384,7 @@ GET /sandboxes
 ```
 
 Query parameters:
+
 - `tier` - Filter by tier
 
 Response:
@@ -692,16 +695,16 @@ Event types:
 
 ## Error Codes
 
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| `VM_NOT_FOUND` | 404 | VM does not exist |
-| `VM_ALREADY_EXISTS` | 409 | VM with name already exists |
-| `VM_ALREADY_RUNNING` | 409 | VM is already running |
-| `VM_NOT_RUNNING` | 409 | VM is not running |
-| `SNAPSHOT_NOT_FOUND` | 404 | Snapshot does not exist |
-| `NETWORK_NOT_FOUND` | 404 | Network does not exist |
-| `IMAGE_NOT_FOUND` | 404 | Image does not exist |
-| `INVALID_CONFIG` | 400 | Invalid configuration |
-| `PERMISSION_DENIED` | 403 | Permission denied |
-| `RESOURCE_EXHAUSTED` | 507 | Out of resources |
-| `INTERNAL_ERROR` | 500 | Internal server error |
+| Code                 | HTTP Status | Description                 |
+| -------------------- | ----------- | --------------------------- |
+| `VM_NOT_FOUND`       | 404         | VM does not exist           |
+| `VM_ALREADY_EXISTS`  | 409         | VM with name already exists |
+| `VM_ALREADY_RUNNING` | 409         | VM is already running       |
+| `VM_NOT_RUNNING`     | 409         | VM is not running           |
+| `SNAPSHOT_NOT_FOUND` | 404         | Snapshot does not exist     |
+| `NETWORK_NOT_FOUND`  | 404         | Network does not exist      |
+| `IMAGE_NOT_FOUND`    | 404         | Image does not exist        |
+| `INVALID_CONFIG`     | 400         | Invalid configuration       |
+| `PERMISSION_DENIED`  | 403         | Permission denied           |
+| `RESOURCE_EXHAUSTED` | 507         | Out of resources            |
+| `INTERNAL_ERROR`     | 500         | Internal server error       |

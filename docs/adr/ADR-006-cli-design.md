@@ -7,6 +7,7 @@ Accepted
 ## Context
 
 NanoVMS needs a user-friendly CLI for:
+
 - VM lifecycle management
 - Sandbox creation
 - Agent spawning
@@ -155,12 +156,14 @@ nanovms completion fish > ~/.config/fish/completions/nanovms.fish
 ## Consequences
 
 ### Positive
+
 - Intuitive command structure
 - Easy to discover
 - Consistent flag naming
 - Shell completion for discoverability
 
 ### Negative
+
 - Large command surface
 - May need to learn new patterns
 

@@ -16,14 +16,14 @@ PhenoCompose follows [semantic versioning](https://semver.org/). The
 following table lists the release lines that currently receive
 security updates:
 
-| Version line | Status            | Security fixes | End-of-life  |
-|--------------|-------------------|----------------|--------------|
-| `2.3.x`      | **Active**        | ✅ Backported  | TBA          |
-| `2.2.x`      | Maintenance       | ✅ Until 2026-09-30 | 2026-09-30 |
-| `2.1.x`      | End of life       | ❌ No longer receiving updates | 2025-12-31 |
-| `2.0.x`      | End of life       | ❌ No longer receiving updates | 2025-06-30 |
-| `1.x`        | End of life       | ❌             | 2024-12-31   |
-| `< 1.0`      | Not supported     | ❌             | n/a          |
+| Version line | Status        | Security fixes                | End-of-life |
+| ------------ | ------------- | ----------------------------- | ----------- |
+| `2.3.x`      | **Active**    | ✅ Backported                  | TBA         |
+| `2.2.x`      | Maintenance   | ✅ Until 2026-09-30            | 2026-09-30  |
+| `2.1.x`      | End of life   | ❌ No longer receiving updates | 2025-12-31  |
+| `2.0.x`      | End of life   | ❌ No longer receiving updates | 2025-06-30  |
+| `1.x`        | End of life   | ❌                             | 2024-12-31  |
+| `< 1.0`      | Not supported | ❌                             | n/a         |
 
 > **Recommendation:** always run the latest patch release of the
 > latest two minor lines. We will publish a CVE and a GHSA for every
@@ -37,8 +37,8 @@ The fastest, most private way to report a vulnerability is via one
 of the channels below. Choose the one you are most comfortable with:
 
 1. **GitHub private vulnerability reporting** —
-   *Repository → Security → Advisories → "New draft security
-   advisory"*. This is the preferred channel; it gives you a private
+   _Repository → Security → Advisories → "New draft security
+   advisory"_. This is the preferred channel; it gives you a private
    thread with the maintainers, a CVE assignment, and a coordinated
    disclosure workflow.
 2. **Email** — `security@phenotype.internal` (PGP key fingerprint:
@@ -58,7 +58,7 @@ When you write in, please include (to the extent you can):
 - Your name / handle for credit (optional; we will not credit by
   default if you request anonymity).
 
-### What *not* to send
+### What _not_ to send
 
 - Do not include real customer data, tokens, or PII in a report.
 - Do not exploit the issue beyond what is necessary to demonstrate
@@ -71,15 +71,15 @@ When you write in, please include (to the extent you can):
 We commit to the following SLOs. "Business hours" = 09:00–18:00 UTC,
 Mon–Fri excluding Phenotype holidays.
 
-| Stage                            | SLO                             |
-|----------------------------------|---------------------------------|
-| **Acknowledgement**              | ≤ 24 hours, every report        |
-| **Triage & severity assignment** | ≤ 3 business days               |
-| **Patch for Critical / High**    | ≤ 7 days                        |
-| **Patch for Medium**             | ≤ 30 days                       |
-| **Patch for Low / Informational**| ≤ 90 days (or accepted-risk)    |
-| **CVE / GHSA assignment**        | ≤ 24 hours after triage         |
-| **Disclosure coordination**      | Per §4                          |
+| Stage                             | SLO                          |
+| --------------------------------- | ---------------------------- |
+| **Acknowledgement**               | ≤ 24 hours, every report     |
+| **Triage & severity assignment**  | ≤ 3 business days            |
+| **Patch for Critical / High**     | ≤ 7 days                     |
+| **Patch for Medium**              | ≤ 30 days                    |
+| **Patch for Low / Informational** | ≤ 90 days (or accepted-risk) |
+| **CVE / GHSA assignment**         | ≤ 24 hours after triage      |
+| **Disclosure coordination**       | Per §4                       |
 
 We will keep you informed at every step. If we cannot meet an SLO we
 will tell you why, and we will agree a new date with you.
@@ -111,17 +111,17 @@ rollout across the Phenotype mesh. Just tell us your constraints.
 
 We use CVSS v3.1 base scores as a starting point:
 
-| Severity     | CVSS range  | Examples                                       |
-|--------------|-------------|------------------------------------------------|
-| **Critical** | 9.0 – 10.0  | Attestation forgery, solver sandbox escape,    |
-|              |             | key-rotation bypass, RCE via policy fragment   |
-| **High**     | 7.0 – 8.9   | Privilege escalation across composed policies, |
-|              |             | persisted supply-chain backdoor, DoS that      |
-|              |             | locks downstream mesh in unsat state           |
-| **Medium**   | 4.0 – 6.9   | Information disclosure, partial policy bypass, |
-|              |             | targeted DoS via crafted fragment              |
-| **Low**      | 0.1 – 3.9   | Local-only info leaks, hardening recommendations |
-| **Info**     | 0.0         | Best-practice deviations, no direct impact     |
+| Severity     | CVSS range | Examples                                         |
+| ------------ | ---------- | ------------------------------------------------ |
+| **Critical** | 9.0 – 10.0 | Attestation forgery, solver sandbox escape,      |
+|              |            | key-rotation bypass, RCE via policy fragment     |
+| **High**     | 7.0 – 8.9  | Privilege escalation across composed policies,   |
+|              |            | persisted supply-chain backdoor, DoS that        |
+|              |            | locks downstream mesh in unsat state             |
+| **Medium**   | 4.0 – 6.9  | Information disclosure, partial policy bypass,   |
+|              |            | targeted DoS via crafted fragment                |
+| **Low**      | 0.1 – 3.9  | Local-only info leaks, hardening recommendations |
+| **Info**     | 0.0        | Best-practice deviations, no direct impact       |
 
 ## Security Tooling
 
@@ -150,7 +150,7 @@ The following are **not** considered security vulnerabilities in
 PhenoCompose and should be filed as regular bugs:
 
 - Reports about a policy fragment that the operator authored which
-  is *too permissive*. That is a usability / linting concern, not a
+  is _too permissive_. That is a usability / linting concern, not a
   security boundary.
 - Findings that require physical access to the host running the
   PhenoCompose daemon.

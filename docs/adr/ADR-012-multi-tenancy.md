@@ -7,6 +7,7 @@ Proposed
 ## Context
 
 NanoVMS serves multiple users/teams sharing infrastructure:
+
 - Team workspaces with isolated VMs
 - Project-level resource quotas
 - Organization-wide policies
@@ -460,6 +461,7 @@ type ResourceUsage struct {
 ### Consequences
 
 ### Positive
+
 - Complete isolation between tenants
 - Resource guarantees via quotas
 - Fine-grained RBAC
@@ -467,6 +469,7 @@ type ResourceUsage struct {
 - Compliance-ready
 
 ### Negative
+
 - Complexity in resource allocation
 - Network configuration overhead
 - Storage management complexity

@@ -6,12 +6,12 @@ Complete configuration reference for NanoVMS.
 
 NanoVMS uses the following configuration files:
 
-| Path | Purpose |
-|------|---------|
-| `/etc/nanovms/config.toml` | Global configuration |
-| `~/.nanovms/config.toml` | User configuration |
-| `./nanovms.toml` | Project configuration |
-| `nanovms.toml` | Local configuration |
+| Path                       | Purpose               |
+| -------------------------- | --------------------- |
+| `/etc/nanovms/config.toml` | Global configuration  |
+| `~/.nanovms/config.toml`   | User configuration    |
+| `./nanovms.toml`           | Project configuration |
+| `nanovms.toml`             | Local configuration   |
 
 ## Config.toml
 
@@ -280,15 +280,15 @@ NODE_ENV = "development"
 
 Override config with environment variables:
 
-| Variable | Config Path | Description |
-|----------|-------------|-------------|
-| `NANOVMS_HOST` | server.host | Bind address |
-| `NANOVMS_PORT` | server.port | HTTP port |
-| `NANOVMS_DATA_DIR` | storage.directory | Data directory |
-| `NANOVMS_LOG_LEVEL` | logging.level | Log level |
-| `NANOVMS_FLAVOR` | vm_defaults.flavor | Default flavor |
-| `NANOVMS_SANDBOX` | sandbox.default_tier | Default sandbox tier |
-| `NANOVMS_METRICS_PORT` | observability.metrics.port | Metrics port |
+| Variable               | Config Path                | Description          |
+| ---------------------- | -------------------------- | -------------------- |
+| `NANOVMS_HOST`         | server.host                | Bind address         |
+| `NANOVMS_PORT`         | server.port                | HTTP port            |
+| `NANOVMS_DATA_DIR`     | storage.directory          | Data directory       |
+| `NANOVMS_LOG_LEVEL`    | logging.level              | Log level            |
+| `NANOVMS_FLAVOR`       | vm_defaults.flavor         | Default flavor       |
+| `NANOVMS_SANDBOX`      | sandbox.default_tier       | Default sandbox tier |
+| `NANOVMS_METRICS_PORT` | observability.metrics.port | Metrics port         |
 
 ## Profile Files
 

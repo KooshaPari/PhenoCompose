@@ -2,13 +2,13 @@
 
 ## Document Information
 
-| Field | Value |
-|-------|-------|
-| **ID** | lang-policy-nvms-001 |
-| **Title** | Language Selection Policy - Unified NVMS Stack |
-| **Created** | 2026-04-06 |
-| **Status** | approved |
-| **Scope** | KooshaPari/nvms, PhenoCompose, all Phenotype polyglot infra |
+| Field       | Value                                                       |
+| ----------- | ----------------------------------------------------------- |
+| **ID**      | lang-policy-nvms-001                                        |
+| **Title**   | Language Selection Policy - Unified NVMS Stack              |
+| **Created** | 2026-04-06                                                  |
+| **Status**  | approved                                                    |
+| **Scope**   | KooshaPari/nvms, PhenoCompose, all Phenotype polyglot infra |
 
 ---
 
@@ -42,16 +42,17 @@ This policy establishes a **tiered language selection strategy** for the unified
 
 ### 1.1 Tier 1: Optimal Languages
 
-| Language | Primary Use Case | Why Optimal | Performance | Concurrency |
-|----------|-----------------|-------------|-------------|-------------|
-| **Go** | Core orchestration, CLI, networking | Best cloud SDKs, simple concurrency, fast compile | High | Excellent (goroutines) |
-| **Rust** | Performance-critical, FFI, safety-critical | Memory safety without GC, zero-cost abstractions | Highest | Good (async/await) |
-| **Zig** | Low-level, embedded, build systems | No hidden control flow, perfect C interop | Highest | Manual only |
-| **Mojo** | ML/AI workloads, Python alternative | Python ergonomics + Systems performance | Very High | Good (async) |
+| Language | Primary Use Case                           | Why Optimal                                       | Performance | Concurrency            |
+| -------- | ------------------------------------------ | ------------------------------------------------- | ----------- | ---------------------- |
+| **Go**   | Core orchestration, CLI, networking        | Best cloud SDKs, simple concurrency, fast compile | High        | Excellent (goroutines) |
+| **Rust** | Performance-critical, FFI, safety-critical | Memory safety without GC, zero-cost abstractions  | Highest     | Good (async/await)     |
+| **Zig**  | Low-level, embedded, build systems         | No hidden control flow, perfect C interop         | Highest     | Manual only            |
+| **Mojo** | ML/AI workloads, Python alternative        | Python ergonomics + Systems performance           | Very High   | Good (async)           |
 
 #### Go Selection Criteria
 
 **Use Go when:**
+
 - ✅ Building CLI tools and orchestration layers
 - ✅ Network services, HTTP/gRPC servers
 - ✅ Cloud infrastructure (AWS/GCP/Azure SDKs)
@@ -59,6 +60,7 @@ This policy establishes a **tiered language selection strategy** for the unified
 - ✅ Team familiarity (easy to onboard)
 
 **Avoid Go when:**
+
 - ❌ Extremely latency-sensitive (<1ms p99 required)
 - ❌ Heavy numerical computation (ML/AI)
 - ❌ Memory-constrained embedded systems
@@ -67,6 +69,7 @@ This policy establishes a **tiered language selection strategy** for the unified
 #### Rust Selection Criteria
 
 **Use Rust when:**
+
 - ✅ Performance-critical paths (hot loops, data processing)
 - ✅ FFI with C/Zig libraries
 - ✅ Memory-constrained environments
@@ -74,6 +77,7 @@ This policy establishes a **tiered language selection strategy** for the unified
 - ✅ Building reusable libraries
 
 **Avoid Rust when:**
+
 - ❌ Rapid prototyping needed
 - ❌ Team lacks Rust experience
 - ❌ Simple scripts or automation
@@ -82,6 +86,7 @@ This policy establishes a **tiered language selection strategy** for the unified
 #### Zig Selection Criteria
 
 **Use Zig when:**
+
 - ✅ Building C-compatible libraries
 - ✅ Embedded systems (no_std)
 - ✅ Custom memory allocators
@@ -89,6 +94,7 @@ This policy establishes a **tiered language selection strategy** for the unified
 - ✅ Replacing C in performance-critical code
 
 **Avoid Zig when:**
+
 - ❌ Ecosystem immaturity is unacceptable
 - ❌ Large team collaboration needed
 - ❌ Complex async / networking
@@ -97,12 +103,14 @@ This policy establishes a **tiered language selection strategy** for the unified
 #### Mojo Selection Criteria
 
 **Use Mojo when:**
+
 - ✅ ML/AI model inference or training
 - ✅ Python migration path needed
 - ✅ SIMD/vectorization beneficial
 - ✅ Prototype to production path
 
 **Avoid Mojo when:**
+
 - ❌ Not yet stable (Mojo is still in development)
 - ❌ Pure backend services without ML
 - ❌ Team unfamiliar with Python-like syntax
@@ -113,22 +121,24 @@ This policy establishes a **tiered language selection strategy** for the unified
 
 > **⚠️ WARNING**: Tier 2 languages are WORST CASE ONLY. Documented justification required.
 
-| Language | Acceptable Fallback For | When Justified |
-|----------|------------------------|----------------|
-| **Python** | ML/AI (if Mojo unavailable), scripting | Legacy integration, rapid prototyping only |
-| **C#** | .NET ecosystem integration | Windows-specific tooling only |
-| **TypeScript** | Web UI, browser tooling | PhenoCompose web dashboard only |
-| **Swift** | macOS/iOS native tooling | Apple platform tooling only |
-| **Kotlin** | JVM ecosystem integration | Android tooling only |
+| Language       | Acceptable Fallback For                | When Justified                             |
+| -------------- | -------------------------------------- | ------------------------------------------ |
+| **Python**     | ML/AI (if Mojo unavailable), scripting | Legacy integration, rapid prototyping only |
+| **C#**         | .NET ecosystem integration             | Windows-specific tooling only              |
+| **TypeScript** | Web UI, browser tooling                | PhenoCompose web dashboard only            |
+| **Swift**      | macOS/iOS native tooling               | Apple platform tooling only                |
+| **Kotlin**     | JVM ecosystem integration              | Android tooling only                       |
 
 #### Python Fallback Criteria
 
 **Only use Python when:**
+
 - ✅ Explicitly integrating with Python ML stack (PyTorch, TensorFlow)
 - ✅ Legacy automation scripts that cannot be rewritten
 - ✅ Single-use scripting (never for long-lived services)
 
 **Never use Python for:**
+
 - ❌ Core orchestration or services
 - ❌ Performance-critical paths
 - ❌ New feature development
@@ -136,11 +146,13 @@ This policy establishes a **tiered language selection strategy** for the unified
 #### C# Fallback Criteria
 
 **Only use C# when:**
+
 - ✅ Windows-specific tooling that cannot be Go/Rust
 - ✅ .NET library integration required
 - ✅ Team has C# expertise and no Go/Rust
 
 **Never use C# for:**
+
 - ❌ Cross-platform core services
 - ❌ Performance-critical paths
 - ❌ New feature development
@@ -148,10 +160,12 @@ This policy establishes a **tiered language selection strategy** for the unified
 #### TypeScript Fallback Criteria
 
 **Only use TypeScript when:**
+
 - ✅ Web UI for PhenoCompose dashboard
 - ✅ Browser-based tooling
 
 **Never use TypeScript for:**
+
 - ❌ Backend services
 - ❌ CLI tools
 - ❌ Performance-critical paths
@@ -159,11 +173,13 @@ This policy establishes a **tiered language selection strategy** for the unified
 #### Swift/Kotlin Fallback Criteria
 
 **Only use Swift/Kotlin when:**
+
 - ✅ Native macOS/iOS PhenoCompose companion apps
 - ✅ Android PhenoCompose companion apps
 - ✅ Platform-specific tooling only
 
 **Never use Swift/Kotlin for:**
+
 - ❌ Core services
 - ❌ Cross-platform tooling
 - ❌ Performance-critical paths
@@ -201,20 +217,20 @@ This policy establishes a **tiered language selection strategy** for the unified
 
 ### 2.2 Language Assignment by Component
 
-| Component | Language | Rationale | Tier |
-|-----------|----------|-----------|------|
-| **NVMS Core Orchestrator** | Go | Concurrency, cloud SDKs, simplicity | 1 |
-| **WASM Runtime Adapter** | Go | Tight integration with Go core | 1 |
-| **gVisor Runtime Adapter** | Go | Tight integration with Go core | 1 |
-| **Firecracker Orchestrator** | Go/Rust | AWS SDK (Go), performance (Rust) | 1 |
-| **Platform Adapters (macOS/Linux/Windows)** | Go | Cross-platform, FFI if needed | 1 |
-| **PhenoCompose CLI** | Rust | Type safety, performance, CLI ergonomics | 1 |
-| **PhenoCompose NVMS Driver** | Rust | FFI with NVMS Go library | 1 |
-| **ML/AI Integration** | Mojo | Python-like + systems performance | 1 |
-| **Low-level Memory/Build** | Zig | C interop, no hidden allocations | 1 |
-| **Web Dashboard** | TypeScript | Browser UI only | 2 |
-| **macOS Companion** | Swift | Native Apple tooling only | 2 |
-| **Android Companion** | Kotlin | Native Android tooling only | 2 |
+| Component                                   | Language   | Rationale                                | Tier |
+| ------------------------------------------- | ---------- | ---------------------------------------- | ---- |
+| **NVMS Core Orchestrator**                  | Go         | Concurrency, cloud SDKs, simplicity      | 1    |
+| **WASM Runtime Adapter**                    | Go         | Tight integration with Go core           | 1    |
+| **gVisor Runtime Adapter**                  | Go         | Tight integration with Go core           | 1    |
+| **Firecracker Orchestrator**                | Go/Rust    | AWS SDK (Go), performance (Rust)         | 1    |
+| **Platform Adapters (macOS/Linux/Windows)** | Go         | Cross-platform, FFI if needed            | 1    |
+| **PhenoCompose CLI**                        | Rust       | Type safety, performance, CLI ergonomics | 1    |
+| **PhenoCompose NVMS Driver**                | Rust       | FFI with NVMS Go library                 | 1    |
+| **ML/AI Integration**                       | Mojo       | Python-like + systems performance        | 1    |
+| **Low-level Memory/Build**                  | Zig        | C interop, no hidden allocations         | 1    |
+| **Web Dashboard**                           | TypeScript | Browser UI only                          | 2    |
+| **macOS Companion**                         | Swift      | Native Apple tooling only                | 2    |
+| **Android Companion**                       | Kotlin     | Native Android tooling only              | 2    |
 
 ---
 
@@ -328,18 +344,18 @@ def inference_go(input_data: np.ndarray) -> np.ndarray:
 
 ### 4.1 Language Performance Comparison
 
-| Operation | Go | Rust | Zig | Python | C# |
-|-----------|-----|------|-----|--------|-----|
-| **Startup Time** | ~50ms | ~100ms | ~20ms | ~500ms | ~200ms |
-| **Memory Baseline** | ~10MB | ~5MB | ~2MB | ~50MB | ~30MB |
-| **HTTP Latency (p99)** | <5ms | <1ms | <1ms | >50ms | ~20ms |
-| **Compute Throughput** | High | Highest | Highest | Low | Medium |
-| **Concurrency Model** | Goroutines | async/await | Manual | GIL | Threads |
+| Operation              | Go         | Rust        | Zig     | Python | C#      |
+| ---------------------- | ---------- | ----------- | ------- | ------ | ------- |
+| **Startup Time**       | ~50ms      | ~100ms      | ~20ms   | ~500ms | ~200ms  |
+| **Memory Baseline**    | ~10MB      | ~5MB        | ~2MB    | ~50MB  | ~30MB   |
+| **HTTP Latency (p99)** | <5ms       | <1ms        | <1ms    | >50ms  | ~20ms   |
+| **Compute Throughput** | High       | Highest     | Highest | Low    | Medium  |
+| **Concurrency Model**  | Goroutines | async/await | Manual  | GIL    | Threads |
 
 ### 4.2 Decision Framework
 
 ```
-                    ┌─────────────────────────────┐
+┌─────────────────────────────┐
                     │    LANGUAGE SELECTION FLOW    │
                     └─────────────────────────────┘
                                        │
@@ -409,26 +425,26 @@ def inference_go(input_data: np.ndarray) -> np.ndarray:
 
 ### 5.1 Team Skill Matrix
 
-| Language | Phenotype Team Expertise | Learning Curve | Productivity |
-|----------|-------------------------|----------------|--------------|
-| **Go** | High | Low | High |
-| **Rust** | Medium | High | Medium |
-| **Zig** | Low | Very High | Low (early) |
-| **Mojo** | Low | Medium | TBD |
-| **Python** | High | Low | High |
-| **TypeScript** | High | Low | High |
-| **C#** | Low | Medium | Medium |
+| Language       | Phenotype Team Expertise | Learning Curve | Productivity |
+| -------------- | ------------------------ | -------------- | ------------ |
+| **Go**         | High                     | Low            | High         |
+| **Rust**       | Medium                   | High           | Medium       |
+| **Zig**        | Low                      | Very High      | Low (early)  |
+| **Mojo**       | Low                      | Medium         | TBD          |
+| **Python**     | High                     | Low            | High         |
+| **TypeScript** | High                     | Low            | High         |
+| **C#**         | Low                      | Medium         | Medium       |
 
 ### 5.2 Ecosystem Maturity
 
-| Language | Libraries | Tooling | Stability | Recommendation |
-|----------|-----------|---------|-----------|----------------|
-| **Go** | Excellent | Excellent | Stable | **Primary** |
-| **Rust** | Excellent | Excellent | Stable | Performance-critical |
-| **Zig** | Growing | Good | Pre-1.0 | Low-level only |
-| **Mojo** | Emerging | Limited | Beta | ML only |
-| **Python** | Excellent | Excellent | Stable | Legacy only |
-| **TypeScript** | Excellent | Excellent | Stable | Web only |
+| Language       | Libraries | Tooling   | Stability | Recommendation       |
+| -------------- | --------- | --------- | --------- | -------------------- |
+| **Go**         | Excellent | Excellent | Stable    | **Primary**          |
+| **Rust**       | Excellent | Excellent | Stable    | Performance-critical |
+| **Zig**        | Growing   | Good      | Pre-1.0   | Low-level only       |
+| **Mojo**       | Emerging  | Limited   | Beta      | ML only              |
+| **Python**     | Excellent | Excellent | Stable    | Legacy only          |
+| **TypeScript** | Excellent | Excellent | Stable    | Web only             |
 
 ---
 
@@ -436,17 +452,18 @@ def inference_go(input_data: np.ndarray) -> np.ndarray:
 
 ### 6.1 Language Selection Anti-Patterns
 
-| Anti-Pattern | Why Bad | Correct Approach |
-|--------------|---------|-----------------|
-| "Python is faster to write" | Technical debt, performance | Use Go (fast to write + fast runtime) |
-| "We'll rewrite in Rust later" | Rarely happens | Start with correct language |
-| "C# is fine for Windows" | Lock-in | Use Go + CGO if needed |
-| "Everyone knows Python" | Maintenance burden | Invest in Go training |
-| "Zig is trendy" | Ecosystem immaturity | Use only for C interop |
+| Anti-Pattern                  | Why Bad                     | Correct Approach                      |
+| ----------------------------- | --------------------------- | ------------------------------------- |
+| "Python is faster to write"   | Technical debt, performance | Use Go (fast to write + fast runtime) |
+| "We'll rewrite in Rust later" | Rarely happens              | Start with correct language           |
+| "C# is fine for Windows"      | Lock-in                     | Use Go + CGO if needed                |
+| "Everyone knows Python"       | Maintenance burden          | Invest in Go training                 |
+| "Zig is trendy"               | Ecosystem immaturity        | Use only for C interop                |
 
 ### 6.2 Justification Required Triggers
 
 **Document justification when:**
+
 1. Adding Python beyond ML integration
 2. Using C# for anything beyond Windows tooling
 3. Using TypeScript for backend services
@@ -459,20 +476,20 @@ def inference_go(input_data: np.ndarray) -> np.ndarray:
 
 ### 7.1 Python → Go
 
-| Python | Go Equivalent |
-|--------|--------------|
-| FastAPI | net/http + chi |
-| Celery | NATS JetStream |
+| Python       | Go Equivalent       |
+| ------------ | ------------------- |
+| FastAPI      | net/http + chi      |
+| Celery       | NATS JetStream      |
 | NumPy/Pandas | gonum, dataframe-go |
-| PyTorch | Mojo (eventually) |
+| PyTorch      | Mojo (eventually)   |
 
 ### 7.2 C# → Go/Rust
 
-| C# | Go | Rust |
-|----|----|------|
-| ASP.NET Core | net/http | axum |
-| Entity Framework | sqlx, GORM | Diesel |
-| .NET gRPC | google.golang.org/grpc | tonic |
+| C#               | Go                     | Rust   |
+| ---------------- | ---------------------- | ------ |
+| ASP.NET Core     | net/http               | axum   |
+| Entity Framework | sqlx, GORM             | Diesel |
+| .NET gRPC        | google.golang.org/grpc | tonic  |
 
 ---
 

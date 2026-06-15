@@ -19,12 +19,12 @@ Configure a Windows VM with GPU passthrough for gaming or GPU-intensive workload
 
 ### Hardware Requirements
 
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| CPU | Intel VT-d or AMD-Vi | Latest gen with IOMMU |
-| GPU | GTX 1060 / RX 580 | RTX 3080 / RX 6800 XT |
-| RAM | 16GB | 32GB+ |
-| Storage | 100GB SSD | 500GB NVMe |
+| Component | Minimum              | Recommended           |
+| --------- | -------------------- | --------------------- |
+| CPU       | Intel VT-d or AMD-Vi | Latest gen with IOMMU |
+| GPU       | GTX 1060 / RX 580    | RTX 3080 / RX 6800 XT |
+| RAM       | 16GB                 | 32GB+                 |
+| Storage   | 100GB SSD            | 500GB NVMe            |
 
 ### Check IOMMU Support
 
@@ -128,11 +128,11 @@ nanovms vm exec gaming-vm -- nvidia-smi
 
 ## Performance Benchmarks
 
-| Metric | Bare Metal | VM (VFIO) | Overhead |
-|--------|------------|-----------|----------|
-| 3DMark Score | 25,000 | 24,500 | 2% |
-| CS2 FPS | 450 | 445 | 1.1% |
-| Memory Latency | 60ns | 62ns | 3.3% |
+| Metric         | Bare Metal | VM (VFIO) | Overhead |
+| -------------- | ---------- | --------- | -------- |
+| 3DMark Score   | 25,000     | 24,500    | 2%       |
+| CS2 FPS        | 450        | 445       | 1.1%     |
+| Memory Latency | 60ns       | 62ns      | 3.3%     |
 
 ## Troubleshooting
 

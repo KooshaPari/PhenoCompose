@@ -7,6 +7,7 @@ Proposed
 ## Context
 
 NanoVMS needs to support parallel game automation testing:
+
 - Headless Steam + tokens
 - Pre-copied compressed images
 - <10s startup target
@@ -646,19 +647,20 @@ func (r *ResultCollector) exportJUnit() ([]byte, error) {
 
 ### Performance Targets
 
-| Metric | Target | Method |
-|--------|--------|--------|
-| **VM cold start** | <10s | Pre-copied compressed images + snapshots |
-| **VM warm start** | <2s | Suspend-to-disk resume |
-| **Game startup** | <15s | Pre-warmed with Steam token |
-| **Test parallelism** | 8 per host | VM cluster with quota |
-| **Memory per VM** | 4GB | Game + Steam + mods |
-| **Storage per VM** | 20GB | Compressed base + mods |
-| **Network** | localhost only | No external traffic |
+| Metric               | Target         | Method                                   |
+| -------------------- | -------------- | ---------------------------------------- |
+| **VM cold start**    | <10s           | Pre-copied compressed images + snapshots |
+| **VM warm start**    | <2s            | Suspend-to-disk resume                   |
+| **Game startup**     | <15s           | Pre-warmed with Steam token              |
+| **Test parallelism** | 8 per host     | VM cluster with quota                    |
+| **Memory per VM**    | 4GB            | Game + Steam + mods                      |
+| **Storage per VM**   | 20GB           | Compressed base + mods                   |
+| **Network**          | localhost only | No external traffic                      |
 
 ### Consequences
 
 ### Positive
+
 - Parallel test execution significantly reduces CI time
 - Consistent environment via snapshots
 - Steam token auth enables headless testing
@@ -666,6 +668,7 @@ func (r *ResultCollector) exportJUnit() ([]byte, error) {
 - Memory scanner enables cheat detection testing
 
 ### Negative
+
 - Steam API rate limits
 - Game anti-cheat compatibility
 - Mod conflicts

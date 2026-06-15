@@ -111,11 +111,11 @@ nanovms game report --inputs results-*.json --output final-report.html
 ## Performance Metrics
 
 | VMs | Sequential Time | Parallel Time | Speedup |
-|-----|----------------|---------------|---------|
-| 1   | 15m            | 15m           | 1x      |
-| 2   | 30m            | 15m           | 2x      |
-| 4   | 60m            | 16m           | 3.75x   |
-| 8   | 120m           | 18m           | 6.67x   |
+| --- | --------------- | ------------- | ------- |
+| 1   | 15m             | 15m           | 1x      |
+| 2   | 30m             | 15m           | 2x      |
+| 4   | 60m             | 16m           | 3.75x   |
+| 8   | 120m            | 18m           | 6.67x   |
 
 ## Next Steps
 

@@ -7,6 +7,7 @@ Accepted
 ## Context
 
 NanoVMS needs comprehensive testing across:
+
 - Unit tests
 - Integration tests
 - Performance benchmarks
@@ -17,7 +18,7 @@ NanoVMS needs comprehensive testing across:
 ### Test Pyramid
 
 ```
-         ┌─────────────┐
+┌─────────────┐
          │   E2E Tests │     ~10%
          └──────┬──────┘
          ┌──────┴──────┐
@@ -141,20 +142,22 @@ func TestWithDatabase(t *testing.T) {
 ## Coverage Targets
 
 | Component | Target |
-|----------|--------|
-| Core | 90% |
-| Adapters | 80% |
-| CLI | 70% |
-| Overall | 85% |
+| --------- | ------ |
+| Core      | 90%    |
+| Adapters  | 80%    |
+| CLI       | 70%    |
+| Overall   | 85%    |
 
 ## Consequences
 
 ### Positive
+
 - Fast feedback loop (unit tests)
 - Real environment testing (integration)
 - Performance regression detection
 - Game automation validation
 
 ### Negative
+
 - Complex test infrastructure
 - Multi-platform testing overhead

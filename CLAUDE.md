@@ -1,6 +1,7 @@
 # CLAUDE.md — PhenoCompose
 
 Extends parent governance. See:
+
 - Global baseline: `~/.claude/CLAUDE.md`
 - Phenotype root: `/Users/kooshapari/CodeProjects/Phenotype/repos/CLAUDE.md`
 - AgilePlus mandate: `/Users/kooshapari/CodeProjects/Phenotype/repos/AgilePlus`
@@ -17,6 +18,7 @@ Extends parent governance. See:
 ## AgilePlus Mandate
 
 All work MUST be tracked in AgilePlus:
+
 - CLI: `cd /Users/kooshapari/CodeProjects/Phenotype/repos/AgilePlus && agileplus <command>`
 - Check for existing specs before implementing
 - Create spec for new work: `agileplus specify --title "<feature>" --description "<desc>"`
@@ -25,6 +27,7 @@ All work MUST be tracked in AgilePlus:
 ## Architecture
 
 PhenoCompose is the unified interface layer that combines:
+
 - Docker Compose evolution (container orchestration)
 - KVMS driver (Firecracker-based microVMs)
 - Cross-platform support (macOS/Linux/Windows)
@@ -45,6 +48,7 @@ PhenoCompose is the unified interface layer that combines:
 ## Quality Checks
 
 From this repository root:
+
 ```bash
 # Build
 go build ./...

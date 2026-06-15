@@ -6,13 +6,13 @@ Get NanoVMS running in under 5 minutes.
 
 ### System Requirements
 
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| CPU | 4 cores | 8+ cores |
-| RAM | 8 GB | 16+ GB |
-| Storage | 20 GB | 50+ GB |
-| OS | Linux 5.x | Linux 6.x |
-| Virt | KVM | KVM + IOMMU |
+| Component | Minimum   | Recommended |
+| --------- | --------- | ----------- |
+| CPU       | 4 cores   | 8+ cores    |
+| RAM       | 8 GB      | 16+ GB      |
+| Storage   | 20 GB     | 50+ GB      |
+| OS        | Linux 5.x | Linux 6.x   |
+| Virt      | KVM       | KVM + IOMMU |
 
 ### Required Software
 
@@ -109,6 +109,7 @@ nanovms help
 ```
 
 Output:
+
 ```
 NanoVMS - High-Performance Virtualization
 
@@ -276,6 +277,7 @@ nano ~/.config/nanovms/config.yaml
 ```
 
 Example `config.yaml`:
+
 ```yaml
 # Default settings
 defaults:

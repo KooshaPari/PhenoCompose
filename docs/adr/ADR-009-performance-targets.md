@@ -7,6 +7,7 @@ Accepted
 ## Context
 
 NanoVMS targets workloads requiring:
+
 - Fast VM startup
 - Low resource overhead
 - High density
@@ -158,26 +159,28 @@ curl http://localhost:6060/debug/pprof/trace?seconds=10 > trace.out
 
 ### Performance Baselines
 
-| Component | Baseline | Target | Measurement |
-|-----------|----------|--------|------------|
-| CLI startup | 50ms | <20ms | `time nanovms --version` |
-| VM create (MicroVM) | 125ms | <100ms | benchmark |
-| VM create (gVisor) | 150ms | <100ms | benchmark |
-| VM start (resume) | 50ms | <10ms | benchmark |
-| Exec round-trip | 15ms | <10ms | benchmark |
-| Memory per MicroVM | 5MB | <5MB | ps aux |
-| Memory per gVisor | 150MB | <50MB | ps aux |
-| Disk per VM | 500MB | <10MB | du -sh |
-| Concurrent VMs | 50 | 150 | benchmark |
+| Component           | Baseline | Target | Measurement              |
+| ------------------- | -------- | ------ | ------------------------ |
+| CLI startup         | 50ms     | <20ms  | `time nanovms --version` |
+| VM create (MicroVM) | 125ms    | <100ms | benchmark                |
+| VM create (gVisor)  | 150ms    | <100ms | benchmark                |
+| VM start (resume)   | 50ms     | <10ms  | benchmark                |
+| Exec round-trip     | 15ms     | <10ms  | benchmark                |
+| Memory per MicroVM  | 5MB      | <5MB   | ps aux                   |
+| Memory per gVisor   | 150MB    | <50MB  | ps aux                   |
+| Disk per VM         | 500MB    | <10MB  | du -sh                   |
+| Concurrent VMs      | 50       | 150    | benchmark                |
 
 ## Consequences
 
 ### Positive
+
 - Clear performance requirements
 - Measurable success criteria
 - Benchmark-driven development
 
 ### Negative
+
 - Platform-specific optimizations may be needed
 - Hardware-dependent baselines
 - Continuous performance regression prevention

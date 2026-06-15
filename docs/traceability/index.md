@@ -6,9 +6,9 @@
 
 ## Requirements
 
-| ID | Requirement | Status |
-|----|-------------|--------|
-| REQ-001 | Core API | ✅ Implemented |
-| REQ-002 | Config | ✅ Implemented |
+| ID      | Requirement | Status        |
+| ------- | ----------- | ------------- |
+| REQ-001 | Core API    | ✅ Implemented |
+| REQ-002 | Config      | ✅ Implemented |
 
 <TestCoverageBadge :overall="90" :unit="95" />

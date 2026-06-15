@@ -7,6 +7,7 @@ Accepted
 ## Context
 
 NanoVMS needs networking capabilities for:
+
 - VM-to-VM communication
 - Host-to-VM access
 - NAT / bridge networking
@@ -26,41 +27,49 @@ NanoVMS needs networking capabilities for:
 ### Option 1: Linux Bridge + TAP (Selected)
 
 **Pros:**
+
 - Works everywhere
 - Good performance
 - Simple configuration
 - NAT and bridge modes
 
 **Cons:**
+
 - Limited to Linux
 
 ### Option 2: MacVTap
 
 **Pros:**
+
 - Direct connection to host NIC
 - Good performance
 - Simple
 
 **Cons:**
+
 - Linux/macOS only
 
 ### Option 3: Slirp (User-mode)
 
 **Pros:**
+
 - No root required
 - Works everywhere
 
 **Cons:**
+
 - Poor performance
 - High latency
 
 ### Option 4: DPDK (for NFV workloads)
 
 **Pros:**
+
 - 10Gbps+ throughput
 - Kernel bypass
 
 **Cons:**
+
 - Requires hugepages
 - Complex setup
 - Not for general use
@@ -77,11 +86,13 @@ We implement a **tiered approach**:
 ## Consequences
 
 ### Positive
+
 - Works on all platforms
 - Progressive performance improvement
 - Security through isolation
 
 ### Negative
+
 - Bridge requires root on Linux
 - Different behavior per mode
 

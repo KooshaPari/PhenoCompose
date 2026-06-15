@@ -840,26 +840,26 @@ Examples:
 
 ## Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | General error |
-| 2 | Invalid arguments |
-| 3 | VM not found |
-| 4 | VM already running |
-| 5 | VM not running |
-| 6 | Permission denied |
-| 7 | Resource not available |
-| 8 | Timeout |
-| 9 | Configuration error |
+| Code | Meaning                |
+| ---- | ---------------------- |
+| 0    | Success                |
+| 1    | General error          |
+| 2    | Invalid arguments      |
+| 3    | VM not found           |
+| 4    | VM already running     |
+| 5    | VM not running         |
+| 6    | Permission denied      |
+| 7    | Resource not available |
+| 8    | Timeout                |
+| 9    | Configuration error    |
 
 ---
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NANOVMS_CONFIG` | Config file path | `~/.config/nanovms/config.yaml` |
-| `NANOVMS_DATA_DIR` | Data directory | `~/.local/share/nanovms` |
-| `NANOVMS_LOG_LEVEL` | Log level | `info` |
-| `NANOVMS_NO_COLOR` | Disable colors | `false` |
+| Variable            | Description      | Default                         |
+| ------------------- | ---------------- | ------------------------------- |
+| `NANOVMS_CONFIG`    | Config file path | `~/.config/nanovms/config.yaml` |
+| `NANOVMS_DATA_DIR`  | Data directory   | `~/.local/share/nanovms`        |
+| `NANOVMS_LOG_LEVEL` | Log level        | `info`                          |
+| `NANOVMS_NO_COLOR`  | Disable colors   | `false`                         |

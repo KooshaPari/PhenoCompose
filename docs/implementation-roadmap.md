@@ -17,21 +17,22 @@ Q1 2026          Q2 2026          Q3 2026          Q4 2026
 ## Phase 1: Core Foundation (Q1 2026)
 
 ### Goals
+
 - Establish core hypervisor abstraction layer
 - Implement Tier 2-4 VM flavors (MicroVM, Container, Sandbox)
 - Basic CLI with essential commands
 
 ### Milestones
 
-| Week | Deliverable | Status |
-|------|-------------|--------|
-| 1-2 | Project scaffolding, CI/CD setup | |
-| 3-4 | Hypervisor abstraction (Firecracker, QEMU, containerd) | |
-| 5-6 | MicroVM implementation (Tier 2) | |
-| 7-8 | Container runtime (Tier 3) | |
-| 9-10 | Sandbox isolation (Tier 4) | |
-| 11-12 | Basic CLI, integration tests | |
-| 13 | Phase 1 release | |
+| Week  | Deliverable                                            | Status |
+| ----- | ------------------------------------------------------ | ------ |
+| 1-2   | Project scaffolding, CI/CD setup                       |        |
+| 3-4   | Hypervisor abstraction (Firecracker, QEMU, containerd) |        |
+| 5-6   | MicroVM implementation (Tier 2)                        |        |
+| 7-8   | Container runtime (Tier 3)                             |        |
+| 9-10  | Sandbox isolation (Tier 4)                             |        |
+| 11-12 | Basic CLI, integration tests                           |        |
+| 13    | Phase 1 release                                        |        |
 
 ### Implementation Details
 
@@ -110,6 +111,7 @@ func (m *MicroVM) Restore(ctx context.Context) error {
 ```
 
 ### Phase 1 Exit Criteria
+
 - [ ] Can create/start/stop/delete VMs
 - [ ] Firecracker microVM starts in <125ms
 - [ ] Basic CLI commands work
@@ -121,6 +123,7 @@ func (m *MicroVM) Restore(ctx context.Context) error {
 ## Phase 2: Game Automation Testing (Q2 2026)
 
 ### Goals
+
 - Implement game automation testing infrastructure
 - Steam integration (headless mode)
 - Parallel VM orchestration
@@ -128,14 +131,14 @@ func (m *MicroVM) Restore(ctx context.Context) error {
 
 ### Milestones
 
-| Week | Deliverable | Status |
-|------|-------------|--------|
-| 14-15 | VM pool management | |
-| 16-17 | Steam headless integration | |
-| 18-19 | Game automation runner | |
-| 20-21 | Parallel test execution | |
-| 22-23 | Result aggregation | |
-| 24 | Phase 2 release | |
+| Week  | Deliverable                | Status |
+| ----- | -------------------------- | ------ |
+| 14-15 | VM pool management         |        |
+| 16-17 | Steam headless integration |        |
+| 18-19 | Game automation runner     |        |
+| 20-21 | Parallel test execution    |        |
+| 22-23 | Result aggregation         |        |
+| 24    | Phase 2 release            |        |
 
 ### Implementation Details
 
@@ -297,6 +300,7 @@ func (r *Runner) Run(ctx context.Context, tc *TestCase) (*TestResult, error) {
 ```
 
 ### Phase 2 Exit Criteria
+
 - [ ] VM pool with <500ms acquire time
 - [ ] Steam headless launches game
 - [ ] Can run parallel tests
@@ -308,6 +312,7 @@ func (r *Runner) Run(ctx context.Context, tc *TestCase) (*TestResult, error) {
 ## Phase 3: Consumer Hardware Optimization (Q3 2026)
 
 ### Goals
+
 - Implement consumer hardware profiles
 - VFIO/GPU passthrough support
 - Performance optimization
@@ -315,14 +320,14 @@ func (r *Runner) Run(ctx context.Context, tc *TestCase) (*TestResult, error) {
 
 ### Milestones
 
-| Week | Deliverable | Status |
-|------|-------------|--------|
-| 25-26 | Hardware detection | |
-| 27-28 | VFIO integration | |
-| 29-30 | Performance tuning | |
-| 31-32 | Looking Glass setup | |
-| 33-34 | Resource optimization | |
-| 35 | Phase 3 release | |
+| Week  | Deliverable           | Status |
+| ----- | --------------------- | ------ |
+| 25-26 | Hardware detection    |        |
+| 27-28 | VFIO integration      |        |
+| 29-30 | Performance tuning    |        |
+| 31-32 | Looking Glass setup   |        |
+| 33-34 | Resource optimization |        |
+| 35    | Phase 3 release       |        |
 
 ### Implementation Details
 
@@ -440,6 +445,7 @@ func (m *Manager) AttachToVM(vmID string, pciAddr string) error {
 ```
 
 ### Phase 3 Exit Criteria
+
 - [ ] Auto-detects hardware capabilities
 - [ ] VFIO binds GPU successfully
 - [ ] GPU passthrough works
@@ -451,6 +457,7 @@ func (m *Manager) AttachToVM(vmID string, pciAddr string) error {
 ## Phase 4: Production Hardening (Q4 2026)
 
 ### Goals
+
 - Security hardening
 - Multi-tenancy
 - Production deployment
@@ -458,17 +465,18 @@ func (m *Manager) AttachToVM(vmID string, pciAddr string) error {
 
 ### Milestones
 
-| Week | Deliverable | Status |
-|------|-------------|--------|
-| 36-37 | Security audit | |
-| 38-39 | Multi-tenancy | |
-| 40-41 | Monitoring/Observability | |
-| 42-43 | Documentation | |
-| 44 | Release candidate | |
-| 45-46 | GA release | |
-| 47-48 | Post-release | |
+| Week  | Deliverable              | Status |
+| ----- | ------------------------ | ------ |
+| 36-37 | Security audit           |        |
+| 38-39 | Multi-tenancy            |        |
+| 40-41 | Monitoring/Observability |        |
+| 42-43 | Documentation            |        |
+| 44    | Release candidate        |        |
+| 45-46 | GA release               |        |
+| 47-48 | Post-release             |        |
 
 ### Phase 4 Exit Criteria
+
 - [ ] Security audit complete
 - [ ] Multi-tenant isolation verified
 - [ ] Monitoring operational
@@ -481,42 +489,42 @@ func (m *Manager) AttachToVM(vmID string, pciAddr string) error {
 
 ### Team Structure
 
-| Role | Q1 | Q2 | Q3 | Q4 |
-|------|----|----|----|----|
-| Core Developers | 2 | 2 | 2 | 1 |
-| Security Engineer | 0 | 0 | 1 | 1 |
-| DevOps | 1 | 1 | 1 | 1 |
-| Technical Writer | 0 | 0 | 0 | 1 |
+| Role              | Q1 | Q2 | Q3 | Q4 |
+| ----------------- | -- | -- | -- | -- |
+| Core Developers   | 2  | 2  | 2  | 1  |
+| Security Engineer | 0  | 0  | 1  | 1  |
+| DevOps            | 1  | 1  | 1  | 1  |
+| Technical Writer  | 0  | 0  | 0  | 1  |
 
 ### Infrastructure
 
-| Resource | Q1 | Q2 | Q3 | Q4 |
-|----------|----|----|----|----|
-| Build agents | 2 | 4 | 4 | 2 |
-| Test VMs | 4 | 16 | 8 | 4 |
-| Storage (TB) | 1 | 4 | 2 | 1 |
+| Resource     | Q1 | Q2 | Q3 | Q4 |
+| ------------ | -- | -- | -- | -- |
+| Build agents | 2  | 4  | 4  | 2  |
+| Test VMs     | 4  | 16 | 8  | 4  |
+| Storage (TB) | 1  | 4  | 2  | 1  |
 
 ---
 
 ## Risk Mitigation
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Firecracker FFI complexity | High | Use existing Go bindings |
-| GPU passthrough issues | Medium | Multiple fallback paths |
+| Risk                       | Impact | Mitigation                 |
+| -------------------------- | ------ | -------------------------- |
+| Firecracker FFI complexity | High   | Use existing Go bindings   |
+| GPU passthrough issues     | Medium | Multiple fallback paths    |
 | Steam anti-cheat conflicts | Medium | Focus on modding community |
-| Performance targets missed | Medium | Iterate on optimization |
-| Resource constraints | Low | Prioritize critical paths |
+| Performance targets missed | Medium | Iterate on optimization    |
+| Resource constraints       | Low    | Prioritize critical paths  |
 
 ---
 
 ## Success Metrics
 
-| Metric | Phase 1 | Phase 2 | Phase 3 | Phase 4 |
-|--------|---------|---------|---------|---------|
-| VM startup | <125ms | <100ms | <50ms | <50ms |
-| CLI coverage | 60% | 80% | 90% | 100% |
-| Test coverage | 70% | 80% | 85% | 90% |
-| Documentation | 50% | 70% | 85% | 100% |
-| Concurrent VMs | 10 | 50 | 100 | 100 |
-| Game startup | - | <10s | <8s | <8s |
+| Metric         | Phase 1 | Phase 2 | Phase 3 | Phase 4 |
+| -------------- | ------- | ------- | ------- | ------- |
+| VM startup     | <125ms  | <100ms  | <50ms   | <50ms   |
+| CLI coverage   | 60%     | 80%     | 90%     | 100%    |
+| Test coverage  | 70%     | 80%     | 85%     | 90%     |
+| Documentation  | 50%     | 70%     | 85%     | 100%    |
+| Concurrent VMs | 10      | 50      | 100     | 100     |
+| Game startup   | -       | <10s    | <8s     | <8s     |

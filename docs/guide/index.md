@@ -55,13 +55,13 @@ NanoVMS uses a hexagonal (ports and adapters) architecture:
 
 ## Platform Support
 
-| Platform | Primary Runtime | Isolation | Status |
-|----------|----------------|-----------|--------|
-| macOS | Lima/Colima + vz | Namespace | Stable |
-| Windows | WSL2 + gVisor | Syscall interception | Stable |
-| Linux | gVisor/crun | Syscall filtering | Stable |
-| iOS Simulator | Via macOS host | Lima VM | Stable |
-| Android Emulator | Headless mode | Via Lima | Stable |
+| Platform         | Primary Runtime  | Isolation            | Status |
+| ---------------- | ---------------- | -------------------- | ------ |
+| macOS            | Lima/Colima + vz | Namespace            | Stable |
+| Windows          | WSL2 + gVisor    | Syscall interception | Stable |
+| Linux            | gVisor/crun      | Syscall filtering    | Stable |
+| iOS Simulator    | Via macOS host   | Lima VM              | Stable |
+| Android Emulator | Headless mode    | Via Lima             | Stable |
 
 ## License
 

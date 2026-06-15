@@ -41,6 +41,6 @@ nanovms vm start my-first-vm
 nanovms vm list
 ```
 
-## Success! 
+## Success!
 
 You've created your first NanoVMS VM.

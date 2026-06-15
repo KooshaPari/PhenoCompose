@@ -139,12 +139,12 @@ nanovms vm vnc agent-desktop --port 5901
 
 ### Isolation Levels
 
-| Level | Description | Use Case |
-|-------|-------------|----------|
-| **VM** | Full hardware isolation | Untrusted code |
-| **gVisor** | Syscall filtering | Semi-trusted |
-| **Network** | Isolated bridge | Data protection |
-| **Filesystem** | Overlay/readonly | System protection |
+| Level          | Description             | Use Case          |
+| -------------- | ----------------------- | ----------------- |
+| **VM**         | Full hardware isolation | Untrusted code    |
+| **gVisor**     | Syscall filtering       | Semi-trusted      |
+| **Network**    | Isolated bridge         | Data protection   |
+| **Filesystem** | Overlay/readonly        | System protection |
 
 ## Example: Automated Form Filling
 
@@ -175,12 +175,12 @@ agent.terminate()
 
 ## Performance
 
-| Metric | Target |
-|--------|--------|
-| VM startup | < 5s |
-| Browser launch | < 3s |
+| Metric             | Target  |
+| ------------------ | ------- |
+| VM startup         | < 5s    |
+| Browser launch     | < 3s    |
 | Screenshot latency | < 500ms |
-| Input latency | < 100ms |
+| Input latency      | < 100ms |
 
 ## Troubleshooting
 

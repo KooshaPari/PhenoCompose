@@ -7,6 +7,7 @@ Accepted
 ## Context
 
 NanoVMS requires comprehensive observability for:
+
 - Performance debugging
 - Capacity planning
 - Incident response
@@ -400,12 +401,14 @@ groups:
 ## Consequences
 
 ### Positive
+
 - Full observability stack
 - Standard Prometheus/OpenTelemetry integration
 - Alerting and dashboards ready
 - Debugging capabilities
 
 ### Negative
+
 - Additional resource overhead
 - Storage for metrics/traces
 - Complexity in configuration

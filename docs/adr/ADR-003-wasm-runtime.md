@@ -22,6 +22,7 @@ NanoVMS needs to support WebAssembly as a Tier 5 isolation mechanism for lightwe
 ### Option 1: Wasmtime (Selected)
 
 **Pros:**
+
 - Production-grade (used by Fastly, Shopify)
 - Cranelift JIT compilation
 - Excellent cold start (<1ms)
@@ -30,18 +31,21 @@ NanoVMS needs to support WebAssembly as a Tier 5 isolation mechanism for lightwe
 - Well-maintained
 
 **Cons:**
+
 - Larger binary size (~10MB)
 - Rust-based (harder to extend in Go)
 
 ### Option 2: WAMR (WebAssembly Micro Runtime)
 
 **Pros:**
+
 - Designed for embedded/IoT
 - Very small footprint
 - AOT and interpreter modes
 - Intel-maintained
 
 **Cons:**
+
 - Less production-tested
 - Smaller community
 - Limited WASI support
@@ -49,22 +53,26 @@ NanoVMS needs to support WebAssembly as a Tier 5 isolation mechanism for lightwe
 ### Option 3: Wasmer
 
 **Pros:**
+
 - Universal runtime
 - Multiple compiler backends
 - Good Go bindings
 
 **Cons:**
+
 - Larger overhead
 - Less focused on serverless
 
 ### Option 4: WasmEdge
 
 **Pros:**
+
 - Cloud-native focused
 - TensorFlow support
 - Good for AI workloads
 
 **Cons:**
+
 - Larger footprint
 - Less mature
 
@@ -83,11 +91,13 @@ We will also support WAMR as an alternative for memory-constrained environments.
 ## Consequences
 
 ### Positive
+
 - Fastest cold start of any runtime
 - Production-grade security
 - Ecosystem support from major vendors
 
 ### Negative
+
 - Larger binary size
 - Rust-based (harder to extend)
 

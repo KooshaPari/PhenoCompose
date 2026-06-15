@@ -6,8 +6,8 @@ If you discover a security vulnerability, please report it by [opening an issue]
 
 ## Supported Versions
 
-| Version | Supported |
-|---------|-----------|
+| Version | Supported          |
+| ------- | ------------------ |
 | x.x.x   | :white_check_mark: |
 
 ## Security Updates

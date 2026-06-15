@@ -20,6 +20,7 @@ This journey demonstrates how to set up a high-performance gaming VM using VFIO 
 ## Quick Start
 
 ::: tip TL;DR
+
 ```bash
 # Check hardware compatibility
 nanovms hwcheck --vfio
@@ -38,18 +39,19 @@ nanovms vm create gaming-vm \
 # Connect display via Looking Glass
 nanovms lookingglass attach gaming-vm
 ```
+
 :::
 
 ## Prerequisites
 
 ### Hardware Requirements
 
-| Component | Requirement | Notes |
-|-----------|-------------|-------|
-| **CPU** | Intel VT-d or AMD-Vi | Check `dmesg \| grep -e DMAR -e IOMMU` |
-| **GPU** | AMD RX 6000/7000 or NVIDIA RTX 30/40 series | NVIDIA requires additional workaround |
-| **Motherboard** | IOMMU groups support | Check `/sys/kernel/iommu_groups/` |
-| **RAM** | 32GB+ recommended | 16GB for VM, 16GB for host |
+| Component       | Requirement                                 | Notes                                  |
+| --------------- | ------------------------------------------- | -------------------------------------- |
+| **CPU**         | Intel VT-d or AMD-Vi                        | Check `dmesg \| grep -e DMAR -e IOMMU` |
+| **GPU**         | AMD RX 6000/7000 or NVIDIA RTX 30/40 series | NVIDIA requires additional workaround  |
+| **Motherboard** | IOMMU groups support                        | Check `/sys/kernel/iommu_groups/`      |
+| **RAM**         | 32GB+ recommended                           | 16GB for VM, 16GB for host             |
 
 ### Software Requirements
 
@@ -265,13 +267,13 @@ nanovms stats gaming-vm --fps --latency --gpu-util
 
 ### Benchmark Results
 
-| Game | Resolution | Bare Metal FPS | VM FPS | Overhead |
-|------|------------|----------------|--------|----------|
-| Cyberpunk 2077 | 4K Ultra | 85 | 82 | 3.5% |
-| Elden Ring | 1440p Max | 120 | 118 | 1.7% |
-| CS2 | 1080p Low | 400 | 395 | 1.3% |
-| Starfield | 4K High | 60 | 58 | 3.3% |
-| Baldur's Gate 3 | 1440p Ultra | 144 | 141 | 2.1% |
+| Game            | Resolution  | Bare Metal FPS | VM FPS | Overhead |
+| --------------- | ----------- | -------------- | ------ | -------- |
+| Cyberpunk 2077  | 4K Ultra    | 85             | 82     | 3.5%     |
+| Elden Ring      | 1440p Max   | 120            | 118    | 1.7%     |
+| CS2             | 1080p Low   | 400            | 395    | 1.3%     |
+| Starfield       | 4K High     | 60             | 58     | 3.3%     |
+| Baldur's Gate 3 | 1440p Ultra | 144            | 141    | 2.1%     |
 
 ## Real-World Configurations
 

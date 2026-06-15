@@ -7,6 +7,7 @@ Accepted
 ## Context
 
 NanoVMS needs to support multiple deployment scenarios:
+
 - Local development
 - Team server
 - Multi-node cluster
@@ -139,11 +140,11 @@ v{major}.{minor}.{patch}
 
 ### Release Channels
 
-| Channel | Frequency | Use Case |
-|---------|-----------|----------|
-| `stable` | Monthly | Production |
-| `beta` | Weekly | Testing |
-| `nightly` | Daily | Development |
+| Channel   | Frequency | Use Case    |
+| --------- | --------- | ----------- |
+| `stable`  | Monthly   | Production  |
+| `beta`    | Weekly    | Testing     |
+| `nightly` | Daily     | Development |
 
 ### Artifact Distribution
 
@@ -184,12 +185,14 @@ docker pull nanovms/server:nightly     # Nightly
 ## Consequences
 
 ### Positive
+
 - One tool for all deployment sizes
 - Familiar patterns (SQLite for local, Postgres for team)
 - Kubernetes-native for scale
 - Easy migration between modes
 
 ### Negative
+
 - Multiple code paths for different deployments
 - More complex testing matrix
 - Configuration management complexity

@@ -13,30 +13,30 @@ standalone.
 
 Removed in this commit:
 
-| Path                              | LOC  | Reason                                                |
-|-----------------------------------|-----:|-------------------------------------------------------|
-| `cmd/nanovms/main.go`             |  109 | Duplicate of `nanovms/cmd/nanovms/main.go`            |
-| `internal/adapters/linux/`        |  281 | Byte-identical to nanovms (whitespace-only diff)      |
-| `internal/adapters/mac/`          |  401 | **md5 byte-identical** to nanovms                     |
-| `internal/adapters/sandbox/`      |  979 | 256 LOC of features dropped (see `sandbox.go:1-30`)   |
-| `internal/adapters/wasm/`         |  212 | **md5 byte-identical** to nanovms                     |
-| `internal/adapters/windows/`      |  325 | **md5 byte-identical** to nanovms                     |
-| `internal/domain/`                |  363 | Whitespace-only diff vs nanovms                       |
-| `internal/ports/`                 |  176 | **md5 byte-identical** to nanovms                     |
-| `go.mod`, `go.sum`                |    3 | Module declared but no local imports                  |
-| `tests/bdd/tier-isolation.feature`|  182 | Byte-identical to `nanovms/tests/bdd/...`             |
-| `tests/playwright/`               |  371 | `index.ts` byte-identical; `package.json` version-only |
-| **Total removed**                 |**3402**|                                                   |
+| Path                               |      LOC | Reason                                                 |
+| ---------------------------------- | -------: | ------------------------------------------------------ |
+| `cmd/nanovms/main.go`              |      109 | Duplicate of `nanovms/cmd/nanovms/main.go`             |
+| `internal/adapters/linux/`         |      281 | Byte-identical to nanovms (whitespace-only diff)       |
+| `internal/adapters/mac/`           |      401 | **md5 byte-identical** to nanovms                      |
+| `internal/adapters/sandbox/`       |      979 | 256 LOC of features dropped (see `sandbox.go:1-30`)    |
+| `internal/adapters/wasm/`          |      212 | **md5 byte-identical** to nanovms                      |
+| `internal/adapters/windows/`       |      325 | **md5 byte-identical** to nanovms                      |
+| `internal/domain/`                 |      363 | Whitespace-only diff vs nanovms                        |
+| `internal/ports/`                  |      176 | **md5 byte-identical** to nanovms                      |
+| `go.mod`, `go.sum`                 |        3 | Module declared but no local imports                   |
+| `tests/bdd/tier-isolation.feature` |      182 | Byte-identical to `nanovms/tests/bdd/...`              |
+| `tests/playwright/`                |      371 | `index.ts` byte-identical; `package.json` version-only |
+| **Total removed**                  | **3402** |                                                        |
 
 ## What stays
 
-| Path                                     | Status      | Notes                                                    |
-|------------------------------------------|-------------|----------------------------------------------------------|
-| `bindings/rust-ffi/`                     | Kept        | Manual `extern "C"` declarations matching the C ABI     |
-| `bindings/go-c-export/nvms_core.go`      | Kept        | C-export shim that should move to nanovms in a follow-up |
-| `bindings/mojo/`, `bindings/zig/`        | Kept        | Unrelated language bindings                              |
-| `pheno-compose-driver/`                  | Kept        | High-level Rust wrapper around `nvms-ffi`               |
-| `docs/`, `integrations/`, `worklogs/`    | Kept        | PhenoCompose-specific content                           |
+| Path                                  | Status | Notes                                                    |
+| ------------------------------------- | ------ | -------------------------------------------------------- |
+| `bindings/rust-ffi/`                  | Kept   | Manual `extern "C"` declarations matching the C ABI      |
+| `bindings/go-c-export/nvms_core.go`   | Kept   | C-export shim that should move to nanovms in a follow-up |
+| `bindings/mojo/`, `bindings/zig/`     | Kept   | Unrelated language bindings                              |
+| `pheno-compose-driver/`               | Kept   | High-level Rust wrapper around `nvms-ffi`                |
+| `docs/`, `integrations/`, `worklogs/` | Kept   | PhenoCompose-specific content                            |
 
 ## Recommended follow-up
 

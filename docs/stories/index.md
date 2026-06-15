@@ -47,6 +47,7 @@ Each story demonstrates a complete user workflow with code examples, GIFs, and e
 ## Story Categories
 
 ### Getting Started
+
 - [Create Your First VM](./create-first-vm.md)
 - [Understanding VM Flavors](./vm-flavors-explained.md)
 - [Configuration Basics](./config-basics.md)

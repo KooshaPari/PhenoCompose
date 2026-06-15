@@ -98,9 +98,12 @@ def build_go_c_export(plat: dict, verbose: bool = False) -> int:
         env["GOOS"] = "windows"
 
     cmd = [
-        "go", "build",
-        "-buildmode", "c-archive",
-        "-o", str(out_dir / "libnvms_core"),
+        "go",
+        "build",
+        "-buildmode",
+        "c-archive",
+        "-o",
+        str(out_dir / "libnvms_core"),
     ]
 
     if verbose:

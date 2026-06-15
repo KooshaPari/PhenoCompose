@@ -20,6 +20,7 @@ This journey demonstrates how to create and manage isolated desktop environments
 ## Quick Start
 
 ::: tip TL;DR
+
 ```bash
 # Create agent desktop VM
 nanovms vm create agent-desktop --flavor microvm --desktop --browser
@@ -30,6 +31,7 @@ nanovms display attach agent-desktop --vnc
 # Launch agent with desktop access
 nanovms agent run agent-desktop --prompt "Research competitors on ProductHunt"
 ```
+
 :::
 
 ## Prerequisites
@@ -98,13 +100,13 @@ nanovms vm config agent-desktop \
 
 Available permissions:
 
-| Permission | Description |
-|------------|-------------|
-| `desktop:view` | View-only VNC access |
-| `desktop:control` | Full mouse/keyboard control |
+| Permission           | Description                       |
+| -------------------- | --------------------------------- |
+| `desktop:view`       | View-only VNC access              |
+| `desktop:control`    | Full mouse/keyboard control       |
 | `browser:automation` | Browser automation via Playwright |
-| `filesystem:read` | Read files within VM |
-| `filesystem:write` | Write files within VM |
+| `filesystem:read`    | Read files within VM              |
+| `filesystem:write`   | Write files within VM             |
 
 ### Step 3: Connect Display
 

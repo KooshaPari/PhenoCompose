@@ -7,6 +7,7 @@ Accepted
 ## Context
 
 NanoVMS needs to manage storage for VMs and containers with requirements for:
+
 - Fast I/O (NVMe + io_uring)
 - Snapshots and versioning
 - CoW (Copy-on-Write) for fast cloning
@@ -26,6 +27,7 @@ NanoVMS needs to manage storage for VMs and containers with requirements for:
 ### Option 1: QCOW2 + QEMU (Selected)
 
 **Pros:**
+
 - Native QEMU/KVM support
 - Live snapshots
 - Compression
@@ -33,18 +35,21 @@ NanoVMS needs to manage storage for VMs and containers with requirements for:
 - Widely tested
 
 **Cons:**
+
 - QEMU-specific
 - Complex on other platforms
 
 ### Option 2: ZFS
 
 **Pros:**
+
 - Best-in-class snapshots
 - Compression
 - Data integrity
 - Copy-on-write
 
 **Cons:**
+
 - Not native on macOS/Windows
 - Heavy memory usage
 - Complex setup
@@ -52,22 +57,26 @@ NanoVMS needs to manage storage for VMs and containers with requirements for:
 ### Option 3: Btrfs
 
 **Pros:**
+
 - Native Linux snapshots
 - Compression
 - Fast CoW
 
 **Cons:**
+
 - Not stable on some distributions
 - Limited cross-platform
 
 ### Option 4: erofs + overlay
 
 **Pros:**
+
 - Fast read-only filesystem
 - Excellent for container images
 - Compression
 
 **Cons:**
+
 - Read-only base
 - Needs overlay for writes
 
@@ -80,17 +89,20 @@ We select a **layered approach**:
 3. **Snapshots**: QCOW2 backing files or native snapshots
 
 For macOS/Windows, we use:
+
 - APFS + Time Machine for snapshots
 - Proprietary CoW format for VMs
 
 ## Consequences
 
 ### Positive
+
 - Best performance per platform
 - Snapshot support
 - Compression for fast distribution
 
 ### Negative
+
 - Different formats per platform
 - Complexity in migration
 

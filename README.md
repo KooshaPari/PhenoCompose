@@ -3,6 +3,7 @@
 <!-- Slop issues are expected and intentionally present as part of an HITL-less -->
 <!-- /minimized AI-DD metaproject of learning, refining, and building brute-force -->
 <!-- training for both agents and the human operator. -->
+
 ![Downloads](https://img.shields.io/github/downloads/KooshaPari/PhenoCompose/total?style=flat-square&label=downloads&color=blue)
 ![GitHub release](https://img.shields.io/github/v/release/KooshaPari/PhenoCompose?style=flat-square&label=release)
 ![License](https://img.shields.io/github/license/KooshaPari/PhenoCompose?style=flat-square)
@@ -11,22 +12,24 @@
 ![HITL-less](https://img.shields.io/badge/HITL--less%20AI--DD-metaproject-yellow?style=flat-square)
 
 > ⚠️ **AI-Agent-Only Repository**
->
+
 > This repo is **planned, maintained, and managed exclusively by AI Agents**.
 > Slop issues, rough edges, and AI artifacts are **expected and intentionally
 > present** as part of an **HITL-less / minimized AI-DD** metaproject focused
 > on learning, refining, and brute-force training both the agents and the
 > human operator. Bug reports and contributions are still welcome, but please
 > expect AI-generated code, comments, and documentation throughout.
+
 <!-- AI-DD-META:END -->
+
 ## Work State
 
-| Field | Value |
-|---|---|
-| Last commit | 2026-06-07 |
-| Open issues | 0 |
-| Open PRs | 1 |
-| Focus | workflow hygiene + module path fix |
+| Field       | Value                              |
+| ----------- | ---------------------------------- |
+| Last commit | 2026-06-07                         |
+| Open issues | 0                                  |
+| Open PRs    | 1                                  |
+| Focus       | workflow hygiene + module path fix |
 
 Progress: █████░░░░░ 50%
 
@@ -46,19 +49,20 @@ Progress: █████░░░░░ 50%
 > **Consolidated**: As of 2026-06-14, all polyglot bindings (Rust, Go, Mojo, Zig) have been migrated. See thegent/nvms and nanovms/sdk/rust for the canonical implementations.
 
 NVMS provides **3-tier isolation** for secure, efficient application deployment:
+
 - **Tier 1 (WASM)**: ~1ms startup, fast tools, trusted code
 - **Tier 2 (gVisor)**: ~90ms startup, browser automation, semi-trusted
 - **Tier 3 (Firecracker)**: ~125ms startup, full isolation, untrusted code
 
 ## Migration Status
 
-| Component | New Home | Status |
-|-----------|----------|--------|
-| Rust FFI + driver | `thegent/crates/thegent-nvms` | Migrated |
-| Go C-export | `nanovms/cmd/nvms-cgo` | Migrated |
-| Python bindings | `thegent/crates/thegent-nvms` (pyo3) | Migrated |
-| Mojo bindings | `thegent/src/thegent/infra/mojo_bridge.py` | Replaced by bridge |
-| Zig bindings | `thegent/crates/thegent-wasm-tools` | Replaced by Wasm SDK |
+| Component         | New Home                                   | Status               |
+| ----------------- | ------------------------------------------ | -------------------- |
+| Rust FFI + driver | `thegent/crates/thegent-nvms`              | Migrated             |
+| Go C-export       | `nanovms/cmd/nvms-cgo`                     | Migrated             |
+| Python bindings   | `thegent/crates/thegent-nvms` (pyo3)       | Migrated             |
+| Mojo bindings     | `thegent/src/thegent/infra/mojo_bridge.py` | Replaced by bridge   |
+| Zig bindings      | `thegent/crates/thegent-wasm-tools`        | Replaced by Wasm SDK |
 
 ## Quick Start (Legacy)
 
@@ -95,11 +99,11 @@ NVMS provides **3-tier isolation** for secure, efficient application deployment:
 
 ## Merge History
 
-| Component | Source | Status | Contribution |
-|-----------|--------|--------|--------------|
-| **Core 3-tier isolation** | KooshaPari/nanovms | ✅ Complete | WASM/gVisor/Firecracker |
-| **AWS deployment** | BytePort/nvms | ✅ Merged | Firecracker orchestration |
-| **Unified interface** | PhenoCompose | ✅ New | Rust driver, standardization |
+| Component                 | Source             | Status     | Contribution                 |
+| ------------------------- | ------------------ | ---------- | ---------------------------- |
+| **Core 3-tier isolation** | KooshaPari/nanovms | ✅ Complete | WASM/gVisor/Firecracker      |
+| **AWS deployment**        | BytePort/nvms      | ✅ Merged   | Firecracker orchestration    |
+| **Unified interface**     | PhenoCompose       | ✅ New      | Rust driver, standardization |
 
 ## Key Features
 
@@ -115,11 +119,11 @@ NVMS provides **3-tier isolation** for secure, efficient application deployment:
 
 ## Platform Support
 
-| Platform | Tier 1 (WASM) | Tier 2 (gVisor) | Tier 3 (Firecracker) |
-|----------|---------------|-----------------|----------------------|
-| **macOS** | ✅ Native | ✅ Lima/VZ | ✅ Virtualization.framework |
-| **Linux** | ✅ Native | ✅ Native | ✅ KVM |
-| **Windows** | ✅ Native | ✅ WSL2 | ✅ WSL2 |
+| Platform    | Tier 1 (WASM) | Tier 2 (gVisor) | Tier 3 (Firecracker)       |
+| ----------- | ------------- | --------------- | -------------------------- |
+| **macOS**   | ✅ Native      | ✅ Lima/VZ       | ✅ Virtualization.framework |
+| **Linux**   | ✅ Native      | ✅ Native        | ✅ KVM                      |
+| **Windows** | ✅ Native      | ✅ WSL2          | ✅ WSL2                     |
 
 ## Installation
 

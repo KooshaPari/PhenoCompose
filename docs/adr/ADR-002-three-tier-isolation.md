@@ -7,6 +7,7 @@
 ## Context
 
 NanoVMS provides VM abstraction for AI agent workloads. We need an architecture that balances:
+
 - **Speed**: Agents need fast iteration (<100ms for tool execution)
 - **Security**: Agents may execute untrusted LLM-generated code
 - **Compatibility**: Must run OCI images and existing containers
@@ -33,17 +34,18 @@ NanoVMS provides VM abstraction for AI agent workloads. We need an architecture 
 
 ## Tier Selection Framework
 
-| Trust Level | Code Source | Tier | Technology |
-|-------------|-------------|------|------------|
-| **Trusted** | Agent-native tools, first-party | 1 - WASM | Wasmtime |
-| **Semi-trusted** | Third-party tools, scripts | 2 - gVisor | runsc |
-| **Untrusted** | LLM-generated code, external | 3 - MicroVM | Firecracker |
+| Trust Level      | Code Source                     | Tier        | Technology  |
+| ---------------- | ------------------------------- | ----------- | ----------- |
+| **Trusted**      | Agent-native tools, first-party | 1 - WASM    | Wasmtime    |
+| **Semi-trusted** | Third-party tools, scripts      | 2 - gVisor  | runsc       |
+| **Untrusted**    | LLM-generated code, external    | 3 - MicroVM | Firecracker |
 
 ## Architecture Details
 
 ### Tier 1: WASM Sandboxes
 
 **Use Cases**:
+
 - Agent tool execution (code formatters, linters, compilers)
 - Plugin systems with language-agnostic execution
 - Edge computing and serverless functions
@@ -52,6 +54,7 @@ NanoVMS provides VM abstraction for AI agent workloads. We need an architecture 
 **Technology**: Wasmtime (Bytecode Alliance standard)
 
 **Benefits**:
+
 - ~1ms startup time
 - ~1MB memory footprint
 - Language-agnostic (Rust, Go, C, Python, etc.)
@@ -59,6 +62,7 @@ NanoVMS provides VM abstraction for AI agent workloads. We need an architecture 
 - No syscalls to host kernel
 
 **Limitations**:
+
 - Cannot run arbitrary Linux binaries
 - Limited OS access (WASI only)
 - No GPU access
@@ -66,6 +70,7 @@ NanoVMS provides VM abstraction for AI agent workloads. We need an architecture 
 ### Tier 2: gVisor Containers
 
 **Use Cases**:
+
 - Third-party tool execution with network access
 - Semi-trusted scripts and utilities
 - Development containers with full OS
@@ -74,6 +79,7 @@ NanoVMS provides VM abstraction for AI agent workloads. We need an architecture 
 **Technology**: gVisor (Google's userspace kernel)
 
 **Benefits**:
+
 - ~90ms startup time
 - ~20MB memory footprint
 - Runs OCI container images
@@ -81,6 +87,7 @@ NanoVMS provides VM abstraction for AI agent workloads. We need an architecture 
 - Network namespace isolation
 
 **Limitations**:
+
 - Performance overhead vs native containers
 - Some syscalls may not be supported
 - Larger than WASM
@@ -88,6 +95,7 @@ NanoVMS provides VM abstraction for AI agent workloads. We need an architecture 
 ### Tier 3: MicroVMs
 
 **Use Cases**:
+
 - Untrusted LLM-generated code
 - Full Linux environment requirements
 - Compliance/multi-tenant isolation
@@ -96,6 +104,7 @@ NanoVMS provides VM abstraction for AI agent workloads. We need an architecture 
 **Technology**: Firecracker (AWS)
 
 **Benefits**:
+
 - ~125ms startup time
 - <5MB memory per microVM
 - Full hardware virtualization (VT-x/AMD-V)
@@ -104,17 +113,18 @@ NanoVMS provides VM abstraction for AI agent workloads. We need an architecture 
 - Production proven (AWS Lambda, Fargate)
 
 **Limitations**:
+
 - Larger than Tier 1/2
 - Requires kernel access
 - More resource overhead
 
 ## Performance Comparison
 
-| Tier | Technology | Startup | Memory | Security |
-|------|------------|---------|--------|----------|
-| 1 | Wasmtime | ~1ms | ~1MB | WASI sandbox |
-| 2 | gVisor | ~90ms | ~20MB | Userspace kernel |
-| 3 | Firecracker | ~125ms | <5MB | Hardware VM |
+| Tier | Technology  | Startup | Memory | Security         |
+| ---- | ----------- | ------- | ------ | ---------------- |
+| 1    | Wasmtime    | ~1ms    | ~1MB   | WASI sandbox     |
+| 2    | gVisor      | ~90ms   | ~20MB  | Userspace kernel |
+| 3    | Firecracker | ~125ms  | <5MB   | Hardware VM      |
 
 ## Implementation
 
@@ -153,12 +163,14 @@ func (e *Executor) Execute(ctx context.Context, code *Code, trust TrustLevel) er
 ## Consequences
 
 ### Positive
+
 - Clear trust-based tier selection
 - Optimal performance for each use case
 - Defense in depth with stacking capability
 - Industry-proven technologies
 
 ### Negative
+
 - More complex architecture than single-tier
 - Multiple runtime dependencies
 - Testing complexity across tiers
@@ -172,4 +184,4 @@ func (e *Executor) Execute(ctx context.Context, code *Code, trust TrustLevel) er
 
 ---
 
-*This ADR defines the three-tier isolation architecture for NanoVMS.*
+_This ADR defines the three-tier isolation architecture for NanoVMS._
