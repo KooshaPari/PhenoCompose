@@ -7,6 +7,11 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Phenotype Compose Publisher port trait — the canonical hex-architecture port for shipping a ComposedArtifact to a PublishTarget. Adapters implement Publisher to bridge to local sinks (docker registry, local file, kafka, S3, ...)."
 publish = false
+repository = "https://github.com/KooshaPari/PhenoCompose"
+authors = ["kooshapari"]
+documentation = "https://docs.rs/phenocompose-port-publisher"
+keywords = ["phenotype", "pheno-compose", "port"]
+categories = ["development-tools"]
 
 [lib]
 path = "src/lib.rs"

@@ -7,6 +7,11 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Phenotype Compose Runtime port trait — the canonical hex-architecture port for spawning/stopping/statusing containers from an ImageRef. Adapters implement Runtime to bridge to local container engines (docker, podman, systemd-nspawn, k8s, ...)."
 publish = false
+repository = "https://github.com/KooshaPari/PhenoCompose"
+authors = ["kooshapari"]
+documentation = "https://docs.rs/phenocompose-port-runtime"
+keywords = ["phenotype", "pheno-compose", "time"]
+categories = ["date-and-time", "development-tools"]
 
 [lib]
 path = "src/lib.rs"

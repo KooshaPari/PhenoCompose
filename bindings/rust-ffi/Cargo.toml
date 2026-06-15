@@ -3,9 +3,12 @@ name = "nvms-ffi"
 version = "0.1.0"
 edition = "2021"
 description = "Rust FFI bindings to NVMS Go Core"
-authors = ["Phenotype"]
-license = "Apache-2.0"
-repository = "https://github.com/KooshaPari/nanovms"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/KooshaPari/PhenoCompose"
+authors = ["kooshapari"]
+documentation = "https://docs.rs/nvms-ffi"
+keywords = ["phenotype", "pheno-compose", "ffi"]
+categories = ["api-bindings"]
 
 [dependencies]
 

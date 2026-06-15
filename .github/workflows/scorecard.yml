@@ -11,13 +11,12 @@ permissions:
   contents: read
   security-events: write
   actions: read
+permissions: read-all
+
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
-
-permissions: read-all
-
 jobs:
   analysis:
     name: Scorecard analysis
