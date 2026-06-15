@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Reference ArgoCD adapter for the [`Orchestrator`](crate::Orchestrator) port.
 //!
 //! `ArgoCdAdapter` is the production orchestrator for the

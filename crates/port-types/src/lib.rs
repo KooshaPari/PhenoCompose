@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! `phenocompose-port-types`
 //!
 //! Shared value types that flow across the three PhenoCompose port

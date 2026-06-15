@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 // Package ports defines the interfaces (ports) for the hexagonal architecture.
 package ports
 

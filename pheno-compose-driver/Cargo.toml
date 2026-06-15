@@ -5,10 +5,10 @@ edition = "2021"
 description = "PhenoCompose NVMS Driver - Rust interface to NVMS 3-tier isolation"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/KooshaPari/PhenoCompose"
-authors = ["kooshapari"]
 documentation = "https://docs.rs/pheno-compose-driver"
 keywords = ["phenotype", "pheno-compose"]
 categories = ["development-tools"]
+authors = ["kooshapari"]
 
 [dependencies]
 nvms-ffi = { path = "../bindings/rust-ffi", optional = true }

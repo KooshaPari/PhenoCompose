@@ -8,10 +8,10 @@ license = "MIT OR Apache-2.0"
 description = "Phenotype Compose Composer port trait — the canonical hex-architecture port for converting a Manifest into a ComposedArtifact. Adapters implement Composer to bridge to local builders (cargo, npm, docker buildx, bazel, ...)."
 publish = false
 repository = "https://github.com/KooshaPari/PhenoCompose"
-authors = ["kooshapari"]
 documentation = "https://docs.rs/phenocompose-port-composer"
 keywords = ["phenotype", "pheno-compose", "port"]
 categories = ["development-tools"]
+authors = ["kooshapari"]
 
 [lib]
 path = "src/lib.rs"

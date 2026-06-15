@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! `phenocompose-ports`
 //!
 //! The Orchestrator port — the canonical hex-architecture port for

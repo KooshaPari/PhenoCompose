@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! `phenocompose-port-runtime`
 //!
 //! The Runtime port trait — the canonical hex-architecture port

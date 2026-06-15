@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! `phenocompose-port-composer`
 //!
 //! The Composer port trait — the canonical hex-architecture port

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Reference Helm adapter for the [`Orchestrator`](crate::Orchestrator) port.
 //!
 //! `HelmAdapter` is the plain `helm install` orchestrator — used

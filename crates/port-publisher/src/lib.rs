@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! `phenocompose-port-publisher`
 //!
 //! The Publisher port trait — the canonical hex-architecture

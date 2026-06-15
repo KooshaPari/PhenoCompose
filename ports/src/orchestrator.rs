@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! T71: PhenoCompose hexagonal port — Orchestrator.
 //!
 //! Defines the `Orchestrator` trait (deploy/rollback/status) and

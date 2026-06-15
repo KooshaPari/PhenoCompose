@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 // Build script for nvms-ffi
 // Generates Rust bindings from C headers
 

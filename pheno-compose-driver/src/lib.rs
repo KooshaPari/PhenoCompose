@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! PhenoCompose NVMS Driver
 //!
 //! High-level Rust driver for NVMS integration with PhenoCompose.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Integration tests for the Orchestrator port and its adapters.
 
 use phenocompose_ports::adapters::argocd::ArgoCdAdapter;
