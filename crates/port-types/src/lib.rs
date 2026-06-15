@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! `phenocompose-port-types`
 //!
-//! Shared value types that flow across the three PhenoCompose port
-//! traits (Composer, Publisher, Runtime). Defined as a standalone
-//! crate so the three port-trait crates can depend on a single
-//! canonical type vocabulary without pulling in each other's
-//! implementation code or test fixtures.
+//! Shared value types that flow across the PhenoCompose port
+//! traits (Composer, Publisher, Runtime, SecretStore). Defined
+//! as a standalone crate so the port-trait crates can depend on
+//! a single canonical type vocabulary without pulling in each
+//! other's implementation code or test fixtures.
 //!
 //! Type inventory:
 //!
@@ -18,6 +18,8 @@
 //! | [`ImageRef`]       | Reference to a container image; input to [`Runtime`](crate::Runtime) |
 //! | [`ContainerId`]    | Opaque handle returned by `Runtime::spawn`           |
 //! | [`ContainerStatus`] | State reported by `Runtime::status`                  |
+//! | [`SecretRef`]      | Strongly-typed identifier for a [`Secret`]            |
+//! | [`Secret`]         | A versioned, named value stored by a `SecretStore`  |
 //!
 //! All types in this crate are `Send + Sync` so they can be moved
 //! across worker threads and stored in `Box<dyn Trait>` adapters
@@ -27,6 +29,8 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// A composition request — describes *what* the
@@ -317,15 +321,15 @@ impl std::fmt::Display for ContainerStatus {
     }
 }
 
-/// Errors that can arise in any of the three port-trait
+/// Errors that can arise in any of the port-trait
 /// adapters. Each variant carries the adapter-defined
 /// contextual string (typically the adapter's own error type
 /// rendered via `Display`).
 ///
 /// This is intentionally a single error type so that downstream
 /// `Box<dyn Trait>` storage can produce a single `Result<_,
-/// PortError>` shape across all three port traits without
-/// forcing the caller to learn three error enums.
+/// PortError>` shape across all four port traits without
+/// forcing the caller to learn four error enums.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum PortError {
     /// The input failed validation (e.g. a [`Manifest`] with an
@@ -347,6 +351,114 @@ pub enum PortError {
     /// `Transport` error so callers can branch on the cause.
     #[error("unsupported: {0}")]
     Unsupported(String),
+}
+
+/// A strongly-typed identifier for a [`Secret`] stored by a
+/// `SecretStore` port.
+///
+/// `SecretRef` is the addressing handle used by callers when
+/// asking the port for `get` / `put` / `delete` operations. The
+/// optional `namespace` field mirrors the Kubernetes-style
+/// "namespace/name" convention used by the rest of the
+/// PhenoCompose port types (see [`Deployment`] in the
+/// orchestrator port). The `namespace` defaults to `"default"`
+/// in [`SecretRef::new`]; adapters are free to interpret it
+/// (or ignore it) as the underlying engine requires.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct SecretRef {
+    /// Optional scope qualifier (e.g. `"phenotype"`, `"default"`,
+    /// `"staging"`). An empty value means "no namespace".
+    pub namespace: String,
+    /// The bare secret name (e.g. `"db-password"`,
+    /// `"tls-certificate"`). MUST be non-empty.
+    pub name: String,
+}
+
+impl SecretRef {
+    /// Construct a `SecretRef` with an empty namespace and the
+    /// given name.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            namespace: String::new(),
+            name: name.into(),
+        }
+    }
+
+    /// Construct a namespaced `SecretRef`.
+    pub fn namespaced(namespace: impl Into<String>, name: impl Into<String>) -> Self {
+        Self {
+            namespace: namespace.into(),
+            name: name.into(),
+        }
+    }
+
+    /// Render the ref as `"<namespace>/<name>"` (or just
+    /// `"<name>"` when the namespace is empty). Useful for log
+    /// lines and as a stable map key.
+    pub fn locator(&self) -> String {
+        if self.namespace.is_empty() {
+            self.name.clone()
+        } else {
+            format!("{}/{}", self.namespace, self.name)
+        }
+    }
+}
+
+impl AsRef<str> for SecretRef {
+    fn as_ref(&self) -> &str {
+        &self.name
+    }
+}
+
+impl std::fmt::Display for SecretRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.locator())
+    }
+}
+
+/// A versioned, named value stored by a `SecretStore` port.
+///
+/// `Secret` is the value type returned by a `get` operation and
+/// the value type accepted by a `put` operation. The
+/// `version` field is the adapter-defined monotonic counter
+/// (vault's `version`, k8s `resourceVersion`, etc.); adapters
+/// MUST bump it on every successful `put` so callers can detect
+/// concurrent updates.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Secret {
+    /// The address of this secret (mirrors the [`SecretRef`]
+    /// passed to `get` / `put`).
+    pub r#ref: SecretRef,
+    /// The opaque secret material (e.g. a PEM-encoded TLS
+    /// certificate, a database password, a JSON blob of API
+    /// keys). Adapters MUST NOT log this value.
+    pub value: String,
+    /// Adapter-defined monotonic version counter. `0` is
+    /// reserved for "never written"; the first successful
+    /// `put` produces `version = 1`.
+    pub version: u64,
+}
+
+impl Secret {
+    /// Construct a `Secret` with `version = 1`. Adapters
+    /// should call [`Secret::at_version`] to override the
+    /// version counter.
+    pub fn new(r#ref: SecretRef, value: impl Into<String>) -> Self {
+        Self {
+            r#ref,
+            value: value.into(),
+            version: 1,
+        }
+    }
+
+    /// Builder-style setter for [`Secret::version`].
+    #[must_use]
+    pub fn at_version(mut self, version: u64) -> Self {
+        self.version = version;
+        self
+    }
 }
 
 #[cfg(test)]
@@ -439,5 +551,40 @@ mod tests {
         let s = format!("{e}");
         assert!(s.contains("validation"));
         assert!(s.contains("empty name"));
+    }
+
+    #[test]
+    fn secret_ref_new_uses_empty_namespace() {
+        let r = SecretRef::new("db-password");
+        assert_eq!(r.name, "db-password");
+        assert_eq!(r.namespace, "");
+        assert_eq!(r.locator(), "db-password");
+        assert_eq!(r.as_ref(), "db-password");
+        assert_eq!(format!("{r}"), "db-password");
+    }
+
+    #[test]
+    fn secret_ref_namespaced_renders_as_namespace_slash_name() {
+        let r = SecretRef::namespaced("phenotype", "tls-cert");
+        assert_eq!(r.namespace, "phenotype");
+        assert_eq!(r.name, "tls-cert");
+        assert_eq!(r.locator(), "phenotype/tls-cert");
+        assert_eq!(format!("{r}"), "phenotype/tls-cert");
+    }
+
+    #[test]
+    fn secret_new_defaults_to_version_one() {
+        let r = SecretRef::namespaced("phenotype", "api-key");
+        let s = Secret::new(r.clone(), "s3cr3t");
+        assert_eq!(s.r#ref, r);
+        assert_eq!(s.value, "s3cr3t");
+        assert_eq!(s.version, 1);
+    }
+
+    #[test]
+    fn secret_at_version_overrides_counter() {
+        let r = SecretRef::new("db-password");
+        let s = Secret::new(r, "hunter2").at_version(7);
+        assert_eq!(s.version, 7);
     }
 }
