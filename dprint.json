@@ -6,11 +6,7 @@
   "indentWidth": 4,
   "newLineKind": "lf",
   "plugins": [
-    "https://plugins.dprint.dev/rustfmt-0.4.1.wasm",
-    "https://plugins.dprint.dev/prettier-0.4.2.wasm",
     "https://plugins.dprint.dev/ruff-0.1.2.wasm",
-    "https://plugins.dprint.dev/gofmt-0.4.0.wasm",
-    "https://plugins.dprint.dev/shfmt-0.4.0.wasm",
     "https://plugins.dprint.dev/dockerfile-0.4.0.wasm",
     "https://plugins.dprint.dev/markdown-0.4.0.wasm"
   ],
@@ -27,25 +23,11 @@
     "**/*.min.css",
     "Cargo.lock"
   ],
-  "rustfmt": {
-    "lineWidth": 120,
-    "edition": "2021"
-  },
-  "prettier": {
-    "lineWidth": 120,
-    "useTabs": false,
-    "indentWidth": 2,
-    "singleQuote": false,
-    "trailingComma": "all",
-    "semi": true
-  },
   "ruff": {
-    "lineWidth": 120,
+    "lineLength": 120,
     "indentWidth": 4
   },
-  "gofmt": {},
   "markdown": {
-    "lineWidth": 120,
-    "textWrap": "preserve"
+    "lineWidth": 120
   }
 }
