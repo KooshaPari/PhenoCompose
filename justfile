@@ -67,6 +67,21 @@ coverage:
     cargo llvm-cov --workspace --lcov --output-path lcov.info
     cargo llvm-cov report
 
+# ---------- Grading ----------
+
+# Fleet-wide grading gate (uses vendored or central grade.sh)
+grade:
+    @if [ -f grade.sh ]; then ./grade.sh; \
+    elif [ -f ../grade.sh ]; then bash ../grade.sh; \
+    else echo "no grade.sh found (vendored or central)"; exit 1; \
+    fi
+
+grade-fast:
+    @if [ -f grade.sh ]; then ./grade.sh --fast; \
+    elif [ -f ../grade.sh ]; then bash ../grade.sh --fast; \
+    else echo "no grade.sh found"; exit 1; \
+    fi
+
 # ---------- Cleanup ----------
 
 clean:
