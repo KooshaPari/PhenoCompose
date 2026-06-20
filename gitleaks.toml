@@ -92,7 +92,6 @@
   regex = '''[0-9a-zA-Z/+]{40}'''
   tags = ["aws", "secret"]
   entropy = 4.5
-  secretGroup = 1
 
 [[rules]]
   id = "slack-token"
