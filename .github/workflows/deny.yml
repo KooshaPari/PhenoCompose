@@ -1,0 +1,113 @@
+# PhenoCompose — Supply-Chain Deny / Gomod Check
+#
+# cargo-deny enforces advisory policy, license allowlist, source/banned checks,
+# and duplicate dependency detection against deny.toml at the workspace root.
+#
+# gomod check verifies any vendored Go module files (if present). PhenoCompose
+# no longer carries a top-level go.mod — the canonical Go tree lives in
+# KooshaPari/nanovms per CONSOLIDATION.md — so this step is a graceful no-op.
+
+name: Supply-Chain Deny
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Tuesdays 05:30 UTC — staggered vs. audit (Mon 04:07) and CodeQL
+    # (Mon 04:27) so the rustsec db is fresh.
+    - cron: '30 5 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # -------------------------------------------------------------------
+  # cargo-deny — advisories, licenses, sources, bans, duplicates
+  # -------------------------------------------------------------------
+  cargo-deny:
+    name: cargo-deny (${{ matrix.scope }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        scope:
+          - { name: 'workspace', workdir: '.', manifest: 'Cargo.toml', lock: 'Cargo.lock' }
+          - { name: 'rust-ffi',   workdir: 'bindings/rust-ffi', manifest: 'Cargo.toml', lock: 'Cargo.lock' }
+          - { name: 'driver',     workdir: 'pheno-compose-driver', manifest: 'Cargo.toml', lock: 'Cargo.lock' }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            ${{ matrix.scope.workdir }} -> target
+
+      - name: Verify deny.toml present
+        working-directory: ${{ matrix.scope.workdir }}
+        run: |
+          test -f deny.toml || { echo "::error::deny.toml missing in ${{ matrix.scope.workdir }}"; exit 1; }
+          test -f ${{ matrix.scope.manifest }} || { echo "::error::${{ matrix.scope.manifest }} missing"; exit 1; }
+          test -f ${{ matrix.scope.lock }} || { echo "::error::${{ matrix.scope.lock }} missing — run 'cargo generate-lockfile'"; exit 1; }
+
+      - name: Install cargo-deny
+        run: cargo install --locked cargo-deny --version "^0.16"
+
+      - name: cargo-deny check (advisories, licenses, sources, bans)
+        working-directory: ${{ matrix.scope.workdir }}
+        run: cargo deny check
+
+      - name: cargo-deny check duplicates
+        working-directory: ${{ matrix.scope.workdir }}
+        # Duplicates are advisory; warn rather than fail so newly-merged PRs
+        # don't get bounced for transitive version skew.
+        run: cargo deny check duplicates || echo "::warning::duplicate crate versions detected"
+
+  # -------------------------------------------------------------------
+  # gomod check — graceful no-op (no top-level Go module today)
+  # -------------------------------------------------------------------
+  gomod-check:
+    name: gomod check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Setup Go
+        uses: actions/setup-go@7a3f0d1a72f1d32e6c9e5b6e2c9b6e9b0a2c4e8b # v5
+        with:
+          go-version: '1.22'
+          cache: false
+
+      - name: Detect go.mod
+        id: detect
+        run: |
+          if [ -f go.mod ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run go mod verify
+        if: steps.detect.outputs.present == 'true'
+        run: go mod verify
+
+      - name: No go.mod — skip
+        if: steps.detect.outputs.present == 'false'
+        run: |
+          echo "No go.mod at repo root — PhenoCompose canonical Go tree lives in KooshaPari/nanovms (see CONSOLIDATION.md). gomod check skipped (no-op)."
