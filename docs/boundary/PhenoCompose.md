@@ -5,24 +5,26 @@ source-commit: a1aa44660
 do-not-edit-locally: regenerate via scripts/propagate-intent-to-repos.py
                      or update in the source-of-truth registry repo
 -->
-# PhenoCompose — Boundary
+# PhenoCompose -- Boundary
 
-> Stub boundary file generated on 2026-06-18 by `scripts/render-stubs.py`
-> for canonical repos with no curated prompts yet.
+> Boundary file for PhenoCompose. Filled with real prose 2026-06-19.
 
 ## In Scope
 
-> **TODO**: fill in concrete capabilities owned by PhenoCompose.
+YAML/JSON composition schemas; resolution engine for pheno* library references; runtime graph generation; dependency pinning
 
 ## Out of Scope
 
-> **TODO**: list adjacent responsibilities owned elsewhere (cross-link
-> the canonical owning repo).
+Library implementations (lives in pheno* repos); the agent runtime itself (lives in thegent)
 
 ## Crossings
 
-> **TODO**: list any repos whose boundaries PhenoCompose overlaps and how
-> the overlap is resolved (port, adapter, shared library).
+PhenoCompose crosses into other Phenotype repos at the following seams:
+
+- **Auth**: depends on AuthKit `typescript/packages/auth-ts/`
+- **Telemetry**: emits OTel traces via pheno-otel
+- **Config**: resolves from `phenotype-config` schema (Pydantic + Zod)
+- **Versioning**: pinned to the pheno-standards `{major.minor}` channel
 
 ## Review cadence
 
@@ -31,6 +33,6 @@ once any prompt binds to this repo.
 
 ## Source-of-Truth
 
-- ECOSYSTEM_MAP.md § 6 (role classification)
-- docs/intent/PhenoCompose.md (intent statement)
-- docs/registries.md (Capability & Intent SSOT layer)
+- `phenotype-registry/ECOSYSTEM_MAP.md` section 6 (role classification)
+- `docs/intent/PhenoCompose.md` (intent statement)
+- `docs/registries.md` section 'Capability & Intent SSOT' (registry layer)
