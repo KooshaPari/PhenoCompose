@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! NVMS Configuration
+//!
+//! Instance-level configuration backed by the centralized
+//! [`pheno_config`] crate.  Factory methods accept an optional
+//! reference to [`pheno_config::PhenoConfig`] so callers can
+//! supply their own defaults (loaded from TOML, env vars, etc.).
 
 use super::Tier;
 
@@ -62,13 +67,22 @@ impl NvmsConfig {
         }
     }
 
-    /// Create a new Firecracker tier config
+    /// Create a new Firecracker tier config using defaults from
+    /// a [`pheno_config::PhenoConfig`] (or just the built-in
+    /// defaults if `None`).
     pub fn firecracker(name: impl Into<String>) -> Self {
+        let pheno = pheno_config::PhenoConfig::default();
+        Self::firecracker_with(name, &pheno)
+    }
+
+    /// Create a new Firecracker tier config, reading default
+    /// resource sizes from the provided `pheno_config`.
+    pub fn firecracker_with(name: impl Into<String>, pheno: &pheno_config::PhenoConfig) -> Self {
         Self {
             name: name.into(),
             tier: Tier::Firecracker,
-            cpu_count: Some(2),
-            memory_bytes: Some(2 * 1024 * 1024 * 1024), // 2GB
+            cpu_count: Some(pheno.driver.firecracker_default_cpus),
+            memory_bytes: Some(pheno.driver.firecracker_default_memory_bytes),
             network: None,
             image: None,
             env: Vec::new(),

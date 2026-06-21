@@ -12,6 +12,7 @@ authors = ["kooshapari"]
 
 [dependencies]
 nvms-ffi = { path = "../bindings/rust-ffi", optional = true }
+pheno-config = { path = "../crates/pheno-config" }
 
 [features]
 default = ["nvms"]

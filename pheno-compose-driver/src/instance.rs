@@ -145,10 +145,11 @@ impl Instance {
 
     /// Get startup time estimate based on tier
     pub fn estimated_startup_ms(&self) -> u32 {
+        let cfg = pheno_config::PhenoConfig::default();
         match self.tier {
-            Tier::Wasm => 1,
-            Tier::Gvisor => 90,
-            Tier::Firecracker => 125,
+            Tier::Wasm => cfg.sandbox.startup_ms_wasm,
+            Tier::Gvisor => cfg.sandbox.startup_ms_gvisor,
+            Tier::Firecracker => cfg.sandbox.startup_ms_firecracker,
         }
     }
 }

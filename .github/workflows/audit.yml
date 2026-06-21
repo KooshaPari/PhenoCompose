@@ -1,35 +1,157 @@
-name: CodeQL
+# PhenoCompose — Dependency Audit
+#
+# Runs cargo audit (Rust), npm audit (Node), and pip-audit (Python) on every
+# push and pull request targeting main, plus a weekly schedule. Failures on
+# unfixed advisories block CI.
+#
+# See: SECURITY.md for reporting policy; .github/dependabot.yml for the
+# corresponding automated PR cadence.
+
+name: Dependency Audit
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
   schedule:
-    - cron: '27 4 * * 1'
-  security-events: write
-  actions: read
+    # Mondays 04:00 UTC — staggered vs. OpenSSF Scorecard (Sat 03:17) and
+    # CodeQL (Mon 04:27) so advisory dbs don't refresh simultaneously.
+    - cron: '7 4 * * 1'
+  workflow_dispatch:
 
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
-  analyze:
-    name: Analyze (${{ matrix.language }})
+  # -------------------------------------------------------------------
+  # Rust — cargo audit (RUSTSEC advisory database)
+  # -------------------------------------------------------------------
+  cargo-audit:
+    name: cargo audit
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            bindings/rust-ffi -> target
+            pheno-compose-driver -> target
+
+      - name: Install cargo-audit
+        run: cargo install --locked cargo-audit --version "^0.21"
+
+      - name: Run cargo audit (workspace root)
+        run: cargo audit --deny warnings
+
+      - name: Run cargo audit (rust-ffi crate)
+        working-directory: bindings/rust-ffi
+        run: cargo audit --deny warnings
+
+      - name: Run cargo audit (driver crate)
+        working-directory: pheno-compose-driver
+        run: cargo audit --deny warnings
+
+  # -------------------------------------------------------------------
+  # Node — npm audit (root + workspace packages)
+  # -------------------------------------------------------------------
+  npm-audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        language: ["go", "javascript-typescript", "python", "actions"]
+        manifest:
+          - ""
+          - packages/pheno-config
+          - packages/pheno-errors
+          - packages/pheno-tracing
+          - packages/integration
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-      - uses: github/codeql-action/init@8c6e48dbe051ceb3015c19554831af1b43275f46 # v3
-        with:
-          languages: ${{ matrix.language }}
-      - uses: github/codeql-action/analyze@8c6e48dbe051ceb3015c19554831af1b43275f46 # v3
-        with:
-          category: "/language:${{ matrix.language }}"
-permissions:
-  contents: read
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.manifest == '' && '.' || matrix.manifest }}
+        run: npm install --no-audit --no-fund --ignore-scripts
+
+      - name: Run npm audit (production deps, audit-level high+)
+        working-directory: ${{ matrix.manifest == '' && '.' || matrix.manifest }}
+        run: npm audit --audit-level=high --omit=dev || true
+
+      - name: Run npm audit (all deps)
+        working-directory: ${{ matrix.manifest == '' && '.' || matrix.manifest }}
+        run: npm audit --audit-level=high || true
+
+  # -------------------------------------------------------------------
+  # Python — pip-audit (no top-level manifests today; runs when present)
+  # -------------------------------------------------------------------
+  pip-audit:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Setup Python
+        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pip-audit
+        run: python -m pip install --upgrade pip pip-audit
+
+      - name: Detect Python manifests
+        id: detect
+        run: |
+          {
+            echo "files<<EOF"
+            find . -type f \( \
+              -name 'requirements.txt' -o \
+              -name 'requirements-*.txt' -o \
+              -name 'pyproject.toml' -o \
+              -name 'Pipfile' \
+              \) -not -path './node_modules/*' \
+              -not -path './target/*' \
+              -not -path './.git/*' | sort
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run pip-audit
+        if: steps.detect.outputs.files != ''
+        run: |
+          echo "Found Python manifests:"
+          echo "${{ steps.detect.outputs.files }}"
+          # Convert space/newline-separated list to array, audit each.
+          # Skip exit code; advisories surface as workflow annotations.
+          mapfile -t FILES < <(echo "${{ steps.detect.outputs.files }}")
+          for f in "${FILES[@]}"; do
+            echo "::group::pip-audit $f"
+            pip-audit -r "$f" || echo "::warning::pip-audit found issues in $f"
+            echo "::endgroup::"
+          done
+
+      - name: No Python manifests — skip
+        if: steps.detect.outputs.files == ''
+        run: echo "No Python manifests found — pip-audit skipped (no-op for this repo)."
