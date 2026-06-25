@@ -1,0 +1,7 @@
+error[wanted]: 
+   ┌─ /mnt/c/Users/koosh/PhenoCompose/deny.toml:50:13
+   │
+50 │ highlight = true
+   │             ━━━━ expected GraphHighlight
+
+2026-06-25 03:22:04 [ERROR] failed to deserialize config from '/mnt/c/Users/koosh/PhenoCompose/deny.toml'
