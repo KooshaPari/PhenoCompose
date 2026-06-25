@@ -1,0 +1,68 @@
+================================================================================
+DAG UNIT: B39 — Tier-2 coverage gate (PhenoCompose)
+================================================================================
+Repo:      PhenoCompose
+Path:      C:\Users\koosh\PhenoCompose
+Date:      2026-06-25
+Status:    Read-only audit (no modifications made)
+
+--------------------------------------------------------------------------------
+TIER-2 COVERAGE GATE AUDIT
+Thresholds per ADR-040: lib >= 71%, framework >= 70%, service >= 60%
+Checks: coverage thresholds enforced, cargo-llvm-cov or equivalent configured,
+        CI coverage enforcement step
+--------------------------------------------------------------------------------
+
+1. COVERAGE CONFIGURATION
+   - Config file: codecov.yml at repo root
+   - Project coverage target: 70% with 1% threshold
+   - Patch coverage target: 80% with 1% threshold
+   - This is Codecov configuration (requires Codecov service in CI)
+
+2. COVERAGE ENFORCEMENT IN CI
+   - No Codecov upload step found in any workflow:
+     - rust-ci.yml: runs cargo test but no coverage measurement
+     - ci.yml: runs npm test but no coverage flag
+     - No "Upload to Codecov" action step
+   - The grade.sh script (which exists in .grade-reports but not at root)
+     has a "coverage" check: "cargo llvm-cov --workspace --fail-under-lines 85"
+     This requires cargo-llvm-cov to be installed
+   - No cargo-llvm-cov installation step in CI workflows
+   - no tarpaulin.toml (Rust coverage config) present
+   - Codecov.yml target is 70% but CHECK NOT ENFORCED in CI
+
+3. COVERAGE THRESHOLD ANALYSIS (per ADR-040)
+   - codecov.yml target: 70% project, 80% patch
+   - ADR-040 thresholds: lib >= 71%, framework >= 70%, service >= 60%
+   - The 70% target is ambiguous — doesn't distinguish lib/framework/service
+   - Codecov.yml exists but not connected to CI pipeline
+
+4. TEST COVERAGE MATRIX
+   - File: TEST_COVERAGE_MATRIX.md present
+   - Coverage target documented: 80%
+   - Many fields marked "TBD"
+   - Not kept up-to-date
+
+5. ADDITIONAL OBSERVATIONS
+   - deny.toml has supply-chain checks but no coverage-related items
+   - grade.sh coverage check requires cargo-llvm-cov — not in CI
+   - Build failures due to Cargo.lock version 4 parsing issues
+     (lock file version 4 requires -Znext-lockfile-bump)
+
+================================================================================
+SUMMARY — TIER-2 COVERAGE GATE (PhenoCompose)
+================================================================================
+
+Check                    | Status
+-------------------------|---------------------------------------------------
+codecov.yml present      | YES (target 70% project, 80% patch)
+cargo-llvm-cov in CI     | NO — not installed, not configured in workflows
+CI coverage step         | NO — no coverage upload/enforcement step
+Thresholds per ADR-040   | PARTIAL — 70% doesn't distinguish lib/framework/service
+TEST_COVERAGE_MATRIX     | YES (present but contains TBD entries)
+coverage enforcement     | NO — no CI gate blocks PRs on coverage
+
+OVERALL: TIER-2 COVERAGE GATE IS NOT ENFORCED
+codecov.yml is configured but not wired into CI.
+No coverage collection or threshold enforcement step runs on PRs.
+================================================================================

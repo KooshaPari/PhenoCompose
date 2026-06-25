@@ -1,0 +1,98 @@
+================================================================================
+DAG UNIT: B33 — Tier-1 enforcement on PR (PhenoCompose)
+================================================================================
+Repo:      PhenoCompose
+Path:      C:\Users\koosh\PhenoCompose
+Date:      2026-06-25
+Status:    Read-only audit (no modifications made)
+
+--------------------------------------------------------------------------------
+TIER-1 ENFORCEMENT AUDIT
+Checks: cargo audit / npm audit, trufflehog/gitleaks, SBOM, LICENSE, CHANGELOG
+--------------------------------------------------------------------------------
+
+1. CARGO AUDIT (Rust dependency audit)
+   - Workflow: .github/workflows/audit.yml — "Dependency Audit"
+   - Trigger: push (main), pull_request (main), weekly schedule, manual
+   - Job "cargo-audit": Runs cargo audit --deny warnings on:
+       - Workspace root
+       - bindings/rust-ffi
+       - pheno-compose-driver
+   - Result: ENFORCED on PR (pull_request triggers include PRs to main)
+
+2. NPM AUDIT (Node dependency audit)
+   - Workflow: .github/workflows/audit.yml, job "npm-audit"
+   - Matrix: root, packages/pheno-config, packages/pheno-errors,
+             packages/pheno-tracing, packages/integration
+   - Runs npm audit --audit-level=high on all manifests
+   - Result: ENFORCED on PR
+
+3. TRUFFLEHOG / GITLEAKS (Secret scanning)
+   - Workflow: .github/workflows/secret-scan.yml — "secret-scan"
+   - Gitleaks: gitleaks/gitleaks-action@v2, runs on push + PR
+   - Trufflehog: trufflesecurity/trufflehog@main on push + PR
+   - Config: trufflehog.yml at repo root
+   - Result: ENFORCED on PR (gitleaks + trufflehog both triggered on PRs)
+
+4. SBOM (Software Bill of Materials)
+   - No explicit SBOM generation workflow found
+   - Release-attestation.yml builds artifacts and attests provenance (SLSA L2)
+     but does NOT generate a CycloneDX/SPDX SBOM
+   - Result: NOT ENFORCED in CI
+
+5. LICENSE CHECK
+   - LICENSE (MIT) present at repo root
+   - deny.toml enforces license allowlist (cargo-deny checks licenses)
+   - cargo-deny is run in deny.yml on push/PR
+   - Result: ENFORCED on PR (via cargo-deny)
+
+6. CHANGELOG CHECK
+   - CHANGELOG.md present (Keep a Changelog format)
+   - No CI workflow enforces CHANGELOG update on PRs
+   - Result: NOT ENFORCED in CI
+
+7. ADDITIONAL — cargo-deny
+   - Workflow: .github/workflows/deny.yml — "Supply-Chain Deny"
+   - Runs cargo deny check (advisories, licenses, sources, bans, duplicates)
+   - Jobs: workspace, rust-ffi, driver
+   - Result: ENFORCED on PR
+
+8. ADDITIONAL — CodeQL
+   - Workflow: .github/workflows/codeql.yml
+   - Languages: go, javascript-typescript, python, actions
+   - Trigger: push + PR to main
+   - Result: ENFORCED on PR
+
+9. ADDITIONAL — OpenSSF Scorecard
+   - Workflow: .github/workflows/scorecard.yml
+   - Scheduled (weekly) + push to main
+   - Result: NOT enforced on PR (scheduled only)
+
+10. ADDITIONAL — Rust CI
+    - Workflow: .github/workflows/rust-ci.yml
+    - Jobs: cargo check (fmt, check), cargo test, cargo clippy, cargo deny
+    - Result: ENFORCED on PR
+
+11. ADDITIONAL — Node CI
+    - Workflow: .github/workflows/ci.yml
+    - npm install, npm run build, npm test
+    - Result: ENFORCED on PR
+
+================================================================================
+SUMMARY — TIER-1 ENFORCEMENT ON PR (PhenoCompose)
+================================================================================
+
+Check                  | Enforced on PR? | Workflow
+-----------------------|-----------------|-------------------------------
+cargo audit            | YES             | audit.yml
+npm audit              | YES             | audit.yml
+trufflehog             | YES             | secret-scan.yml
+gitleaks               | YES             | secret-scan.yml
+cargo-deny (licenses)  | YES             | deny.yml
+CodeQL                 | YES             | codeql.yml
+SBOM                   | NO              | Not configured
+CHANGELOG enforcement  | NO              | Not configured
+
+OVERALL: 7/9 checks enforced (SBOM and CHANGELOG enforcement missing)
+TIER-1 GATE: PARTIALLY enforced — 2 gaps identified
+================================================================================

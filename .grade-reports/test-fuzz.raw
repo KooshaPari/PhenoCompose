@@ -1,4 +1,0 @@
-error: failed to parse lock file at: /mnt/c/Users/koosh/PhenoCompose/Cargo.lock
-
-Caused by:
-  lock file version 4 requires `-Znext-lockfile-bump`

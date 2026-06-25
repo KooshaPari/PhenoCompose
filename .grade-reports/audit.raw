@@ -1,7 +1,0 @@
-[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
-[0m[0m[1m[31merror:[0m error loading advisory database: parse error: error parsing /home/kooshapari/.cargo/advisory-db/crates/libcrux-psq/RUSTSEC-2026-0024.md: parse error: TOML parse error at line 7, column 8
-  |
-7 | cvss = "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:N/SI:N/SA:N"
-  |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-unsupported CVSS version: 4.0
-
