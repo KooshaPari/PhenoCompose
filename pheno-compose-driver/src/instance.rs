@@ -99,13 +99,19 @@ impl Instance {
 
     /// Start the instance
     pub fn start(&mut self) -> Result<(), NvmsError> {
-        unsafe { nvms_ffi::sys::nvms_instance_start(self.inner.as_ptr()) };
+        let code = unsafe { nvms_ffi::sys::nvms_instance_start(self.inner.as_ptr()) };
+        if code != 0 {
+            return Err(NvmsError::from(code));
+        }
         Ok(())
     }
 
     /// Stop the instance
     pub fn stop(&mut self) -> Result<(), NvmsError> {
-        unsafe { nvms_ffi::sys::nvms_instance_stop(self.inner.as_ptr()) };
+        let code = unsafe { nvms_ffi::sys::nvms_instance_stop(self.inner.as_ptr()) };
+        if code != 0 {
+            return Err(NvmsError::from(code));
+        }
         Ok(())
     }
 
@@ -144,8 +150,15 @@ impl Instance {
     }
 
     /// Get startup time estimate based on tier
+    ///
+    /// Caches the config in a thread-local OnceCell to avoid paying
+    /// the Figment load cost on every call.
     pub fn estimated_startup_ms(&self) -> u32 {
-        let cfg = pheno_config::PhenoConfig::default();
+        use std::cell::OnceCell;
+        thread_local! {
+            static CFG: OnceCell<pheno_config::PhenoConfig> = OnceCell::new();
+        }
+        let cfg = CFG.with(|c| c.get_or_init(pheno_config::PhenoConfig::default));
         match self.tier {
             Tier::Wasm => cfg.sandbox.startup_ms_wasm,
             Tier::Gvisor => cfg.sandbox.startup_ms_gvisor,
@@ -156,6 +169,16 @@ impl Instance {
 
 impl Drop for Instance {
     fn drop(&mut self) {
-        unsafe { nvms_ffi::sys::nvms_instance_destroy(self.inner.as_ptr()) };
+        // Best-effort cleanup. FFI destroy errors are logged via a
+        // raw eprintln because the tracing subscriber may already be
+        // shut down by the time Drop runs (e.g. on panic unwinding).
+        let code = unsafe { nvms_ffi::sys::nvms_instance_destroy(self.inner.as_ptr()) };
+        if code != 0 {
+            eprintln!(
+                "pheno-compose-driver: nvms_instance_destroy returned {} for instance {}",
+                code,
+                self.id()
+            );
+        }
     }
 }

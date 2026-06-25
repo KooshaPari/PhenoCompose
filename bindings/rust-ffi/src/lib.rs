@@ -220,6 +220,61 @@ pub enum NvmsError {
     AppleSiliconNotSupported,
     CudaInitFailed,
     RocmInitFailed,
+    /// Catch-all for unknown non-zero return codes from the C library.
+    /// The contained `i32` is the raw error code.
+    Other(i32),
+}
+
+impl NvmsError {
+    /// Get the raw error code that this variant corresponds to.
+    /// `Other(code)` returns the wrapped code unchanged.
+    pub fn raw_code(&self) -> i32 {
+        match *self {
+            Self::InitFailed => -1,
+            Self::CreateFailed => -2,
+            Self::StartFailed => -3,
+            Self::StopFailed => -4,
+            Self::DestroyFailed => -5,
+            Self::AppleSiliconNotSupported => -100,
+            Self::CudaInitFailed => -200,
+            Self::RocmInitFailed => -201,
+            Self::Other(c) => c,
+        }
+    }
+}
+
+impl std::fmt::Display for NvmsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InitFailed => write!(f, "NVMS init failed"),
+            Self::CreateFailed => write!(f, "NVMS instance creation failed"),
+            Self::StartFailed => write!(f, "NVMS instance start failed"),
+            Self::StopFailed => write!(f, "NVMS instance stop failed"),
+            Self::DestroyFailed => write!(f, "NVMS instance destroy failed"),
+            Self::AppleSiliconNotSupported => write!(f, "Apple Silicon not supported by this build"),
+            Self::CudaInitFailed => write!(f, "CUDA initialization failed"),
+            Self::RocmInitFailed => write!(f, "ROCm initialization failed"),
+            Self::Other(c) => write!(f, "NVMS returned unknown error code: {}", c),
+        }
+    }
+}
+
+impl std::error::Error for NvmsError {}
+
+impl From<i32> for NvmsError {
+    fn from(code: i32) -> Self {
+        match code {
+            -1 => Self::InitFailed,
+            -2 => Self::CreateFailed,
+            -3 => Self::StartFailed,
+            -4 => Self::StopFailed,
+            -5 => Self::DestroyFailed,
+            -100 => Self::AppleSiliconNotSupported,
+            -200 => Self::CudaInitFailed,
+            -201 => Self::RocmInitFailed,
+            other => Self::Other(other),
+        }
+    }
 }
 
 pub struct Instance {
