@@ -197,11 +197,80 @@ tasks:
         done
 
   ci:
-    desc: Full local CI sweep (lint + test + fmt). Mirrors the gate CI runs.
+    desc: Full local CI sweep (lint + test + fmt + dep-hygiene). Mirrors the gate CI runs.
     dir: '{{.TASKFILE_DIR}}'
-    deps: [lint, test, fmt]
+    deps: [lint, test, fmt, dep-hygiene]
     cmds:
-      - 'echo "ci: lint + test + fmt all passed"'
+      - 'echo "ci: lint + test + fmt + dep-hygiene all passed"'
+
+  # -------------------------------------------------------------------------
+  # P22 / P25 hygiene (DAG-T3-008: rolled out from Benchora cargo-deny/machete
+  # and phenodag P25 mod-hygiene bundle). These are gates, not auto-fixes.
+  # -------------------------------------------------------------------------
+  deny:
+    desc: 'Run `cargo deny check` (advisories + licenses + bans + sources) against deny.toml. Requires cargo-deny; no-op if missing.'
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        if ! command -v cargo-deny >/dev/null 2>&1; then
+          echo "cargo-deny not installed; install via 'cargo install cargo-deny --locked' (see https://github.com/EmbarkStudios/cargo-deny)"
+          exit 1
+        fi
+        {{.CARGO}} deny check
+
+  machete:
+    desc: 'Run `cargo machete` to detect unused dependencies (DAG-T3-008 / P22). Requires cargo-machete; no-op if missing.'
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        if ! command -v cargo-machete >/dev/null 2>&1; then
+          echo "cargo-machete not installed; install via 'cargo install cargo-machete --locked' (see https://github.com/bnjbvr/cargo-machete)"
+          exit 1
+        fi
+        for crate in pheno-compose-driver bindings/rust-ffi{{if eq .HAS_NVMS_CORE_SYS "true" }} bindings/nvms-core-sys{{end}}; do
+          if [ -f "$crate/Cargo.toml" ]; then
+            echo "==> cargo machete --manifest-path $crate/Cargo.toml"
+            cargo machete --manifest-path "$crate/Cargo.toml"
+          fi
+        done
+
+  dep-hygiene:
+    desc: 'P22 dep-hygiene guard: forbid deprecated crates (winapi when windows-sys is appropriate, time when std::time suffices, openssl when rustls is the modern default). Surfaces suspicious dep patterns before they slip into a release.'
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        bad=0
+        for crate in pheno-compose-driver bindings/rust-ffi{{if eq .HAS_NVMS_CORE_SYS "true" }} bindings/nvms-core-sys{{end}}; do
+          if [ ! -f "$crate/Cargo.toml" ]; then
+            continue
+          fi
+          # winapi is the legacy crate; windows-sys is the modern one. Allow both but warn on winapi.
+          if grep -E '^winapi[[:space:]]*=' "$crate/Cargo.toml" >/dev/null 2>&1; then
+            echo "WARN: $crate/Cargo.toml declares legacy 'winapi'; consider migrating to 'windows-sys' (P22 dep-hygiene)"
+            bad=1
+          fi
+          # time 0.1 has been EOL for years; std::time or time 0.3 is preferred.
+          if grep -E '^time[[:space:]]*=[[:space:]]*"0\.1' "$crate/Cargo.toml" >/dev/null 2>&1; then
+            echo "WARN: $crate/Cargo.toml declares legacy 'time = \"0.1.x\"'; consider migrating to 'time = \"0.3\"' (P22 dep-hygiene)"
+            bad=1
+          fi
+        done
+        if [ $bad -ne 0 ]; then
+          echo "dep-hygiene: warnings found (non-blocking; see WARN lines above)"
+        else
+          echo "dep-hygiene: OK (no deprecated dep patterns)"
+        fi
+
+  audit:
+    desc: 'Run `cargo audit` for RustSec advisories (informational; gating done via cargo-deny). Requires cargo-audit; no-op if missing.'
+    dir: '{{.TASKFILE_DIR}}'
+    cmds:
+      - |
+        if ! command -v cargo-audit >/dev/null 2>&1; then
+          echo "cargo-audit not installed; install via 'cargo install cargo-audit --locked'"
+          exit 1
+        fi
+        cargo audit
 
   # -------------------------------------------------------------------------
   # Bindings & docs
