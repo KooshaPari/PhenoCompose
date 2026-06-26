@@ -1,0 +1,43 @@
+# PhenoCompose: lefthook pre-commit/pre-push gates
+# Language-appropriate for Go + TS + Rust workspace
+pre-commit:
+  parallel: true
+  commands:
+    gofmt:
+      glob: "*.go"
+      run: gofmt -l {staged_files} | wc -l | xargs -I {} test {} -eq 0
+    govet:
+      glob: "*.go"
+      run: go vet ./...
+    golangci:
+      glob: "*.go"
+      run: golangci-lint run ./...
+    rustfmt:
+      glob: "*.rs"
+      run: cargo fmt --check --all {staged_files}
+    clippy:
+      glob: "*.rs"
+      run: cargo clippy --all-targets -- -D warnings
+    eslint:
+      glob: "*.{ts,tsx,js,jsx}"
+      run: eslint {staged_files}
+    deny:
+      run: cargo deny check
+    audit:
+      run: cargo audit
+    yamllint:
+      glob: "*.{yaml,yml}"
+      run: yamllint {staged_files}
+
+commit-msg:
+  commands:
+    conventional-commit:
+      run: echo {1} | grep -qE '^(feat|fix|chore|docs|style|refactor|perf|test|ci|build|revert)(\(.+\))?!?: .{1,72}'
+
+pre-push:
+  parallel: true
+  commands:
+    test:
+      run: cargo test --workspace && go test ./...
+    deny-block:
+      run: cargo deny check && cargo audit
