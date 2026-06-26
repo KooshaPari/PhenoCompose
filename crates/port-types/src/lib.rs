@@ -29,6 +29,21 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+// ---------------------------------------------------------------------------
+// OCI helpers — canonical home is `phenotype-types`
+// ---------------------------------------------------------------------------
+/// OCI (Open Container Initiative) image reference helpers.
+///
+/// Parsing, validation, and construction utilities for OCI image
+/// references. See the [`oci` module documentation](oci) for details.
+///
+/// The **canonical** home for these helpers in the Phenotype
+/// ecosystem is the **`phenotype-types`** crate
+/// (<https://github.com/kooshapari/phenotype-types>). Consumers
+/// SHOULD prefer that crate over this local module when it is
+/// available.
+pub mod oci;
+
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -215,6 +230,33 @@ impl ImageRef {
     /// (joined as `"<repo>:<tag>"`).
     pub fn with_tag(repo: impl AsRef<str>, tag: impl AsRef<str>) -> Self {
         Self::new(format!("{}:{}", repo.as_ref(), tag.as_ref()))
+    }
+
+    /// Parse this image reference into its OCI components.
+    ///
+    /// Delegates to [`oci::parse`](crate::oci::parse). Returns `None`
+    /// if the reference cannot be parsed.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use phenocompose_port_types::ImageRef;
+    ///
+    /// let r = ImageRef::new("registry.example.org/my-app:1.2.3");
+    /// let parsed = r.parse_oci().unwrap();
+    /// assert_eq!(parsed.repository(), "my-app");
+    /// assert_eq!(parsed.tag(), Some("1.2.3"));
+    /// ```
+    pub fn parse_oci(&self) -> Option<crate::oci::Reference> {
+        crate::oci::parse(&self.reference).ok()
+    }
+
+    /// Returns `true` if this image reference is a valid OCI
+    /// reference (has at least a tag or a digest).
+    ///
+    /// Delegates to [`oci::is_valid`](crate::oci::is_valid).
+    pub fn is_valid_oci(&self) -> bool {
+        crate::oci::is_valid(&self.reference)
     }
 }
 
