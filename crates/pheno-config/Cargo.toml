@@ -12,6 +12,9 @@ publish = false
 serde = { workspace = true, features = ["derive"] }
 figment = { version = "0.10", features = ["toml", "env"] }
 
+[dev-dependencies]
+serde_json = { workspace = true }
+
 [lib]
 name = "pheno_config"
 crate-type = ["lib"]

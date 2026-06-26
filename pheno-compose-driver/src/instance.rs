@@ -122,7 +122,7 @@ impl Instance {
 
     /// Get instance ID
     pub fn id(&self) -> u64 {
-        unsafe { (*self.inner.as_ptr()).id as u64 }
+        unsafe { (*self.inner.as_ptr()).id }
     }
 
     /// Get instance tier
@@ -137,9 +137,7 @@ impl Instance {
             if ptr.is_null() {
                 String::new()
             } else {
-                std::ffi::CStr::from_ptr(ptr)
-                    .to_string_lossy()
-                    .into_owned()
+                std::ffi::CStr::from_ptr(ptr).to_string_lossy().into_owned()
             }
         }
     }
@@ -156,14 +154,16 @@ impl Instance {
     pub fn estimated_startup_ms(&self) -> u32 {
         use std::cell::OnceCell;
         thread_local! {
-            static CFG: OnceCell<pheno_config::PhenoConfig> = OnceCell::new();
+            static CFG: OnceCell<pheno_config::PhenoConfig> = const { OnceCell::new() };
         }
-        let cfg = CFG.with(|c| c.get_or_init(pheno_config::PhenoConfig::default));
-        match self.tier {
-            Tier::Wasm => cfg.sandbox.startup_ms_wasm,
-            Tier::Gvisor => cfg.sandbox.startup_ms_gvisor,
-            Tier::Firecracker => cfg.sandbox.startup_ms_firecracker,
-        }
+        CFG.with(|c| {
+            let cfg = c.get_or_init(pheno_config::PhenoConfig::default);
+            match self.tier {
+                Tier::Wasm => cfg.sandbox.startup_ms_wasm,
+                Tier::Gvisor => cfg.sandbox.startup_ms_gvisor,
+                Tier::Firecracker => cfg.sandbox.startup_ms_firecracker,
+            }
+        })
     }
 }
 

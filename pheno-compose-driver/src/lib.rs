@@ -58,11 +58,7 @@ impl NvmsDriver {
     }
 
     /// Create a new instance with the specified tier
-    pub fn create_instance(
-        &self,
-        tier: Tier,
-        name: &str,
-    ) -> Result<Instance, NvmsError> {
+    pub fn create_instance(&self, tier: Tier, name: &str) -> Result<Instance, NvmsError> {
         let ffi_tier: FfiTier = tier.into();
         let c_name = std::ffi::CString::new(name).map_err(|_| NvmsError::CreateFailed)?;
         let ptr = unsafe { nvms_ffi::sys::nvms_instance_create(ffi_tier.into(), c_name.as_ptr()) };
@@ -73,10 +69,7 @@ impl NvmsDriver {
     }
 
     /// Create instance with full configuration
-    pub fn create_instance_with_config(
-        &self,
-        config: &NvmsConfig,
-    ) -> Result<Instance, NvmsError> {
+    pub fn create_instance_with_config(&self, config: &NvmsConfig) -> Result<Instance, NvmsError> {
         let instance = self.create_instance(config.tier, &config.name)?;
         // Apply additional config options here
         Ok(instance)

@@ -141,9 +141,7 @@ mod tests {
 
     #[test]
     fn test_gvisor_config() {
-        let config = NvmsConfig::gvisor("test-service")
-            .with_cpus(4)
-            .with_memory_gb(4);
+        let config = NvmsConfig::gvisor("test-service").with_cpus(4).with_memory_gb(4);
 
         assert_eq!(config.tier, Tier::Gvisor);
         assert_eq!(config.cpu_count, Some(4));
