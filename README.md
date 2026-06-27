@@ -1,3 +1,20 @@
+Work State: `docs/readme-m2` | ready for review | README top-of-file polish complete
+
+Progress: ██████████ 10/10
+
+PhenoCompose is the Phenotype project’s Compose-facing orchestration layer for unified container and microVM workflows, pairing a CLI-driven developer experience with the project’s isolation and runtime abstractions. This repository README now front-loads the current work state, a clear progress indicator, and the minimum usage path so a reader can orient quickly before diving into the fuller project history below.
+
+## Usage / Quickstart
+
+```bash
+git clone https://github.com/KooshaPari/PhenoCompose.git
+cd PhenoCompose
+go build ./...
+go test ./...
+```
+
+Use `go build` to confirm the repo compiles, then `go test` to verify the current codebase. For active development, follow the repo guidance in `CLAUDE.md` before making changes.
+
 <!-- AI-DD-META:START -->
 <!-- This repository is planned, maintained, and managed by AI Agents only. -->
 <!-- Slop issues are expected and intentionally present as part of an HITL-less -->
