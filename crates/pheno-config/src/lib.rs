@@ -27,7 +27,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
-use figment::providers::{Env, Serialized, Toml};
+use figment::providers::{Env, Format, Serialized, Toml};
 use figment::Figment;
 use serde::{Deserialize, Serialize};
 
@@ -35,10 +35,10 @@ use serde::{Deserialize, Serialize};
 // Re-exports
 // ---------------------------------------------------------------------------
 
-pub use nvms::NvmsConfig;
-pub use sandbox::SandboxConfig;
 pub use gpu::GpuConfig;
+pub use nvms::NvmsConfig;
 pub use perf::PerfConfig;
+pub use sandbox::SandboxConfig;
 
 // ---------------------------------------------------------------------------
 // Top-level config
@@ -50,7 +50,7 @@ pub use perf::PerfConfig;
 /// - Hard-coded Rust defaults
 /// - `PhenoCompose.toml` (optional) in the current directory
 /// - Environment variables prefixed with `PHENO_`
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PhenoConfig {
     /// NVMS driver / platform labels.
     #[serde(default)]
@@ -94,8 +94,12 @@ impl Default for DriverConfig {
     }
 }
 
-const fn default_firecracker_cpus() -> u32 { 2 }
-const fn default_firecracker_memory() -> u64 { 2 * 1024 * 1024 * 1024 }
+const fn default_firecracker_cpus() -> u32 {
+    2
+}
+const fn default_firecracker_memory() -> u64 {
+    2 * 1024 * 1024 * 1024
+}
 
 // ---------------------------------------------------------------------------
 // NvmsConfig
@@ -127,8 +131,12 @@ pub mod nvms {
         }
     }
 
-    fn default_version() -> String { "1.0.0".to_string() }
-    fn default_platform() -> String { format!("{}/{}", std::env::consts::OS, std::env::consts::ARCH) }
+    fn default_version() -> String {
+        "1.0.0".to_string()
+    }
+    fn default_platform() -> String {
+        format!("{}/{}", std::env::consts::OS, std::env::consts::ARCH)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -171,10 +179,18 @@ pub mod sandbox {
         }
     }
 
-    const fn default_max_sandbox_id_len() -> usize { 128 }
-    const fn default_wasm_startup_ms() -> u32 { 1 }
-    const fn default_gvisor_startup_ms() -> u32 { 90 }
-    const fn default_firecracker_startup_ms() -> u32 { 125 }
+    const fn default_max_sandbox_id_len() -> usize {
+        128
+    }
+    const fn default_wasm_startup_ms() -> u32 {
+        1
+    }
+    const fn default_gvisor_startup_ms() -> u32 {
+        90
+    }
+    const fn default_firecracker_startup_ms() -> u32 {
+        125
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -212,9 +228,15 @@ pub mod perf {
         }
     }
 
-    const fn default_startup_ns() -> u64 { 1_000_000 }
-    const fn default_memory_bytes() -> u64 { 64 * 1024 * 1024 }
-    const fn default_gpu_utilization() -> f64 { 0.0 }
+    const fn default_startup_ns() -> u64 {
+        1_000_000
+    }
+    const fn default_memory_bytes() -> u64 {
+        64 * 1024 * 1024
+    }
+    const fn default_gpu_utilization() -> f64 {
+        0.0
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -247,25 +269,17 @@ pub mod gpu {
         }
     }
 
-    const fn default_gpu_memory_bytes() -> u64 { 8 * 1024 * 1024 * 1024 }
-    const fn default_compute_units() -> u32 { 8 }
-}
-
-// ---------------------------------------------------------------------------
-// Combined defaults
-// ---------------------------------------------------------------------------
-
-impl Default for PhenoConfig {
-    fn default() -> Self {
-        Self {
-            nvms: NvmsConfig::default(),
-            sandbox: SandboxConfig::default(),
-            perf: PerfConfig::default(),
-            gpu: GpuConfig::default(),
-            driver: DriverConfig::default(),
-        }
+    const fn default_gpu_memory_bytes() -> u64 {
+        8 * 1024 * 1024 * 1024
+    }
+    const fn default_compute_units() -> u32 {
+        8
     }
 }
+
+// ---------------------------------------------------------------------------
+// Combined defaults — derived via #[derive(Default)] on PhenoConfig
+// ---------------------------------------------------------------------------
 
 impl PhenoConfig {
     /// Load configuration using figment's layered providers:
@@ -280,12 +294,13 @@ impl PhenoConfig {
     ///
     /// Returns [`figment::Error`] if the TOML file exists but is
     /// malformed, or if env-var parsing fails.
-    pub fn load() -> Result<Self, figment::Error> {
+    pub fn load() -> Result<Self, Box<figment::Error>> {
         Figment::new()
             .merge(Serialized::defaults(PhenoConfig::default()))
-            .merge(Toml::file("PhenoCompose.toml").nested())
-            .merge(Env::prefixed("PHENO_").global().nested())
+            .merge(Toml::file("PhenoCompose.toml"))
+            .merge(Env::prefixed("PHENO_").split("_"))
             .extract()
+            .map_err(Box::new)
     }
 
     /// Load configuration, panicking on load errors.

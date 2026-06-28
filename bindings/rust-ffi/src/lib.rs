@@ -514,7 +514,11 @@ mod shim {
 
     #[unsafe(no_mangle)]
     pub extern "C" fn nvms_apple_silicon_init() -> i32 {
-        if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") { 0 } else { -1 }
+        if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
+            0
+        } else {
+            -1
+        }
     }
 
     #[unsafe(no_mangle)]
@@ -531,10 +535,14 @@ mod shim {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn nvms_cuda_init() -> i32 { 0 }
+    pub extern "C" fn nvms_cuda_init() -> i32 {
+        0
+    }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn nvms_cuda_device_count() -> i32 { 0 }
+    pub extern "C" fn nvms_cuda_device_count() -> i32 {
+        0
+    }
 
     #[unsafe(no_mangle)]
     pub extern "C" fn nvms_cuda_alloc_unified(size: u64) -> *mut c_void {
@@ -542,10 +550,14 @@ mod shim {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn nvms_rocm_init() -> i32 { 0 }
+    pub extern "C" fn nvms_rocm_init() -> i32 {
+        0
+    }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn nvms_rocm_device_count() -> i32 { 0 }
+    pub extern "C" fn nvms_rocm_device_count() -> i32 {
+        0
+    }
 
     #[unsafe(no_mangle)]
     pub extern "C" fn nvms_neon_available() -> bool {
@@ -553,10 +565,7 @@ mod shim {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn nvms_instance_create(
-        tier: sys::NvmsTier,
-        name: *const c_char,
-    ) -> *mut sys::NvmsInstance {
+    pub extern "C" fn nvms_instance_create(tier: sys::NvmsTier, name: *const c_char) -> *mut sys::NvmsInstance {
         let id = INSTANCE_COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
         let owned_name = if name.is_null() {
             CString::new("unnamed").expect("valid literal")
@@ -598,7 +607,9 @@ mod shim {
         if inst.is_null() {
             return -1;
         }
-        unsafe { (*inst).status = sys::NvmsStatus::Running; }
+        unsafe {
+            (*inst).status = sys::NvmsStatus::Running;
+        }
         0
     }
 
@@ -607,7 +618,9 @@ mod shim {
         if inst.is_null() {
             return -1;
         }
-        unsafe { (*inst).status = sys::NvmsStatus::Stopped; }
+        unsafe {
+            (*inst).status = sys::NvmsStatus::Stopped;
+        }
         0
     }
 

@@ -30,9 +30,8 @@ allow = [
     "Zlib",
     "MPL-2.0",
 ]
-# Denied, but not a hard error for now — just warn
-unlicensed = "deny"
-# Confidence threshold for license detection (0.0 — 1.0)
+# Denied licenses are handled via the allow list above; unlicensed crates fail
+# when no SPDX match is found at or above confidence-threshold.
 confidence-threshold = 0.8
 # Allow exceptions for specific crate+license combos
 # exceptions = []
@@ -47,12 +46,10 @@ confidence-threshold = 0.8
 # Multiple versions of the same crate — only the first match in each list is allowed
 multiple-versions = "deny"
 # Highlight duplicate crates during `cargo deny check bans`
-highlight = true
-# Skip these specific crate+version combos when checking for duplicates
-# skip = [
-#     # Example: OpenSSL-sys has many versions; skip the "older" one
-#     # { name = "openssl-sys", version = "0.9" },
-# ]
+highlight = "all"
+skip-tree = [
+    { crate = "windows-sys", reason = "bindgen/rustix pull distinct windows-sys versions" },
+]
 
 [sources]
 # Allowed sources of crates
