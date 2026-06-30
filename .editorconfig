@@ -6,50 +6,40 @@ root = true
 charset = utf-8
 end_of_line = lf
 insert_final_newline = true
-trim_trailing_whitespace = true
 indent_style = space
-indent_size = 2
+indent_size = 4
+trim_trailing_whitespace = true
 
-# Rust — 2-space style
-[*.rs]
-indent_size = 2
-max_line_length = 100
-
-# TOML
-[*.toml]
-indent_size = 2
-
-# Python — keep 4-space convention
-[*.{py,pyi}]
+[*.{rs}]  # Rust
 indent_size = 4
 max_line_length = 100
 
-# Go — must use tabs
+[*.{rs,py,zig}]
+indent_size = 4
+
+[*.py]
+indent_size = 4
+max_line_length = 100
+
 [*.go]
 indent_style = tab
 indent_size = 4
 
-# TypeScript / JavaScript
 [*.{ts,tsx,js,jsx,mjs,cjs}]
 indent_size = 2
 
-# YAML / JSON
-[*.{yml,yaml,json,jsonc}]
+[*.{yaml,yml,toml,json,jsonc,mojo}]
 indent_size = 2
 
-# Shell scripts
-[*.{sh,bash,zsh}]
+[*.{zsh,sh,bash}]
 indent_size = 2
 
-# Markdown — trailing spaces = hard line break
-[*.md]
-trim_trailing_whitespace = false
-max_line_length = 120
-
-# Makefile — must use tabs
 [Makefile]
 indent_style = tab
 
-# Diff / patch — keep context whitespace intact
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
 [*.{diff,patch}]
 trim_trailing_whitespace = false
