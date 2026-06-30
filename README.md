@@ -1,6 +1,6 @@
-Work State: `docs/readme-m2` | ready for review | README top-of-file polish complete
-
-Progress: ██████████ 10/10
+> **Work state:** EPIC_A · **DAG phase:** A9 · **Progress:** `█████░░░░░ 50%`
+> README freshness + work-state header standardization for PhenoCompose — part of epic_A hygiene sweep (compute/infra). · updated 2026-06-29
+![Rust CI](https://github.com/KooshaPari/PhenoCompose/actions/workflows/rust-ci.yml/badge.svg?branch=main)
 
 PhenoCompose is the Phenotype project’s Compose-facing orchestration layer for unified container and microVM workflows, pairing a CLI-driven developer experience with the project’s isolation and runtime abstractions. This repository README now front-loads the current work state, a clear progress indicator, and the minimum usage path so a reader can orient quickly before diving into the fuller project history below.
 
@@ -52,13 +52,13 @@ Progress: █████░░░░░ 50%
 
 # NVMS - NanoVM Service (Unified)
 
-[![Build](https://img.shields.io/github/actions/workflow/status/KooshaPari/PhenoCompose/quality-gate.yml?branch=main&label=build)](https://github.com/KooshaPari/PhenoCompose/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/KooshaPari/PhenoCompose/rust-ci.yml?branch=main&label=build)](https://github.com/KooshaPari/PhenoCompose/actions/workflows/rust-ci.yml)
 [![Release](https://img.shields.io/github/v/release/KooshaPari/PhenoCompose?include_prereleases&sort=semver)](https://github.com/KooshaPari/PhenoCompose/releases)
 [![License](https://img.shields.io/github/license/KooshaPari/PhenoCompose)](LICENSE)
 [![Phenotype](https://img.shields.io/badge/Phenotype-org-blueviolet)](https://github.com/KooshaPari)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Quality Gate](https://github.com/KooshaPari/PhenoCompose/actions/workflows/quality-gate.yml/badge.svg)](https://github.com/KooshaPari/PhenoCompose/actions/workflows/quality-gate.yml)
+[![CI](https://github.com/KooshaPari/PhenoCompose/actions/workflows/ci.yml/badge.svg)](https://github.com/KooshaPari/PhenoCompose/actions/workflows/ci.yml)
 [![Go](https://img.shields.io/badge/go-1.21%2B-00ADD8.svg)](https://go.dev)
 
 > **Merged Implementation**: KooshaPari/nanovms + BytePort/nvms + PhenoCompose Driver
