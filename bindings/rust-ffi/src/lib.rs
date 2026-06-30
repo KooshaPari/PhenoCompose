@@ -434,6 +434,24 @@ pub fn perf_stats() -> PerfStats {
     }
 }
 
+/// List all tracked instances with their basic info.
+///
+/// Returns a vector of `(id, tier, status, name)` tuples for every
+/// instance that has been created (via FFI) and not yet destroyed.
+/// The list is a snapshot; concurrent destroy operations may make
+/// individual entries stale.
+pub fn list_instances() -> Vec<(u64, Tier, Status, String)> {
+    crate::shim::INSTANCES
+        .lock()
+        .map(|guard| {
+            guard
+                .iter()
+                .map(|(id, tier, status, name)| (*id, Tier::from(*tier), Status::from(*status), name.clone()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 fn cstr_to_string(ptr: *const c_char) -> String {
     if ptr.is_null() {
         return String::new();
@@ -452,8 +470,10 @@ fn write_name(dst: &mut [c_char; 256], value: &str) {
 
 mod shim {
     use super::*;
+    use std::sync::Mutex;
 
     static INSTANCE_COUNTER: AtomicU64 = AtomicU64::new(0);
+    pub(crate) static INSTANCES: Mutex<Vec<(u64, sys::NvmsTier, sys::NvmsStatus, String)>> = Mutex::new(Vec::new());
 
     fn current_backend() -> sys::NvmsGpuBackend {
         if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
@@ -567,11 +587,12 @@ mod shim {
     #[unsafe(no_mangle)]
     pub extern "C" fn nvms_instance_create(tier: sys::NvmsTier, name: *const c_char) -> *mut sys::NvmsInstance {
         let id = INSTANCE_COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
-        let owned_name = if name.is_null() {
-            CString::new("unnamed").expect("valid literal")
+        let display_name = if name.is_null() {
+            "unnamed".to_string()
         } else {
-            unsafe { CStr::from_ptr(name) }.to_owned()
+            unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned()
         };
+        let owned_name = CString::new(display_name.as_str()).expect("valid CString");
         let instance = sys::NvmsInstance {
             id,
             tier,
@@ -585,13 +606,21 @@ mod shim {
             },
             gpu_memory_bytes: 0,
         };
-        Box::into_raw(Box::new(instance))
+        let ptr = Box::into_raw(Box::new(instance));
+        if let Ok(mut guard) = INSTANCES.lock() {
+            guard.push((id, tier, sys::NvmsStatus::Running, display_name));
+        }
+        ptr
     }
 
     #[unsafe(no_mangle)]
     pub extern "C" fn nvms_instance_destroy(inst: *mut sys::NvmsInstance) -> i32 {
         if inst.is_null() {
             return -1;
+        }
+        let id = unsafe { (*inst).id };
+        if let Ok(mut guard) = INSTANCES.lock() {
+            guard.retain(|(i, _, _, _)| *i != id);
         }
         unsafe {
             let instance = Box::from_raw(inst);

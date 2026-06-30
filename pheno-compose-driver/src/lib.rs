@@ -77,8 +77,15 @@ impl NvmsDriver {
 
     /// List all running instances
     pub fn list_instances(&self) -> Vec<InstanceInfo> {
-        // TODO: Implement via FFI
-        Vec::new()
+        nvms_ffi::list_instances()
+            .into_iter()
+            .map(|(id, tier, status, name)| InstanceInfo {
+                id,
+                name,
+                tier: tier.into(),
+                status: status.into(),
+            })
+            .collect()
     }
 }
 
@@ -157,5 +164,56 @@ mod tests {
         // Start again
         assert!(instance.start().is_ok());
         assert_eq!(instance.status(), InstanceStatus::Running);
+    }
+
+    #[test]
+    fn test_list_instances_empty_initially() {
+        let driver = NvmsDriver::new().unwrap();
+        let instances = driver.list_instances();
+        assert!(
+            instances.is_empty(),
+            "expected no instances before creation, got {}",
+            instances.len()
+        );
+    }
+
+    #[test]
+    fn test_list_instances_after_creation() {
+        let driver = NvmsDriver::new().unwrap();
+
+        // Create two instances
+        let _wasm = driver.create_instance(Tier::Wasm, "list-test-wasm").unwrap();
+        let _fc = driver.create_instance(Tier::Firecracker, "list-test-fc").unwrap();
+
+        let instances = driver.list_instances();
+        assert_eq!(instances.len(), 2, "expected 2 instances");
+
+        // Verify instance properties
+        let wasm_info = instances.iter().find(|i| i.name == "list-test-wasm");
+        assert!(wasm_info.is_some(), "expected 'list-test-wasm' in list");
+        assert_eq!(wasm_info.unwrap().tier, Tier::Wasm);
+
+        let fc_info = instances.iter().find(|i| i.name == "list-test-fc");
+        assert!(fc_info.is_some(), "expected 'list-test-fc' in list");
+        assert_eq!(fc_info.unwrap().tier, Tier::Firecracker);
+        assert_eq!(fc_info.unwrap().status, InstanceStatus::Running);
+    }
+
+    #[test]
+    fn test_list_instances_after_drop() {
+        let driver = NvmsDriver::new().unwrap();
+
+        let instance = driver.create_instance(Tier::Gvisor, "drop-test").unwrap();
+        assert_eq!(driver.list_instances().len(), 1);
+
+        // Drop instance
+        drop(instance);
+
+        let instances = driver.list_instances();
+        assert!(
+            instances.is_empty(),
+            "expected no instances after drop, got {}",
+            instances.len()
+        );
     }
 }
