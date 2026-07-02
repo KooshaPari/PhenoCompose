@@ -1,0 +1,47 @@
+# DataKit — first-party process-compose service entry
+# Data transformation and ETL framework for the Phenotype ecosystem.
+# NOTE: The canonical implementation now lives in
+# phenotype-python-sdk/packages/data-kit (this repo is ARCHIVE-RECOMMENDED).
+
+[service]
+name = "datakit"
+version = "0.1.0"
+description = "Data transformation and ETL framework for Phenotype"
+language = "python"
+python-version = ">=3.10"
+package-manager = "hatch"
+depot-path = "DataKit"
+
+[build]
+command = "pip install -e ."
+artifacts = ["dist/"]
+
+[test]
+command = "pytest"
+paths = ["tests/"]
+
+[environment]
+PYTHONPATH = "src"
+LOG_LEVEL = "info"
+
+[[processes]]
+name = "dev"
+command = "python -m datakit"
+log_location = ".logs/datakit-dev.log"
+depends_on = []
+
+[[processes]]
+name = "test"
+command = "pytest -v"
+log_location = ".logs/datakit-test.log"
+depends_on = []
+
+[[processes]]
+name = "lint"
+command = "ruff check src/"
+log_location = ".logs/datakit-lint.log"
+depends_on = []
+
+[trace-gate]
+coverage-minimum = 0.75
+strict-mode = true

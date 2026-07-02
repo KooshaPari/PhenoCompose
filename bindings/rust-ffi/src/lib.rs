@@ -468,6 +468,7 @@ fn write_name(dst: &mut [c_char; 256], value: &str) {
     dst[len] = 0;
 }
 
+#[cfg(not(nvms_real_ffi))]
 mod shim {
     use super::*;
     use std::sync::Mutex;
