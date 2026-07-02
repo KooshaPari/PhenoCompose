@@ -1,0 +1,27 @@
+# DataKit — process-compose service definition (T07)
+#
+# Single-service runtime view of the DataKit ETL framework. This file is the
+# minimum information required to launch DataKit as a managed process under
+# process-compose (or any orchestrator that consumes this schema).
+#
+# Sister file: integrations/pheno-compose/datakit.pc.toml carries the full
+# build/test/process matrix; this file is the runtime contract.
+#
+# T07 = DataKit service definition. See PLAN.md / SPEC.md for context.
+
+name        = "datakit"
+description = "Data transformation and ETL framework for the Phenotype ecosystem"
+
+# Path to the compiled binary, relative to the repo root. Consumed by
+# process-compose `command` indirectly (the orchestrator may run via
+# `cargo run --release --bin datakit` to produce this artifact first).
+binary_path = "./target/release/datakit"
+
+# Default TCP port DataKit listens on for its control plane.
+default_port = 9001
+
+# Liveness/readiness HTTP endpoint exposed by the DataKit binary.
+health_endpoint = "/healthz"
+
+# Default log severity. One of: trace, debug, info, warn, error.
+log_level = "info"
