@@ -3,7 +3,9 @@
 
 use std::ptr::NonNull;
 
-use nvms_ffi::{NvmsError, Status as FfiStatus, Tier as FfiTier};
+use nvms_ffi::{Status as FfiStatus, Tier as FfiTier};
+
+use crate::DriverError;
 
 /// Instance tier levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,26 +93,38 @@ impl Instance {
     ///
     /// # Safety
     /// The pointer must be non-null and valid for the lifetime of the Instance.
-    pub(crate) unsafe fn from_ffi_ptr(ptr: *mut nvms_ffi::sys::NvmsInstance) -> Result<Self, NvmsError> {
-        let inner = NonNull::new(ptr).ok_or(NvmsError::CreateFailed)?;
+    pub(crate) unsafe fn from_ffi_ptr(ptr: *mut nvms_ffi::sys::NvmsInstance) -> Result<Self, DriverError> {
+        let inner = NonNull::new(ptr).ok_or_else(|| DriverError::CreateInstance {
+            tier: crate::Tier::Wasm,
+            name: String::new(),
+            source: nvms_ffi::NvmsError::CreateFailed,
+        })?;
         let tier = (*ptr).tier.into();
         Ok(Self { inner, tier })
     }
 
     /// Start the instance
-    pub fn start(&mut self) -> Result<(), NvmsError> {
+    pub fn start(&mut self) -> Result<(), DriverError> {
+        let id = self.id();
         let code = unsafe { nvms_ffi::sys::nvms_instance_start(self.inner.as_ptr()) };
         if code != 0 {
-            return Err(NvmsError::from(code));
+            return Err(DriverError::Start {
+                instance_id: id,
+                source: nvms_ffi::NvmsError::from(code),
+            });
         }
         Ok(())
     }
 
     /// Stop the instance
-    pub fn stop(&mut self) -> Result<(), NvmsError> {
+    pub fn stop(&mut self) -> Result<(), DriverError> {
+        let id = self.id();
         let code = unsafe { nvms_ffi::sys::nvms_instance_stop(self.inner.as_ptr()) };
         if code != 0 {
-            return Err(NvmsError::from(code));
+            return Err(DriverError::Stop {
+                instance_id: id,
+                source: nvms_ffi::NvmsError::from(code),
+            });
         }
         Ok(())
     }

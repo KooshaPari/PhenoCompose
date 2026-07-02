@@ -19,7 +19,7 @@
 //! ```rust
 //! use pheno_compose_driver::{NvmsDriver, Tier};
 //!
-//! # fn main() -> Result<(), pheno_compose_driver::nvms_ffi::NvmsError> {
+//! # fn main() -> Result<(), pheno_compose_driver::DriverError> {
 //! let driver = NvmsDriver::new()?;
 //! let mut instance = driver.create_instance(Tier::Wasm, "my-service")?;
 //! instance.start()?;
@@ -28,13 +28,15 @@
 //! ```
 
 mod config;
+mod error;
 mod instance;
 
 pub use config::NvmsConfig;
+pub use error::DriverError;
 pub use instance::{Instance, InstanceStatus, Tier};
 
 pub use nvms_ffi;
-use nvms_ffi::{NvmsError, Tier as FfiTier};
+use nvms_ffi::Tier as FfiTier;
 
 /// NVMS Driver for PhenoCompose
 ///
@@ -45,8 +47,8 @@ pub struct NvmsDriver {
 
 impl NvmsDriver {
     /// Create a new NVMS driver
-    pub fn new() -> Result<Self, NvmsError> {
-        nvms_ffi::init()?;
+    pub fn new() -> Result<Self, DriverError> {
+        nvms_ffi::init().map_err(|source| DriverError::Init { source })?;
         Ok(Self {
             version: nvms_ffi::version(),
         })
@@ -58,18 +60,26 @@ impl NvmsDriver {
     }
 
     /// Create a new instance with the specified tier
-    pub fn create_instance(&self, tier: Tier, name: &str) -> Result<Instance, NvmsError> {
+    pub fn create_instance(&self, tier: Tier, name: &str) -> Result<Instance, DriverError> {
         let ffi_tier: FfiTier = tier.into();
-        let c_name = std::ffi::CString::new(name).map_err(|_| NvmsError::CreateFailed)?;
+        let c_name = std::ffi::CString::new(name).map_err(|_| DriverError::CreateInstance {
+            tier,
+            name: name.to_owned(),
+            source: nvms_ffi::NvmsError::CreateFailed,
+        })?;
         let ptr = unsafe { nvms_ffi::sys::nvms_instance_create(ffi_tier.into(), c_name.as_ptr()) };
         if ptr.is_null() {
-            return Err(NvmsError::CreateFailed);
+            return Err(DriverError::CreateInstance {
+                tier,
+                name: name.to_owned(),
+                source: nvms_ffi::NvmsError::CreateFailed,
+            });
         }
         unsafe { Instance::from_ffi_ptr(ptr) }
     }
 
     /// Create instance with full configuration
-    pub fn create_instance_with_config(&self, config: &NvmsConfig) -> Result<Instance, NvmsError> {
+    pub fn create_instance_with_config(&self, config: &NvmsConfig) -> Result<Instance, DriverError> {
         let instance = self.create_instance(config.tier, &config.name)?;
         // Apply additional config options here
         Ok(instance)
