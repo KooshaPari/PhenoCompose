@@ -7,6 +7,15 @@
 //! transport-agnostic; adapters in [`adapters`] bridge to local
 //! deployment engines.
 //!
+//! This crate provides:
+//!
+//! - [`Orchestrator`] trait (deploy / rollback / status)  
+//! - [`Deployment`] and [`DeployStatus`] value types  
+//! - [`DeployError`] — consistent with the sibling port error types
+//!   ([`ComposeError`], [`PublishError`], [`RuntimeError`],
+//!   [`SecretStoreError`])  
+//! - [`NoopOrchestrator`] — a trivial stub for tests and dry-run modes  
+//!
 //! Object-safety: the trait has no associated types, no generic
 //! methods, and only `&self` receivers (with `Send + Sync`
 //! super-traits), so it can be stored as `Box<dyn Orchestrator>`
@@ -19,4 +28,6 @@ mod orchestrator;
 
 pub mod adapters;
 
-pub use orchestrator::{DeployStatus, Deployment, Orchestrator};
+pub use orchestrator::{
+    DeployError, DeployStatus, Deployment, NoopOrchestrator, Orchestrator,
+};
