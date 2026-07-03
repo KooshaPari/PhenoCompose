@@ -29,6 +29,12 @@ fn main() {
         .filter(|p| !p.is_empty())
         .collect();
 
+    // T09: also check the new cgo-shim header location
+    let go_lib_path = manifest_dir.join("../../nanovms/cgo-shim/nvms_export.h");
+    if go_lib_path.exists() {
+        println!("cargo:rerun-if-changed={}", go_lib_path.display());
+    }
+
     // Try to locate libnvms_core.a in each candidate directory.
     let found_staticlib = search_dirs.iter().any(|dir| {
         let candidate = Path::new(dir).join("libnvms_core.a");
