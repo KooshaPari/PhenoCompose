@@ -9,7 +9,7 @@
 
 | Language      | Old Location                       | New Canonical Home                                                                                                               |
 | ------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Go (C-export) | `bindings/go-c-export/`            | [`nanovms/cmd/nvms-cgo/main.go`](https://github.com/KooshaPari/nanovms/blob/main/cmd/nvms-cgo/main.go)                           |
+| Go (C-export) | `bindings/go-c-export/`            | [`nanovms/cmd/nvms-cgo/main.go`](https://github.com/KooshaPari/nanovms/blob/main/cmd/nvms-cgo/main.go) (upstream) — local copy at `nanovms/cgo-shim/nvms_export.{go,h}` for the C ABI contract (T09) |
 | Rust (FFI)    | `bindings/rust-ffi/`               | [`thegent/crates/thegent-nvms/src/lib.rs`](https://github.com/KooshaPari/thegent/blob/main/crates/thegent-nvms/src/lib.rs)       |
 | Rust (Driver) | `pheno-compose-driver/`            | [`nanovms/sdk/rust/src/driver.rs`](https://github.com/KooshaPari/nanovms/blob/main/sdk/rust/src/driver.rs)                       |
 | Python (pyo3) | `bindings/build_cross_platform.py` | [`thegent/crates/thegent-nvms/`](https://github.com/KooshaPari/thegent/blob/main/crates/thegent-nvms/) (enable `python` feature) |
@@ -60,3 +60,4 @@ cargo build --features driver    # High-level async driver
 | 2026-06-14 | Rust FFI moved to `thegent/crates/thegent-nvms/`                  |
 | 2026-06-14 | Rust driver merged into `nanovms/sdk/rust/src/driver.rs`          |
 | 2026-06-14 | Mojo/Zig bindings redirected to thegent's existing infrastructure |
+| 2026-07-02 | T09: local CGO shim extracted to `nanovms/cgo-shim/` with committed `nvms_export.h` ABI header |

@@ -74,9 +74,9 @@ def build_go_c_export(plat: dict, verbose: bool = False) -> int:
         print("  [SKIP] Go not found")
         return 0
 
-    src_dir = Path("bindings/go-c-export")
+    src_dir = Path("nanovms/cgo-shim")
     if not src_dir.exists():
-        print("  [SKIP] go-c-export not found")
+        print("  [SKIP] cgo-shim not found")
         return 0
 
     # Output directory
