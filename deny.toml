@@ -48,7 +48,7 @@ multiple-versions = "deny"
 # Highlight duplicate crates during `cargo deny check bans`
 highlight = "all"
 skip-tree = [
-    { crate = "windows-sys", reason = "bindgen/rustix pull distinct windows-sys versions" },
+    { crate = "windows-sys", reason = "bindgen/rustix pull distinct windows-sys versions"},
 ]
 
 [sources]
