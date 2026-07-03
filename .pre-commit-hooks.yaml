@@ -1,0 +1,17 @@
+- id: trufflehog
+  name: TruffleHog
+  description: Scan for secrets in git history and current changes
+  entry: bash -c 'trufflehog git file://$PWD --no-verification --fail'
+  language: system
+  stages: [commit, push]
+  types: [text]
+  additional_dependencies: []
+
+- id: gitleaks
+  name: gitleaks
+  description: Scan staged changes for secrets via gitleaks
+  entry: bash -c 'gitleaks protect --staged --redact --no-banner'
+  language: system
+  stages: [commit]
+  types: [text]
+  additional_dependencies: []

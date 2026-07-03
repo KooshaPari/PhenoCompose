@@ -27,7 +27,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
-use figment::providers::{Env, Serialized, Toml};
+use figment::providers::{Env, Format, Serialized, Toml};
 use figment::Figment;
 use serde::{Deserialize, Serialize};
 
@@ -284,7 +284,7 @@ impl PhenoConfig {
         Figment::new()
             .merge(Serialized::defaults(PhenoConfig::default()))
             .merge(Toml::file("PhenoCompose.toml").nested())
-            .merge(Env::prefixed("PHENO_").global().nested())
+            .merge(Env::prefixed("PHENO_").global().split("_"))
             .extract()
     }
 
