@@ -7,7 +7,7 @@
 //! and returns a [`DeployStatus`] whose `phase` reflects ArgoCD's
 //! `Synced` / `OutOfSync` / `Unknown` vocabulary.
 
-use crate::orchestrator::{Deployment, DeployStatus, Orchestrator};
+use crate::orchestrator::{DeployError, Deployment, DeployStatus, Orchestrator};
 use async_trait::async_trait;
 
 /// ArgoCD-backed [`Orchestrator`](crate::Orchestrator) adapter.
@@ -22,7 +22,7 @@ impl Orchestrator for ArgoCdAdapter {
     async fn deploy(
         &self,
         d: &Deployment,
-    ) -> Result<DeployStatus, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<DeployStatus, DeployError> {
         Ok(DeployStatus {
             name: d.name.clone(),
             revision: 1,
@@ -35,14 +35,14 @@ impl Orchestrator for ArgoCdAdapter {
         &self,
         _n: &str,
         _r: i64,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<(), DeployError> {
         Ok(())
     }
 
     async fn status(
         &self,
         name: &str,
-    ) -> Result<DeployStatus, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<DeployStatus, DeployError> {
         Ok(DeployStatus {
             name: name.into(),
             revision: 0,

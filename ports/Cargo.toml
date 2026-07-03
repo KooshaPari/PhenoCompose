@@ -1,9 +1,11 @@
+[workspace]
+
 [package]
 name = "phenocompose-ports"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "PhenoCompose hexagonal port for kubernetes-style deployment orchestration (ArgoCD + Helm adapters)."
+description = "PhenoCompose hexagonal port for kubernetes-style deployment orchestration (Orchestrator trait, DeployError, NoopOrchestrator, ArgoCD + Helm adapters)."
 publish = false
 repository = "https://github.com/KooshaPari/PhenoCompose"
 documentation = "https://docs.rs/phenocompose-ports"
@@ -16,6 +18,8 @@ path = "src/lib.rs"
 
 [dependencies]
 async-trait = "0.1"
+thiserror = "2.0"
+phenocompose-port-types = { path = "../crates/port-types" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
