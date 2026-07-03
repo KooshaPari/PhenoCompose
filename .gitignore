@@ -1,26 +1,40 @@
-# Phenotype-org standard .gitignore — Node
-# Source: https://github.com/KooshaPari/phenotype-tooling/blob/main/templates/gitignore-node
+# Phenotype-org standard .gitignore — PhenoCompose
+# Hybrid Rust / Go / Zig / Mojo / Python / Node
 
-/target
+# ===== Build & dependency artifacts =====
+/target/
+**/target/
+**/*.rs.bk
+Cargo.lock.bak
+vendor/
+**/vendor/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# ===== Go =====
+**/go-build/
+*.test
+*.out
+
+# ===== Node / TS / JS =====
 node_modules/
+.pnp/
+.pnp.js
+*.tsbuildinfo
+**/tsconfig.tsbuildinfo
+.svelte-kit/
+.turbo/
+.parcel-cache/
 dist/
 build/
 .next/
 .nuxt/
-.DS_Store
-.idea/
-.vscode/
-*.swp
-*.swo
-.env
-.env.*
+coverage/
+*.lcov
 
-# --- L2 #28 hygiene baseline (added 2026-06-11) ---
-target/
-**/*.rs.bk
-**/*.pdb
-**/vendor/
-**/go-build/
+# ===== Python =====
 **/__pycache__/
 **/*.py[cod]
 **/*$py.class
@@ -35,69 +49,111 @@ target/
 **/.coverage.*
 **/*.egg-info/
 **/.eggs/
-**/.output/
-**/.cache/
-**/coverage/
-**/tsconfig.tsbuildinfo
+*.pyc
+
+# ===== Zig / Mojo =====
+cargo/zig-cache/
+.zigcache/
+**/*.mojo_cache/
+.mojo/
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+
+# ===== OS =====
+.DS_Store
 .AppleDouble
 .LSOverride
 **/Thumbs.db
 **/desktop.ini
-*~
-*.log
-*.tmp
-*.bak
-**/tmp/
-**/temp/
-!.env.example
-**/.env.local
-**/.env.*.local
-.worktrees/
-.claude/worktrees/
-.serena/
-.codex/
-.cursor/
 
-# --- adopted from phenotype-tooling/templates/gitignore-node ---
-.cache/
+# ===== Environment / Secrets =====
+.env
+.env.local
+.env.*.local
+!.env.example
+*.pem
+*.key
+*_rsa
+*id_rsa*
+*credential*.json
+*credentials*.json
+*service-account*.json
+
+# ===== Registry / credential config =====
+.npmrc
+.pypirc
+.netrc
+
+# ===== Test & cache dirs =====
+.jest-cache/
 .eslintcache
 .npm/
-.parcel-cache/
-.pnp
-.pnp.js
+**/.cache/
+**/.output/
+**/tmp/
+**/temp/
+
+# ===== Build output =====
 /build/
 /coverage/
 /dist/
 /out/
+/.output/
+
+# ===== Logs =====
+*.log
+logs/
 lerna-debug.log*
 npm-debug.log*
 pnpm-debug.log*
-Thumbs.db
 yarn-debug.log*
 yarn-error.log*
 
-# ===== Phenotype-org standard hygiene (do not edit) =====
-# Audit artifacts
+# ===== Worktrees =====
+.worktrees/
+*-wtrees/
+.claude/worktrees/
+
+# ===== Tooling dirs =====
+.serena/
+.codex/
+.cursor/
 .audit/
-*.audit.json
-audit_scorecard.json
-AUDIT_SCORECARD.md
+.draft/
 
-# Test artifacts
-*.test
-*.test.rs
-*.test.py
-
-# Worklog files (canonical home is phenotype-worklog-schema)
-worklog-*.json
-worklogs/
-
-# Coverage/profiling artifacts
+# ===== LLVM / Rust coverage & profile artifacts =====
 *.profraw
 *.profdata
 llvm-cov-*
+*.gcda
+*.gcno
+.instr-profile
 
-# Tooling draft files
+# ===== Temp / backup =====
+*.tmp
+*.bak
+*~
+**/desktop.ini
+
+# ===== Tauri generated (if applicable) =====
+frontend/**/src-tauri/gen/
+
+# ===== Incident / audit evidence (local only) =====
+incident-evidence/
+.incident-evidence/
+local/incident-evidence/
+
+# ===== Tooling draft files =====
 *.proposed
-.draft/
-# ===== End standard hygiene =====
+
+# ===== Worklog files =====
+worklog-*.json
+worklogs/
+
+# ===== forge worktree =====
+".forge/"  

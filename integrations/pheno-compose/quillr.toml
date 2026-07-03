@@ -1,0 +1,28 @@
+# Quillr — process-compose service definition (T08)
+#
+# Single-service runtime view of the Quillr HTTP toolkit (TypeScript + Rust).
+# This file is the minimum information required to launch Quillr as a managed
+# process under process-compose (or any orchestrator that consumes this
+# schema).
+#
+# Sister file: integrations/pheno-compose/quillr.pc.toml carries the full
+# build/test/process matrix; this file is the runtime contract.
+#
+# T08 = Quillr service definition. See PLAN.md / SPEC.md for context.
+
+name        = "quillr"
+description = "Multi-language HTTP toolkit for the Phenotype ecosystem (rate limiting, retries, circuit breakers, interceptors, mocking)"
+
+# Path to the compiled binary, relative to the repo root. Quillr's Rust core
+# (`httpora-core`) is the long-term runtime target; the TypeScript adapter is
+# invoked in dev via `npm run dev`.
+binary_path = "./target/release/quillr"
+
+# Default TCP port Quillr listens on for its control plane.
+default_port = 9002
+
+# Liveness/readiness HTTP endpoint exposed by the Quillr binary.
+health_endpoint = "/health"
+
+# Default log severity. One of: trace, debug, info, warn, error.
+log_level = "info"

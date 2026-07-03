@@ -1,0 +1,31 @@
+{
+  "project": "PhenoCompose",
+  "stack": "rust",
+  "dag_unit": "B39",
+  "tier": "Tier-2",
+  "mode": "fast",
+  "score": 0,
+  "max": 10,
+  "percentage": 0,
+  "grade": "F",
+  "checks": [
+    {"name":"build","status":"fail","score":0,"max":2,"detail":"Cargo.lock version 4 parsing failure"},
+    {"name":"test-unit","status":"fail","score":0,"max":3,"detail":"Cargo.lock version 4 parsing failure"},
+    {"name":"fmt","status":"fail","score":0,"max":2,"detail":"formatting issues in rust-ffi bindings"},
+    {"name":"clippy","status":"fail","score":0,"max":2,"detail":"Cargo.lock version 4 parsing failure"},
+    {"name":"deny","status":"skipped","score":0,"max":1,"detail":"skipped in fast mode"},
+    {"name":"doc","status":"fail","score":0,"max":1,"detail":"Cargo.lock version 4 parsing failure"},
+    {"name":"coverage","status":"skipped","score":0,"max":2,"detail":"skipped in fast mode"},
+    {"name":"audit","status":"skipped","score":0,"max":1,"detail":"skipped in fast mode"}
+  ],
+  "tier2_coverage_audit": {
+    "codecov_yml": "PRESENT (target 70% project, 80% patch)",
+    "cargo_llvm_cov_in_ci": "NOT CONFIGURED",
+    "ci_coverage_step": "NOT PRESENT",
+    "adr040_thresholds": "PARTIAL — 70% global doesn't distinguish lib/framework/service",
+    "tarpaulin_toml": "NOT PRESENT",
+    "test_coverage_matrix": "PRESENT (TBD entries)",
+    "coverage_enforcement": "NOT ENFORCED — no CI gate blocks PRs on coverage"
+  },
+  "timestamp": "2026-06-25T20:49:50Z"
+}

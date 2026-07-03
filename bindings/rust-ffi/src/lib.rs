@@ -220,6 +220,61 @@ pub enum NvmsError {
     AppleSiliconNotSupported,
     CudaInitFailed,
     RocmInitFailed,
+    /// Catch-all for unknown non-zero return codes from the C library.
+    /// The contained `i32` is the raw error code.
+    Other(i32),
+}
+
+impl NvmsError {
+    /// Get the raw error code that this variant corresponds to.
+    /// `Other(code)` returns the wrapped code unchanged.
+    pub fn raw_code(&self) -> i32 {
+        match *self {
+            Self::InitFailed => -1,
+            Self::CreateFailed => -2,
+            Self::StartFailed => -3,
+            Self::StopFailed => -4,
+            Self::DestroyFailed => -5,
+            Self::AppleSiliconNotSupported => -100,
+            Self::CudaInitFailed => -200,
+            Self::RocmInitFailed => -201,
+            Self::Other(c) => c,
+        }
+    }
+}
+
+impl std::fmt::Display for NvmsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InitFailed => write!(f, "NVMS init failed"),
+            Self::CreateFailed => write!(f, "NVMS instance creation failed"),
+            Self::StartFailed => write!(f, "NVMS instance start failed"),
+            Self::StopFailed => write!(f, "NVMS instance stop failed"),
+            Self::DestroyFailed => write!(f, "NVMS instance destroy failed"),
+            Self::AppleSiliconNotSupported => write!(f, "Apple Silicon not supported by this build"),
+            Self::CudaInitFailed => write!(f, "CUDA initialization failed"),
+            Self::RocmInitFailed => write!(f, "ROCm initialization failed"),
+            Self::Other(c) => write!(f, "NVMS returned unknown error code: {}", c),
+        }
+    }
+}
+
+impl std::error::Error for NvmsError {}
+
+impl From<i32> for NvmsError {
+    fn from(code: i32) -> Self {
+        match code {
+            -1 => Self::InitFailed,
+            -2 => Self::CreateFailed,
+            -3 => Self::StartFailed,
+            -4 => Self::StopFailed,
+            -5 => Self::DestroyFailed,
+            -100 => Self::AppleSiliconNotSupported,
+            -200 => Self::CudaInitFailed,
+            -201 => Self::RocmInitFailed,
+            other => Self::Other(other),
+        }
+    }
 }
 
 pub struct Instance {
@@ -379,6 +434,24 @@ pub fn perf_stats() -> PerfStats {
     }
 }
 
+/// List all tracked instances with their basic info.
+///
+/// Returns a vector of `(id, tier, status, name)` tuples for every
+/// instance that has been created (via FFI) and not yet destroyed.
+/// The list is a snapshot; concurrent destroy operations may make
+/// individual entries stale.
+pub fn list_instances() -> Vec<(u64, Tier, Status, String)> {
+    crate::shim::INSTANCES
+        .lock()
+        .map(|guard| {
+            guard
+                .iter()
+                .map(|(id, tier, status, name)| (*id, Tier::from(*tier), Status::from(*status), name.clone()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 fn cstr_to_string(ptr: *const c_char) -> String {
     if ptr.is_null() {
         return String::new();
@@ -395,10 +468,13 @@ fn write_name(dst: &mut [c_char; 256], value: &str) {
     dst[len] = 0;
 }
 
+#[cfg(not(nvms_real_ffi))]
 mod shim {
     use super::*;
+    use std::sync::Mutex;
 
     static INSTANCE_COUNTER: AtomicU64 = AtomicU64::new(0);
+    pub(crate) static INSTANCES: Mutex<Vec<(u64, sys::NvmsTier, sys::NvmsStatus, String)>> = Mutex::new(Vec::new());
 
     fn current_backend() -> sys::NvmsGpuBackend {
         if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
@@ -459,7 +535,11 @@ mod shim {
 
     #[unsafe(no_mangle)]
     pub extern "C" fn nvms_apple_silicon_init() -> i32 {
-        if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") { 0 } else { -1 }
+        if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
+            0
+        } else {
+            -1
+        }
     }
 
     #[unsafe(no_mangle)]
@@ -476,10 +556,14 @@ mod shim {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn nvms_cuda_init() -> i32 { 0 }
+    pub extern "C" fn nvms_cuda_init() -> i32 {
+        0
+    }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn nvms_cuda_device_count() -> i32 { 0 }
+    pub extern "C" fn nvms_cuda_device_count() -> i32 {
+        0
+    }
 
     #[unsafe(no_mangle)]
     pub extern "C" fn nvms_cuda_alloc_unified(size: u64) -> *mut c_void {
@@ -487,10 +571,14 @@ mod shim {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn nvms_rocm_init() -> i32 { 0 }
+    pub extern "C" fn nvms_rocm_init() -> i32 {
+        0
+    }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn nvms_rocm_device_count() -> i32 { 0 }
+    pub extern "C" fn nvms_rocm_device_count() -> i32 {
+        0
+    }
 
     #[unsafe(no_mangle)]
     pub extern "C" fn nvms_neon_available() -> bool {
@@ -498,16 +586,14 @@ mod shim {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn nvms_instance_create(
-        tier: sys::NvmsTier,
-        name: *const c_char,
-    ) -> *mut sys::NvmsInstance {
+    pub extern "C" fn nvms_instance_create(tier: sys::NvmsTier, name: *const c_char) -> *mut sys::NvmsInstance {
         let id = INSTANCE_COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
-        let owned_name = if name.is_null() {
-            CString::new("unnamed").expect("valid literal")
+        let display_name = if name.is_null() {
+            "unnamed".to_string()
         } else {
-            unsafe { CStr::from_ptr(name) }.to_owned()
+            unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned()
         };
+        let owned_name = CString::new(display_name.as_str()).expect("valid CString");
         let instance = sys::NvmsInstance {
             id,
             tier,
@@ -521,13 +607,21 @@ mod shim {
             },
             gpu_memory_bytes: 0,
         };
-        Box::into_raw(Box::new(instance))
+        let ptr = Box::into_raw(Box::new(instance));
+        if let Ok(mut guard) = INSTANCES.lock() {
+            guard.push((id, tier, sys::NvmsStatus::Running, display_name));
+        }
+        ptr
     }
 
     #[unsafe(no_mangle)]
     pub extern "C" fn nvms_instance_destroy(inst: *mut sys::NvmsInstance) -> i32 {
         if inst.is_null() {
             return -1;
+        }
+        let id = unsafe { (*inst).id };
+        if let Ok(mut guard) = INSTANCES.lock() {
+            guard.retain(|(i, _, _, _)| *i != id);
         }
         unsafe {
             let instance = Box::from_raw(inst);
@@ -543,7 +637,9 @@ mod shim {
         if inst.is_null() {
             return -1;
         }
-        unsafe { (*inst).status = sys::NvmsStatus::Running; }
+        unsafe {
+            (*inst).status = sys::NvmsStatus::Running;
+        }
         0
     }
 
@@ -552,7 +648,9 @@ mod shim {
         if inst.is_null() {
             return -1;
         }
-        unsafe { (*inst).status = sys::NvmsStatus::Stopped; }
+        unsafe {
+            (*inst).status = sys::NvmsStatus::Stopped;
+        }
         0
     }
 

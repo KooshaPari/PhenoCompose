@@ -1,0 +1,36 @@
+{
+  "project": "PhenoCompose",
+  "stack": "rust",
+  "dag_unit": "B33",
+  "tier": "Tier-1",
+  "mode": "fast",
+  "score": 0,
+  "max": 10,
+  "percentage": 0,
+  "grade": "F",
+  "checks": [
+    {"name":"build","status":"fail","score":0,"max":2,"detail":"error: failed to parse lock file at: /mnt/c/Users/koosh/PhenoCompose/Cargo.lock  Caused by: lock file version 4 requires `-Znext-lockfile-bump`"},
+    {"name":"test-unit","status":"fail","score":0,"max":3,"detail":"error: failed to parse lock file at: /mnt/c/Users/koosh/PhenoCompose/Cargo.lock  Caused by: lock file version 4 requires `-Znext-lockfile-bump`"},
+    {"name":"fmt","status":"fail","score":0,"max":2,"detail":"Diff in bindings/rust-ffi/src/lib.rs - formatting issues detected"},
+    {"name":"clippy","status":"fail","score":0,"max":2,"detail":"error: failed to parse lock file at: /mnt/c/Users/koosh/PhenoCompose/Cargo.lock  Caused by: lock file version 4 requires `-Znext-lockfile-bump`"},
+    {"name":"deny","status":"skipped","score":0,"max":1,"detail":"skipped in fast mode"},
+    {"name":"doc","status":"fail","score":0,"max":1,"detail":"error: failed to parse lock file at: /mnt/c/Users/koosh/PhenoCompose/Cargo.lock  Caused by: lock file version 4 requires `-Znext-lockfile-bump`"},
+    {"name":"test-snapshot","status":"skipped","score":0,"max":1,"detail":"skipped in fast mode"},
+    {"name":"test-fuzz","status":"skipped","score":0,"max":1,"detail":"skipped in fast mode"},
+    {"name":"coverage","status":"skipped","score":0,"max":2,"detail":"skipped in fast mode"},
+    {"name":"audit","status":"skipped","score":0,"max":1,"detail":"skipped in fast mode"},
+    {"name":"bench","status":"skipped","score":0,"max":1,"detail":"skipped in fast mode"}
+  ],
+  "tier1_audit": {
+    "cargo_audit": "ENFORCED on PR",
+    "npm_audit": "ENFORCED on PR",
+    "trufflehog": "ENFORCED on PR",
+    "gitleaks": "ENFORCED on PR",
+    "cargo_deny_licenses": "ENFORCED on PR",
+    "codeql": "ENFORCED on PR",
+    "sbom": "NOT ENFORCED",
+    "changelog_check": "NOT ENFORCED",
+    "openssf_scorecard": "NOT ENFORCED on PR (scheduled only)"
+  },
+  "timestamp": "2026-06-25T20:49:50Z"
+}

@@ -3,7 +3,9 @@
 
 use std::ptr::NonNull;
 
-use nvms_ffi::{NvmsError, Status as FfiStatus, Tier as FfiTier};
+use nvms_ffi::{Status as FfiStatus, Tier as FfiTier};
+
+use crate::DriverError;
 
 /// Instance tier levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,21 +93,39 @@ impl Instance {
     ///
     /// # Safety
     /// The pointer must be non-null and valid for the lifetime of the Instance.
-    pub(crate) unsafe fn from_ffi_ptr(ptr: *mut nvms_ffi::sys::NvmsInstance) -> Result<Self, NvmsError> {
-        let inner = NonNull::new(ptr).ok_or(NvmsError::CreateFailed)?;
+    pub(crate) unsafe fn from_ffi_ptr(ptr: *mut nvms_ffi::sys::NvmsInstance) -> Result<Self, DriverError> {
+        let inner = NonNull::new(ptr).ok_or_else(|| DriverError::CreateInstance {
+            tier: crate::Tier::Wasm,
+            name: String::new(),
+            source: nvms_ffi::NvmsError::CreateFailed,
+        })?;
         let tier = (*ptr).tier.into();
         Ok(Self { inner, tier })
     }
 
     /// Start the instance
-    pub fn start(&mut self) -> Result<(), NvmsError> {
-        unsafe { nvms_ffi::sys::nvms_instance_start(self.inner.as_ptr()) };
+    pub fn start(&mut self) -> Result<(), DriverError> {
+        let id = self.id();
+        let code = unsafe { nvms_ffi::sys::nvms_instance_start(self.inner.as_ptr()) };
+        if code != 0 {
+            return Err(DriverError::Start {
+                instance_id: id,
+                source: nvms_ffi::NvmsError::from(code),
+            });
+        }
         Ok(())
     }
 
     /// Stop the instance
-    pub fn stop(&mut self) -> Result<(), NvmsError> {
-        unsafe { nvms_ffi::sys::nvms_instance_stop(self.inner.as_ptr()) };
+    pub fn stop(&mut self) -> Result<(), DriverError> {
+        let id = self.id();
+        let code = unsafe { nvms_ffi::sys::nvms_instance_stop(self.inner.as_ptr()) };
+        if code != 0 {
+            return Err(DriverError::Stop {
+                instance_id: id,
+                source: nvms_ffi::NvmsError::from(code),
+            });
+        }
         Ok(())
     }
 
@@ -116,7 +136,7 @@ impl Instance {
 
     /// Get instance ID
     pub fn id(&self) -> u64 {
-        unsafe { (*self.inner.as_ptr()).id as u64 }
+        unsafe { (*self.inner.as_ptr()).id }
     }
 
     /// Get instance tier
@@ -131,9 +151,7 @@ impl Instance {
             if ptr.is_null() {
                 String::new()
             } else {
-                std::ffi::CStr::from_ptr(ptr)
-                    .to_string_lossy()
-                    .into_owned()
+                std::ffi::CStr::from_ptr(ptr).to_string_lossy().into_owned()
             }
         }
     }
@@ -144,18 +162,37 @@ impl Instance {
     }
 
     /// Get startup time estimate based on tier
+    ///
+    /// Caches the config in a thread-local OnceCell to avoid paying
+    /// the Figment load cost on every call.
     pub fn estimated_startup_ms(&self) -> u32 {
-        let cfg = pheno_config::PhenoConfig::default();
-        match self.tier {
-            Tier::Wasm => cfg.sandbox.startup_ms_wasm,
-            Tier::Gvisor => cfg.sandbox.startup_ms_gvisor,
-            Tier::Firecracker => cfg.sandbox.startup_ms_firecracker,
+        use std::cell::OnceCell;
+        thread_local! {
+            static CFG: OnceCell<pheno_config::PhenoConfig> = const { OnceCell::new() };
         }
+        CFG.with(|c| {
+            let cfg = c.get_or_init(pheno_config::PhenoConfig::default);
+            match self.tier {
+                Tier::Wasm => cfg.sandbox.startup_ms_wasm,
+                Tier::Gvisor => cfg.sandbox.startup_ms_gvisor,
+                Tier::Firecracker => cfg.sandbox.startup_ms_firecracker,
+            }
+        })
     }
 }
 
 impl Drop for Instance {
     fn drop(&mut self) {
-        unsafe { nvms_ffi::sys::nvms_instance_destroy(self.inner.as_ptr()) };
+        // Best-effort cleanup. FFI destroy errors are logged via a
+        // raw eprintln because the tracing subscriber may already be
+        // shut down by the time Drop runs (e.g. on panic unwinding).
+        let code = unsafe { nvms_ffi::sys::nvms_instance_destroy(self.inner.as_ptr()) };
+        if code != 0 {
+            eprintln!(
+                "pheno-compose-driver: nvms_instance_destroy returned {} for instance {}",
+                code,
+                self.id()
+            );
+        }
     }
 }

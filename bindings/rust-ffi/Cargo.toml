@@ -13,11 +13,21 @@ authors = ["kooshapari"]
 [dependencies]
 
 [build-dependencies]
-bindgen = "0.68"
+bindgen = "0.72"
 
 [features]
 default = []
-cuda = []  # Enable CUDA support for ML workloads
+
+# Historical note: a `cuda = []` feature was removed in 2026-06-23 (PC-001
+# from plans/2026-06-22-compute-infra-dag-v1.md). The flag was never
+# referenced via `#[cfg(feature = "cuda")]` anywhere in the source; the
+# `nvms_cuda_*` symbols in the FFI are always available through the
+# in-process `shim` module (and the externally-linked C library once
+# nanovms's CGo archive is wired in per CONSOLIDATION.md #2).
+#
+# If we later gate actual CUDA-specific codegen behind a feature, the
+# flag name to revive is `cuda` (with the standard `dep:` prefix on
+# any optional dependency it ends up depending on).
 
 [lib]
 name = "nvms_ffi"

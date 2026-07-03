@@ -1,0 +1,70 @@
+# Quillr — first-party process-compose service entry
+# Multi-language HTTP toolkit: rate limiting, retries, circuit breakers,
+# interceptors, and mocking in both TypeScript and Rust.
+
+[service]
+name = "quillr"
+version = "0.1.0"
+description = "Multi-language HTTP toolkit for the Phenotype ecosystem"
+languages = ["typescript", "rust"]
+package-manager = "npm"
+depot-path = "Quillr"
+
+[build.ts]
+command = "npm run build"
+artifacts = ["dist/"]
+
+[build.rs]
+command = "cargo build --release -p httpora-core"
+artifacts = ["target/release/"]
+
+[test.ts]
+command = "npm test"
+paths = ["src/"]
+
+[test.rs]
+command = "cargo test -p httpora-core"
+paths = ["crates/httpora-core/"]
+
+[environment]
+NODE_ENV = "development"
+RUST_LOG = "info"
+
+[[processes]]
+name = "dev"
+command = "npm run dev"
+log_location = ".logs/quillr-dev.log"
+depends_on = []
+
+[[processes]]
+name = "build"
+command = "npm run build"
+log_location = ".logs/quillr-build.log"
+depends_on = []
+
+[[processes]]
+name = "test"
+command = "npm test"
+log_location = ".logs/quillr-test.log"
+depends_on = []
+
+[[processes]]
+name = "lint"
+command = "npm run lint"
+log_location = ".logs/quillr-lint.log"
+depends_on = []
+
+[[processes]]
+name = "typecheck"
+command = "npm run typecheck"
+log_location = ".logs/quillr-typecheck.log"
+depends_on = []
+
+[[processes]]
+name = "bench"
+command = "npm run bench"
+log_location = ".logs/quillr-bench.log"
+depends_on = []
+
+[trace-gate]
+coverage-minimum = 0.75

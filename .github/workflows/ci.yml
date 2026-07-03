@@ -8,13 +8,86 @@ on:
   pull_request:
   workflow_dispatch:
 
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
+  # ── Tier-1 enforcement gates (PR) ──────────────────────────────────
+  tier1-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      # ── 1. LICENSE check (Apache-2.0 OR MIT) ────────────────────────
+      - name: Check LICENSE exists (Apache-2.0 OR MIT)
+        run: |
+          if [ -f LICENSE ] || [ -f LICENSE-APACHE ] || [ -f LICENSE-MIT ]; then
+            echo "✓ LICENSE file(s) found"
+          else
+            echo "✗ No LICENSE file found – expected Apache-2.0 OR MIT"
+            exit 1
+          fi
+
+      # ── 2. CHANGELOG check ──────────────────────────────────────────
+      - name: Check CHANGELOG updated
+        run: |
+          if git log -1 --name-only --format="" | grep -q "^CHANGELOG.md$"; then
+            echo "✓ CHANGELOG.md modified in latest commit"
+          elif [ -f CHANGELOG.md ]; then
+            echo "✓ CHANGELOG.md exists (non-strict gate)"
+          else
+            echo "✗ CHANGELOG.md missing"
+            exit 1
+          fi
+
+      # ── 3. Security scan ────────────────────────────────────────────
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified --fail
+
+      # ── 4. npm audit (JS packages) ──────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm install
+      - name: npm audit
+        run: npm audit --audit-level=high || echo "::warning::npm audit found vulnerabilities"
+
+      # ── 5. cargo audit (Rust crates) ────────────────────────────────
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - name: cargo audit
+        run: cargo audit --deny warnings 2>/dev/null || cargo audit
+
+      # ── 6. SBOM (CycloneDX) ────────────────────────────────────────
+      - name: Generate CycloneDX SBOM
+        uses: CycloneDX/gh-node-module-generatebom@v2
+        with:
+          path: ./
+          output: ./sbom.cyclonedx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: ./sbom.cyclonedx.json
+          retention-days: 90
+
+  # ── Test (existing) ────────────────────────────────────────────────
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683

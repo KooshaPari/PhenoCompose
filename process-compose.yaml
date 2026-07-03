@@ -1,0 +1,92 @@
+# process-compose.yaml — PhenoCompose orchestration root (T07/T08)
+#
+# Top-level service orchestration manifest for PhenoCompose. Process-compose
+# (https://github.com/F1bonaccini/process-compose) reads this file to launch
+# and supervise the first-party services described in
+# `integrations/pheno-compose/*.toml`.
+#
+# Schema: process-compose v0.5 (https://github.com/F1bonaccini/process-compose)
+#
+# T07 = DataKit service definition  → integrations/pheno-compose/datakit.toml
+# T08 = Quillr service definition  → integrations/pheno-compose/quillr.toml
+#
+# Local iteration:
+#   process-compose up                      # start all services
+#   process-compose ps                      # check process state
+#   process-compose logs datakit            # tail DataKit logs
+#   process-compose down                    # stop everything
+
+version: "0.5"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # DataKit — ETL / data transformation framework
+  # Source of truth: integrations/pheno-compose/datakit.toml
+  # ---------------------------------------------------------------------------
+  datakit:
+    name: "datakit"
+    command:
+      - "sh"
+      - "-c"
+      - "cargo build --release --bin datakit && exec ./target/release/datakit"
+    log_location: ".logs/datakit.log"
+    depends_on: []
+    availability:
+      restart: "on_failure"
+      backoff_seconds: 2
+      max_restarts: 5
+    environment:
+      - "RUST_LOG=info"
+      - "DATAKIT_PORT=9001"
+      - "DATAKIT_LOG_LEVEL=info"
+    health_check:
+      http_get: "http://localhost:9001/healthz"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    readiness_probe:
+      http_get: "http://localhost:9001/healthz"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    remediation:
+      restart: true
+      action: "restart"
+
+  # ---------------------------------------------------------------------------
+  # Quillr — HTTP toolkit (TypeScript + Rust core)
+  # Source of truth: integrations/pheno-compose/quillr.toml
+  # Depends on DataKit so the ETL pipeline is up before the HTTP layer.
+  # ---------------------------------------------------------------------------
+  quillr:
+    name: "quillr"
+    command:
+      - "sh"
+      - "-c"
+      - "cargo build --release --bin quillr && exec ./target/release/quillr"
+    log_location: ".logs/quillr.log"
+    depends_on:
+      - datakit
+    availability:
+      restart: "on_failure"
+      backoff_seconds: 2
+      max_restarts: 5
+    environment:
+      - "RUST_LOG=info"
+      - "QUILLR_PORT=9002"
+      - "QUILLR_LOG_LEVEL=info"
+      - "QUILLR_DATAKIT_URL=http://localhost:9001"
+    health_check:
+      http_get: "http://localhost:9002/health"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    readiness_probe:
+      http_get: "http://localhost:9002/health"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    remediation:
+      restart: true
+      action: "restart"

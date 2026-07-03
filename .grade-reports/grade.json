@@ -1,0 +1,13 @@
+{
+  "project": "PhenoCompose",
+  "stack": "rust",
+  "mode": "fast",
+  "score": 0,
+  "max": 10,
+  "percentage": 0,
+  "grade": "F",
+  "checks": [
+    {"name":"build","status":"fail","score":0,"max":2,"detail":"error: failed to parse lock file at: /mnt/c/Users/koosh/PhenoCompose/Cargo.lock  Caused by:   lock file version 4 requires `-Znext-lockfile-bump` "},{"name":"test-unit","status":"fail","score":0,"max":3,"detail":"error: failed to parse lock file at: /mnt/c/Users/koosh/PhenoCompose/Cargo.lock  Caused by:   lock file version 4 requires `-Znext-lockfile-bump` "},{"name":"fmt","status":"fail","score":0,"max":2,"detail":"Diff in /mnt/c/Users/koosh/PhenoCompose/bindings/rust-ffi/src/lib.rs:251:              Self::StartFailed => write!(f, "NVMS instance start failed"),              Self::StopFailed => write!(f, "NVMS instance stop failed"),              Self::DestroyFailed => write!(f, "NVMS instance destroy failed"), [31m-            Self::AppleSiliconNotSupported => write!(f, "Apple Silicon not supported by this build"), "},{"name":"clippy","status":"fail","score":0,"max":2,"detail":"error: failed to parse lock file at: /mnt/c/Users/koosh/PhenoCompose/Cargo.lock  Caused by:   lock file version 4 requires `-Znext-lockfile-bump` "},{"name":"deny","status":"skipped","score":0,"max":1,"detail":"skipped in fast mode"},{"name":"doc","status":"fail","score":0,"max":1,"detail":"error: failed to parse lock file at: /mnt/c/Users/koosh/PhenoCompose/Cargo.lock  Caused by:   lock file version 4 requires `-Znext-lockfile-bump` "},{"name":"test-snapshot","status":"skipped","score":0,"max":1,"detail":"skipped in fast mode"},{"name":"test-fuzz","status":"skipped","score":0,"max":1,"detail":"skipped in fast mode"},{"name":"coverage","status":"skipped","score":0,"max":2,"detail":"skipped in fast mode"},{"name":"audit","status":"skipped","score":0,"max":1,"detail":"skipped in fast mode"},{"name":"bench","status":"skipped","score":0,"max":1,"detail":"skipped in fast mode"}
+  ],
+  "timestamp": "2026-06-25T20:06:13Z"
+}
