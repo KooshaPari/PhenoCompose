@@ -10,6 +10,8 @@ members = [
     "pheno-compose-driver",  # pheno-compose-driver
     "crates/pheno-config",   # pheno-config
     "windows/scm-service",   # pheno-scm-service (PR-B scaffold; L123/L130)
+    "mobile/macos-shell",    # pheno-macos-shell (PR-A scaffold; L121/L130)
+    "mobile/android-monitor",# pheno-android-monitor (PR-A scaffold; L125/L130)
 ]
 
 [workspace.package]
