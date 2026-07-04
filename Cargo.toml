@@ -9,6 +9,7 @@ members = [
     "bindings/rust-ffi",     # nvms-ffi
     "pheno-compose-driver",  # pheno-compose-driver
     "crates/pheno-config",   # pheno-config
+    "windows/scm-service",   # pheno-scm-service (PR-B scaffold; L123/L130)
 ]
 
 [workspace.package]
