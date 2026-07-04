@@ -1,0 +1,27 @@
+[package]
+name = "pheno-android-monitor"
+version = "0.1.0"
+edition = "2021"
+description = "PhenoCompose Android deploy-monitor companion scaffold — JNI/ndk bridge + foreground-service hooks. PILLAR-TAXONOMY-v2 L125/L130."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/KooshaPari/PhenoCompose"
+authors = ["kooshapari"]
+publish = false
+
+[features]
+# The `android` feature pulls in `ndk`/`ndk-sys` and gates the JNI surface.
+# Default builds on linux/Windows expose only the stub API so
+# `cargo check --workspace` succeeds without an Android NDK install.
+default = []
+android = ["dep:ndk", "dep:ndk-sys"]
+
+[target.'cfg(target_os = "android")'.dependencies]
+ndk = { version = "0.8", optional = true }
+ndk-sys = { version = "0.5", optional = true }
+
+[dependencies]
+thiserror = { workspace = true }
+
+[lib]
+name = "pheno_android_monitor"
+crate-type = ["lib", "staticlib", "cdylib"]
