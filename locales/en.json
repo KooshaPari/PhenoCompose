@@ -1,0 +1,16 @@
+{
+  "app.name": "PhenoCompose",
+  "app.tagline": "Phenotype deployment composition.",
+  "deploy.idle": "Idle",
+  "deploy.deploying": "Deploying...",
+  "deploy.running": "Running",
+  "deploy.failed": "Failed",
+  "menu.file": "File",
+  "menu.deploy": "Deploy",
+  "menu.help": "Help",
+  "error.network": "Network unavailable.",
+  "error.permission": "Permission denied.",
+  "error.not_found": "Resource not found.",
+  "ok.deployed": "Deployed successfully.",
+  "ok.connected": "Connected."
+}
