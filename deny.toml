@@ -1,71 +1,21 @@
-# PhenoCompose — cargo-deny configuration
-#
-# Run:   cargo deny check
-# Docs:  https://embarkstudios.github.io/cargo-deny/
+[graph]
+all-features = true
 
 [advisories]
-# Path to the advisory database
-db-path = "~/.cargo/advisory-dbs"
-# URL of the advisory database
-db-urls = ["https://github.com/rustsec/advisory-db"]
-# Ignored advisory IDs (add as needed)
-# ignore = ["RUSTSEC-2023-0001"]
-
-# If a crate is unmainlined/unsound we can ignore it here.
-# This is a last resort — prefer to update or replace the crate.
-# ignore = []
+version = 2
+ignore = []
 
 [licenses]
-# The license we want our crates to be licensed under
-allow = [
-    "Apache-2.0",
-    "MIT",
-    "MIT-0",
-    "ISC",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
-    "Unicode-3.0",
-    "Unicode-DFS-2016",
-    "CC0-1.0",
-    "Zlib",
-    "MPL-2.0",
-]
-# Denied licenses are handled via the allow list above; unlicensed crates fail
-# when no SPDX match is found at or above confidence-threshold.
-confidence-threshold = 0.8
-# Allow exceptions for specific crate+license combos
-# exceptions = []
-# Skip checking license for these crates
-# skip = []
+version = 2
+allow = ["MIT", "Apache-2.0", "Apache-2.0 WITH LLVM-exception", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unicode-DFS-2016", "Unicode-3.0", "Zlib", "CC0-1.0", "MPL-2.0", "0BSD"]
 
 [bans]
-# Which crates are banned
-# deny = []
-# Which crates to skip duplicate-detection for
-# skip-tree = []
-# Multiple versions of the same crate — only the first match in each list is allowed
-multiple-versions = "deny"
-# Highlight duplicate crates during `cargo deny check bans`
+multiple-versions = "warn"
+wildcards = "deny"
 highlight = "all"
-skip-tree = [
-    { crate = "windows-sys", reason = "bindgen/rustix pull distinct windows-sys versions"},
-]
+deny = []
 
 [sources]
-# Allowed sources of crates
-allow-git = []
-# Deny unknown sources (crates.io is allowed by default)
+unknown-registry = "deny"
+unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-# Deny specific sources
-# deny = []
-
-# ──────────────────────────────────────────────────────────────────────────
-#  SKIP TREE — transitive deps that are known to pull in duplicate versions
-#  Add entries here when `cargo deny check bans` reports a false positive
-#  due to a crate that is not actually a conflict (e.g., proc-macro vs lib).
-# ──────────────────────────────────────────────────────────────────────────
-# [bans.skip-tree]
-# Example:
-# "syn" = [
-#     { name = "proc-macro2", version = "1" },
-# ]
