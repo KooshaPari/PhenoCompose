@@ -14,6 +14,10 @@ members = [
     "windows/scm-service",   # pheno-scm-service (PR-B scaffold; L123/L130)
     "mobile/macos-shell",    # pheno-macos-shell (PR-A scaffold; L121/L130)
     "mobile/android-monitor",# pheno-android-monitor (PR-A scaffold; L125/L130)
+    "tools/update",          # P2 lift (L34)
+    "tools/release-notes",   # P2 lift (L23)
+    "crates/i18n",           # P2 lift (L17)
+    "tools/fuzz",            # P2 lift (L22)
 ]
 exclude = [
     "crates/port-composer",
