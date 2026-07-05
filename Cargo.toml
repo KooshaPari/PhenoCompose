@@ -8,10 +8,19 @@ resolver = "2"
 members = [
     "bindings/rust-ffi",     # nvms-ffi
     "pheno-compose-driver",  # pheno-compose-driver
+    "crates/apple-container-adapter",
     "crates/pheno-config",   # pheno-config
+    "crates/wslc-adapter",
     "windows/scm-service",   # pheno-scm-service (PR-B scaffold; L123/L130)
     "mobile/macos-shell",    # pheno-macos-shell (PR-A scaffold; L121/L130)
     "mobile/android-monitor",# pheno-android-monitor (PR-A scaffold; L125/L130)
+]
+exclude = [
+    "crates/port-composer",
+    "crates/port-publisher",
+    "crates/port-runtime",
+    "crates/port-secret",
+    "crates/port-types",
 ]
 
 [workspace.package]
