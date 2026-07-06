@@ -40,6 +40,7 @@
 #![deny(missing_docs)]
 
 use phenocompose_port_secret::{SecretStore, SecretStoreError};
+use crate::error::FileSecretStoreError;
 use phenocompose_port_types::{Secret, SecretRef};
 use std::collections::BTreeMap;
 use std::fs;
@@ -48,27 +49,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use thiserror::Error;
 
-/// Errors specific to the file-backed secret adapter that
-/// don't fit cleanly into [`SecretStoreError`]. The
-/// `From<FileSecretStoreError> for SecretStoreError`
-/// conversion collapses everything into the port-trait error
-/// taxonomy at the adapter boundary.
-#[derive(Debug, Error)]
-pub enum FileSecretStoreError {
-    /// The on-disk JSON could not be parsed.
-    #[error("invalid secrets file: {0}")]
-    Parse(String),
-    /// The on-disk JSON could not be written.
-    #[error("secrets file write: {0}")]
-    Write(String),
-    /// The on-disk JSON could not be read.
-    #[error("secrets file read: {0}")]
-    Read(String),
-    /// The on-disk JSON could not be renamed into place
-    /// (atomic-write failure).
-    #[error("secrets file rename: {0}")]
-    Rename(String),
-}
+pub mod error;
+
 
 impl From<FileSecretStoreError> for SecretStoreError {
     fn from(e: FileSecretStoreError) -> Self {
@@ -251,7 +233,9 @@ impl SecretStore for FileSecretStore {
 }
 
 #[cfg(test)]
+
 mod tests {
+    use super::*;
     use super::*;
     use phenocompose_port_types::{Secret, SecretRef};
     use tempfile::tempdir;
