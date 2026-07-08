@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! `phenocompose-secret-file-adapter::error` — `FileSecretStoreError`.
 
+use phenocompose_port_secret::SecretStoreError;
 use thiserror::Error;
 
 
@@ -24,4 +25,16 @@ pub enum FileSecretStoreError {
     /// (atomic-write failure).
     #[error("secrets file rename: {0}")]
     Rename(String),
+}
+
+
+impl From<FileSecretStoreError> for SecretStoreError {
+    fn from(e: FileSecretStoreError) -> Self {
+        match e {
+            FileSecretStoreError::Parse(s)
+            | FileSecretStoreError::Read(s)
+            | FileSecretStoreError::Write(s)
+            | FileSecretStoreError::Rename(s) => SecretStoreError::transport(s),
+        }
+    }
 }
