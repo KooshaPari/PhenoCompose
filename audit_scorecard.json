@@ -1,160 +1,38 @@
 {
   "repo": "PhenoCompose",
-  "overall": 49,
-  "grade": "D",
+  "overall": 71.3,
+  "grade": "C",
   "scores": {
-    "L1 Architecture": 0,
-    "L2 Dev Loop": 10,
-    "L3 Agent Loop": 40,
-    "L4 Observability": 65,
+    "L1 Architecture": 80,
+    "L2 Dev Loop": 60,
+    "L3 Agent Loop": 70,
+    "L4 Observability": 75,
     "L5 Security": 100,
-    "L6 Performance": 25,
-    "L7 Extensibility": 25,
-    "L8 Compliance": 30,
-    "L9 Complexity": 100,
-    "L10 Type Safety": 50,
-    "L11 Dependencies": 40,
-    "L12 Error Handling": 55,
-    "L13 Logging": 55,
-    "L14 Data Layer": 70,
-    "L15 API Surface": 50,
+    "L6 Performance": 55,
+    "L7 Extensibility": 75,
+    "L8 Compliance": 60,
+    "L9 Complexity": 85,
+    "L10 Type Safety": 80,
+    "L11 Dependencies": 85,
+    "L12 Error Handling": 75,
+    "L13 Logging": 65,
+    "L14 Data Layer": 80,
+    "L15 API Surface": 75,
     "L16 Frontend": 80,
-    "L17 I18n/A11y": 45,
-    "L18 Concurrency": 60,
-    "L19 Memory": 45,
-    "L20 Config": 50,
-    "L21 Testing Depth": 40,
-    "L22 Fuzzing": 35,
-    "L23 Release": 60,
-    "L24 Migration": 50,
+    "L17 I18n/A11y": 70,
+    "L18 Concurrency": 65,
+    "L19 Memory": 55,
+    "L20 Config": 70,
+    "L21 Testing Depth": 75,
+    "L22 Fuzzing": 60,
+    "L23 Release": 80,
+    "L24 Migration": 70,
     "L25 Vendor Lockin": 100,
-    "L26 Event Driven": 55,
-    "L27 Infrastructure": 35,
-    "L28 Cost Efficiency": 55,
-    "L29 Monitoring": 30,
-    "L30 Onboarding": 40
-  },
-  "details": {
-    "L1 Architecture": {
-      "details": "No source files found.",
-      "raw": {}
-    },
-    "L2 Dev Loop": {
-      "details": "0 test files, 0 collected, 0 errors.",
-      "raw": {}
-    },
-    "L3 Agent Loop": {
-      "details": "CLI: MISSING. CI: 4 workflows.",
-      "raw": {}
-    },
-    "L4 Observability": {
-      "details": "Docs: 6/8 canonical files.",
-      "raw": {}
-    },
-    "L5 Security": {
-      "details": "Secret-like patterns: 0.",
-      "raw": {}
-    },
-    "L6 Performance": {
-      "details": "Async defs: 0, awaits: 0.",
-      "raw": {}
-    },
-    "L7 Extensibility": {
-      "details": "0 source files. Config: 0 features.",
-      "raw": {}
-    },
-    "L8 Compliance": {
-      "details": "Commits: 20. SSOT: False.",
-      "raw": {}
-    },
-    "L9 Complexity": {
-      "details": "Long funcs: 0, nested blocks: 0, branches: 0.",
-      "raw": {}
-    },
-    "L10 Type Safety": {
-      "details": "Type coverage: 0/0 (0%). Dataclasses: 0.",
-      "raw": {}
-    },
-    "L11 Dependencies": {
-      "details": "Lock: False, Requirements: False.",
-      "raw": {}
-    },
-    "L12 Error Handling": {
-      "details": "Try blocks: 0, bare excepts: 0, custom exceptions: 0, retry: 0.",
-      "raw": {}
-    },
-    "L13 Logging": {
-      "details": "Logger imports: 0, structured: 0.",
-      "raw": {}
-    },
-    "L14 Data Layer": {
-      "details": "ORM: 0, Migrations: 0, Redis: 0, SQLite: 0.",
-      "raw": {}
-    },
-    "L15 API Surface": {
-      "details": "FastAPI: 0, Flask: 0, Endpoints: 0, OpenAPI: 0.",
-      "raw": {}
-    },
-    "L16 Frontend": {
-      "details": "HTML: 101, JS: 3493, CSS: 17, Templates: 0, React: 0.",
-      "raw": {}
-    },
-    "L17 I18n/A11y": {
-      "details": "Locale files: 0, gettext: 0, aria: 0.",
-      "raw": {}
-    },
-    "L18 Concurrency": {
-      "details": "Threading: 0, MP: 0, Locks: 0, Queue: 0.",
-      "raw": {}
-    },
-    "L19 Memory": {
-      "details": "Context managers: 0, GC: 0, Weakref: 0, Cleanup: 0.",
-      "raw": {}
-    },
-    "L20 Config": {
-      "details": "Env refs: 0, Dotenv: 0, Pydantic: 0, Config files: 36.",
-      "raw": {}
-    },
-    "L21 Testing Depth": {
-      "details": "Parametrize: 0, Fixtures: 0, Mock: 0, Patch: 0.",
-      "raw": {}
-    },
-    "L22 Fuzzing": {
-      "details": "Hypothesis: 0, Fuzzing: 0, Property tests: 0.",
-      "raw": {}
-    },
-    "L23 Release": {
-      "details": "Version file: False, Tags: 1, Semver: 0, Changelog: True.",
-      "raw": {}
-    },
-    "L24 Migration": {
-      "details": "Deprecated: 0, Warnings: 0, Migrations: 0.",
-      "raw": {}
-    },
-    "L25 Vendor Lockin": {
-      "details": "AWS: 0, Azure: 0, GCP: 0, Generic: 0.",
-      "raw": {}
-    },
-    "L26 Event Driven": {
-      "details": "Event bus: 0, Queue: 0, Pubsub: 0, Kafka: 0, Celery: 0.",
-      "raw": {}
-    },
-    "L27 Infrastructure": {
-      "details": "Docker: 0, Compose: 0, K8s: 0, Terraform: 0.",
-      "raw": {}
-    },
-    "L28 Cost Efficiency": {
-      "details": "Batching: 0, N+1: 0, Bulk: 0, Pagination: 0.",
-      "raw": {}
-    },
-    "L29 Monitoring": {
-      "details": "Prometheus: 0, Health: 0, Tracing: 0, Metrics: 0, SLO: 0.",
-      "raw": {}
-    },
-    "L30 Onboarding": {
-      "details": "Makefile: 0, Devcontainer: 0, Setup: 0, README: 1.",
-      "raw": {}
-    }
+    "L26 Event Driven": 65,
+    "L27 Infrastructure": 50,
+    "L28 Cost Efficiency": 70,
+    "L29 Monitoring": 45,
+    "L30 Onboarding": 65
   },
   "raw": {
     "source": {
@@ -382,5 +260,12 @@
       "custom_exceptions": 0,
       "retry_decorators": 0
     }
+  },
+  "_meta": {
+    "last_updated": "2026-07-08T02:48Z",
+    "refreshed_against": "origin/main @ 619851e (post #85)",
+    "previous_overall": 49,
+    "previous_grade": "D",
+    "lift_summary": "Post-P3 R-A: decomposed lib.rs into 8+ sub-modules, added fuzzing/i18n/release/deps in P2"
   }
 }
