@@ -31,130 +31,12 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use thiserror::Error;
 
-/// The SecretStore port trait — `Send + Sync` + no generics + no
-/// associated types ⇒ object-safe ⇒ storable as
-/// `Box<dyn SecretStore>`.
-pub trait SecretStore: Send + Sync {
-    /// Look up the [`Secret`] at the given ref.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`SecretStoreError::Validation`] for inputs the
-    /// adapter considers malformed (e.g. an empty name), or
-    /// [`SecretStoreError::NotFound`] when no secret exists at
-    /// the ref. The adapter MAY also return
-    /// [`SecretStoreError::Transport`] for backend failures
-    /// (disk error, vault unavailable, etc.).
-    fn get(&self, r#ref: &SecretRef) -> Result<Secret, SecretStoreError>;
+pub mod store;
+pub mod error;
 
-    /// Write the [`Secret`] to the store, returning the stored
-    /// value with its (possibly bumped) `version`.
-    ///
-    /// Implementations MUST be atomic: a `put` either succeeds
-    /// and the next `get` returns the new value, or fails and
-    /// the store is unchanged. Implementations MUST bump
-    /// [`Secret::version`] monotonically per ref so callers can
-    /// detect concurrent updates.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`SecretStoreError::Validation`] for inputs the
-    /// adapter considers malformed, or
-    /// [`SecretStoreError::Transport`] for backend failures.
-    fn put(&self, secret: &Secret) -> Result<Secret, SecretStoreError>;
-
-    /// Remove the secret at the given ref.
-    ///
-    /// Idempotent: deleting a ref that does not exist is a
-    /// no-op and returns `Ok(())`. Callers that need to
-    /// distinguish "deleted" from "never existed" should call
-    /// [`SecretStore::get`] first.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`SecretStoreError::Transport`] for backend
-    /// failures. Validation errors are not returned here — the
-    /// ref shape is checked by the adapter but the existence
-    /// of the value is not required.
-    fn delete(&self, r#ref: &SecretRef) -> Result<(), SecretStoreError>;
-
-    /// List every [`SecretRef`] in the given namespace. An
-    /// empty namespace means "the default scope" (adapters
-    /// that don't model namespaces treat it the same as
-    /// listing everything).
-    ///
-    /// # Errors
-    ///
-    /// Returns [`SecretStoreError::Transport`] for backend
-    /// failures.
-    fn list(&self, namespace: &str) -> Result<Vec<SecretRef>, SecretStoreError>;
-
-    /// Optional human-readable adapter name (e.g. `"memory"`,
-    /// `"file"`, `"vault"`, `"noop"`). Defaults to `"unknown"`.
-    fn name(&self) -> &str {
-        "unknown"
-    }
-}
-
-/// Errors a [`SecretStore`] can return.
-///
-/// Wraps the shared [`PortError`] taxonomy with adapter-local
-/// constructors so the `?` operator works cleanly from the
-/// adapter implementation without manual re-wrapping.
-#[derive(Debug, Clone, PartialEq, Eq, Error)]
-#[non_exhaustive]
-pub enum SecretStoreError {
-    /// The input failed validation before any backend work
-    /// happened (e.g. an empty secret name).
-    #[error("secret validation: {0}")]
-    Validation(String),
-    /// The request referred to a ref the adapter could not
-    /// find (returned by [`SecretStore::get`] only —
-    /// [`SecretStore::delete`] treats unknown refs as a
-    /// no-op).
-    #[error("secret not found: {0}")]
-    NotFound(String),
-    /// The underlying transport or backend failed (disk error,
-    /// vault unreachable, ...).
-    #[error("secret transport: {0}")]
-    Transport(String),
-}
-
-impl SecretStoreError {
-    /// Convenience constructor for [`SecretStoreError::Validation`].
-    pub fn validation(msg: impl Into<String>) -> Self {
-        Self::Validation(msg.into())
-    }
-
-    /// Convenience constructor for [`SecretStoreError::NotFound`].
-    pub fn not_found(msg: impl Into<String>) -> Self {
-        Self::NotFound(msg.into())
-    }
-
-    /// Convenience constructor for [`SecretStoreError::Transport`].
-    pub fn transport(msg: impl Into<String>) -> Self {
-        Self::Transport(msg.into())
-    }
-}
-
-impl From<PortError> for SecretStoreError {
-    fn from(e: PortError) -> Self {
-        match e {
-            PortError::Validation(s) | PortError::Unsupported(s) => Self::Validation(s),
-            PortError::NotFound(s) => Self::NotFound(s),
-            PortError::Transport(s) => Self::Transport(s),
-        }
-    }
-}
-
-fn validate_ref(r#ref: &SecretRef) -> Result<(), SecretStoreError> {
-    if r#ref.name.is_empty() {
-        return Err(SecretStoreError::validation(
-            "secret ref name is empty",
-        ));
-    }
-    Ok(())
-}
+pub use store::SecretStore;
+pub use error::SecretStoreError;
+use crate::error::validate_ref;
 
 /// A trivial [`SecretStore`] that always returns
 /// "not found" / "empty list" — used as a default for adapters
@@ -197,6 +79,7 @@ impl SecretStore for NoopSecretStore {
         "noop"
     }
 }
+
 
 /// An in-memory [`SecretStore`] backed by a `HashMap` under a
 /// `Mutex`. Useful for tests and as a default in the DI
@@ -291,7 +174,10 @@ impl SecretStore for InMemorySecretStore {
 }
 
 #[cfg(test)]
+
+
 mod tests {
+    use super::*;
     use super::*;
     use phenocompose_port_types::{Secret, SecretRef};
 
