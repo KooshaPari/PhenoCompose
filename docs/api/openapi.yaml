@@ -1,0 +1,114 @@
+openapi: 3.1.0
+info:
+  title: PhenoCompose API
+  version: 0.1.0
+  description: |
+    Public HTTP API surface for PhenoCompose adapters and dispatcher.
+    Mirror of `crates/agentctl` JSON schema; all endpoints accept
+    `application/json` and return either 200/JSON or 4xx/JSON-error.
+
+servers:
+  - url: https://api.phenotype.local/v1
+    description: Production
+  - url: http://localhost:20128/v1
+    description: Local daemon
+
+paths:
+  /manifest:
+    post:
+      summary: Compose a manifest
+      operationId: manifestCompose
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ComposeRequest'
+      responses:
+        '200':
+          description: Composed manifest
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manifest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /secret:
+    get:
+      summary: List secrets in a namespace
+      operationId: secretList
+      parameters:
+        - in: query
+          name: namespace
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of secret refs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SecretRef' }
+    post:
+      summary: Create or update a secret
+      operationId: secretPut
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Secret' }
+      responses:
+        '200':
+          description: Stored secret
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Secret' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  schemas:
+    Manifest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        artifactName: { type: string, nullable: true }
+        tags:
+          type: array
+          items: { type: string }
+
+    ComposeRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        tags: { type: object, additionalProperties: { type: string } }
+
+    Secret:
+      type: object
+      required: [ref, value]
+      properties:
+        ref: { $ref: '#/components/schemas/SecretRef' }
+        value: { type: string }
+        version: { type: integer, minimum: 0 }
+
+    SecretRef:
+      type: object
+      required: [name]
+      properties:
+        namespace: { type: string }
+        name: { type: string }
+
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string }
+              code: { type: string }

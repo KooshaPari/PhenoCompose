@@ -1,0 +1,13 @@
+# release-plz configuration (https://release-plz.dev).
+# Run: cargo install release-plz && release-plz release
+[workspace]
+changelog_update = true
+git_release_enable = true
+git_release_draft = false
+git_release_pre_release = false
+allow_dirty = false
+publish = false  # Don't auto-publish to crates.io
+
+[[package]]
+name = "phenocompose-port-types"
+changelog_path = "crates/port-types/CHANGELOG.md"
