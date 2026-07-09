@@ -18,6 +18,8 @@ members = [
     "tools/release-notes",   # P2 lift (L23)
     "crates/i18n",           # P2 lift (L17)
     "crates/agentctl",
+    "crates/plugin-api",
+    "crates/plugin-sample",
     "tools/fuzz",            # P2 lift (L22)
     "benches",             # P5 lift (L6/L19) criterion benchmarks
 ]
