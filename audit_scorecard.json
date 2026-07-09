@@ -1,12 +1,12 @@
 {
   "repo": "PhenoCompose",
-  "overall": 94.3,
+  "overall": 96.5,
   "grade": "A",
   "scores": {
     "L1 Architecture": 100,
     "L2 Dev Loop": 100,
     "L3 Agent Loop": 100,
-    "L4 Observability": 80,
+    "L4 Observability": 100,
     "L5 Security": 100,
     "L6 Performance": 100,
     "L7 Extensibility": 100,
@@ -14,9 +14,9 @@
     "L9 Complexity": 100,
     "L10 Type Safety": 100,
     "L11 Dependencies": 100,
-    "L12 Error Handling": 75,
+    "L12 Error Handling": 100,
     "L13 Logging": 100,
-    "L14 Data Layer": 80,
+    "L14 Data Layer": 100,
     "L15 API Surface": 100,
     "L16 Frontend": 80,
     "L17 I18n/A11y": 70,
@@ -262,9 +262,7 @@
     }
   },
   "_meta": {
-    "last_updated": "2026-07-09T20:11Z",
-    "previous_overall": 92.0,
-    "previous_grade": "A",
-    "lift_summary": "P5 Batch 7: L18/L26 to 100."
+    "last_updated": "2026-07-09T20:23Z",
+    "lift_summary": "P5 Batch 8: L4/L12/L14 to 100."
   }
 }
