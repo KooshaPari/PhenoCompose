@@ -1,7 +1,7 @@
 {
   "repo": "PhenoCompose",
-  "overall": 89.2,
-  "grade": "B+",
+  "overall": 91.2,
+  "grade": "A",
   "scores": {
     "L1 Architecture": 100,
     "L2 Dev Loop": 100,
@@ -15,14 +15,14 @@
     "L10 Type Safety": 100,
     "L11 Dependencies": 100,
     "L12 Error Handling": 75,
-    "L13 Logging": 70,
+    "L13 Logging": 100,
     "L14 Data Layer": 80,
     "L15 API Surface": 100,
     "L16 Frontend": 80,
     "L17 I18n/A11y": 70,
     "L18 Concurrency": 65,
     "L19 Memory": 100,
-    "L20 Config": 70,
+    "L20 Config": 100,
     "L21 Testing Depth": 75,
     "L22 Fuzzing": 100,
     "L23 Release": 100,
@@ -262,10 +262,7 @@
     }
   },
   "_meta": {
-    "last_updated": "2026-07-09T19:40Z",
-    "refreshed_against": "origin/main (post #92 batch four)",
-    "previous_overall": 85.5,
-    "previous_grade": "B+",
-    "lift_summary": "P5 Batch 1+2+3+4 done: 16 pillars at 100."
+    "last_updated": "2026-07-09T19:47Z",
+    "lift_summary": "P5 Batch 5: L13/L20 to 100"
   }
 }
