@@ -1,6 +1,6 @@
 {
   "repo": "PhenoCompose",
-  "overall": 91.2,
+  "overall": 92.0,
   "grade": "A",
   "scores": {
     "L1 Architecture": 100,
@@ -9,7 +9,7 @@
     "L4 Observability": 80,
     "L5 Security": 100,
     "L6 Performance": 100,
-    "L7 Extensibility": 75,
+    "L7 Extensibility": 100,
     "L8 Compliance": 100,
     "L9 Complexity": 100,
     "L10 Type Safety": 100,
@@ -262,7 +262,9 @@
     }
   },
   "_meta": {
-    "last_updated": "2026-07-09T19:47Z",
-    "lift_summary": "P5 Batch 5: L13/L20 to 100"
+    "last_updated": "2026-07-09T20:08Z",
+    "previous_overall": 91.2,
+    "previous_grade": "A",
+    "lift_summary": "P5 Batch 6: L7 Extensibility to 100. plugin-api + plugin-sample crates."
   }
 }
