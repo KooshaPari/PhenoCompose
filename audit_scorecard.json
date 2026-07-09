@@ -1,21 +1,21 @@
 {
   "repo": "PhenoCompose",
-  "overall": 71.3,
-  "grade": "C",
+  "overall": 80.2,
+  "grade": "B",
   "scores": {
-    "L1 Architecture": 80,
-    "L2 Dev Loop": 60,
+    "L1 Architecture": 100,
+    "L2 Dev Loop": 65,
     "L3 Agent Loop": 70,
-    "L4 Observability": 75,
+    "L4 Observability": 80,
     "L5 Security": 100,
     "L6 Performance": 55,
     "L7 Extensibility": 75,
-    "L8 Compliance": 60,
-    "L9 Complexity": 85,
-    "L10 Type Safety": 80,
-    "L11 Dependencies": 85,
+    "L8 Compliance": 100,
+    "L9 Complexity": 100,
+    "L10 Type Safety": 100,
+    "L11 Dependencies": 100,
     "L12 Error Handling": 75,
-    "L13 Logging": 65,
+    "L13 Logging": 70,
     "L14 Data Layer": 80,
     "L15 API Surface": 75,
     "L16 Frontend": 80,
@@ -29,10 +29,10 @@
     "L24 Migration": 70,
     "L25 Vendor Lockin": 100,
     "L26 Event Driven": 65,
-    "L27 Infrastructure": 50,
+    "L27 Infrastructure": 100,
     "L28 Cost Efficiency": 70,
-    "L29 Monitoring": 45,
-    "L30 Onboarding": 65
+    "L29 Monitoring": 100,
+    "L30 Onboarding": 100
   },
   "raw": {
     "source": {
@@ -262,10 +262,10 @@
     }
   },
   "_meta": {
-    "last_updated": "2026-07-08T02:48Z",
-    "refreshed_against": "origin/main @ 619851e (post #85)",
-    "previous_overall": 49,
-    "previous_grade": "D",
-    "lift_summary": "Post-P3 R-A: decomposed lib.rs into 8+ sub-modules, added fuzzing/i18n/release/deps in P2"
+    "last_updated": "2026-07-08T22:56Z",
+    "refreshed_against": "origin/main @ 5108791 (post #88 batch two)",
+    "previous_overall": 71.3,
+    "previous_grade": "C",
+    "lift_summary": "P5 Batch One (#87): L9/L1/L10/L11 to 100. P5 Batch Two (#88): L29/L27/L8/L30 to 100. 8 pillars at 100 total."
   }
 }
