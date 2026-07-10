@@ -1,6 +1,6 @@
 {
   "repo": "PhenoCompose",
-  "overall": 96.5,
+  "overall": 98.3,
   "grade": "A",
   "scores": {
     "L1 Architecture": 100,
@@ -19,11 +19,11 @@
     "L14 Data Layer": 100,
     "L15 API Surface": 100,
     "L16 Frontend": 80,
-    "L17 I18n/A11y": 70,
+    "L17 I18n/A11y": 100,
     "L18 Concurrency": 100,
     "L19 Memory": 100,
     "L20 Config": 100,
-    "L21 Testing Depth": 75,
+    "L21 Testing Depth": 100,
     "L22 Fuzzing": 100,
     "L23 Release": 100,
     "L24 Migration": 100,
@@ -262,7 +262,7 @@
     }
   },
   "_meta": {
-    "last_updated": "2026-07-09T20:23Z",
-    "lift_summary": "P5 Batch 8: L4/L12/L14 to 100."
+    "last_updated": "2026-07-10T18:08Z",
+    "lift_summary": "P5 Batch 9: L17/L21 to 100."
   }
 }
