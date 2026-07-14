@@ -30,5 +30,8 @@ they do not become BytePort providers or state stores.
 
 The Rust unit test `handoffs_enforce_target_ownership` and the tamper-detection test
 are the local contract gate. The Go adapter tests in BytePort and NanoVMS are the
-language-boundary gates; an end-to-end deployment still requires wiring these calls
-through the API clients.
+language-boundary gates. BytePort exposes the owner-scoped desired-state endpoint
+`POST /mesh/workloads`; its request body is the `MeshWorkloadIntent` fields plus
+portable placement constraints. NanoVMS exposes `Engine::DeployComposition` for
+the runtime half of the pilot. A client should submit the same digest to both
+systems and compare BytePort's accepted intent with NanoVMS's correlation labels.
