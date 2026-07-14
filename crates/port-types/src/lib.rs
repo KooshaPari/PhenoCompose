@@ -57,6 +57,12 @@ pub use compose::{ComposedArtifact, Manifest, PublishReceipt, PublishTarget};
 pub use error::PortError;
 pub use runtime::{ContainerId, ContainerStatus, ImageRef};
 pub use secret::{Secret, SecretRef};
+/// Deterministic, target-neutral composition model and renderers.
+pub mod composition;
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 mod tests {
     use super::*;
