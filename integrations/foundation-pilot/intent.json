@@ -1,0 +1,12 @@
+{
+  "name": "foundation-demo",
+  "composition_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "artifact_ref": "oci://registry.example/foundation-demo@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "execution_backend": "podman",
+  "placement": {
+    "region": "local",
+    "node_pool": "containers",
+    "labels": {"environment": "pilot"},
+    "constraints": {"arch": "amd64"}
+  }
+}
