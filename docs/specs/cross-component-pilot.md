@@ -1,0 +1,29 @@
+# Cross-component foundation pilot
+
+This pilot proves the boundary between PhenoCompose, BytePort, and NanoVMS without
+moving cloud state into the composition or execution layers.
+
+## Flow
+
+1. Build a `Composition` with a DNS-compatible name and at least one service.
+2. Render a declared `Target::Docker` or `Target::Kubernetes` plan.
+3. Call `RenderedPlan::verify_digest()` before handing the plan to BytePort.
+4. Pass `RenderedPlan::byteport_handoff()` to BytePort as `composition_digest` and
+   `artifact_ref`; BytePort validates the digest and stores deployment ownership.
+5. Render a declared `Target::NanoVms` plan separately.
+6. Call `RenderedPlan::nanovms_handoff()` and pass its composition name and digest
+   to NanoVMS `DeployWithPlan`; NanoVMS validates the immutable identity and records
+   it on the sandbox.
+
+## Invariants
+
+- BytePort receives rendered artifact metadata, never NanoVMS credentials or runtime
+  state.
+- NanoVMS receives an immutable composition identity, never cloud provider state.
+- A modified plan fails digest verification before either adapter is called.
+- Target-specific handoffs reject the wrong renderer output.
+
+The Rust unit test `handoffs_enforce_target_ownership` and the tamper-detection test
+are the local contract gate. The Go adapter tests in BytePort and NanoVMS are the
+language-boundary gates; an end-to-end deployment still requires wiring these calls
+through the API clients.
