@@ -79,6 +79,34 @@ pub struct RenderedPlan { /// Target used.
     pub content_type: &'static str, /// Rendered bytes as UTF-8.
     pub content: String }
 
+/// Cloud-control-plane handoff containing only validated artifact metadata.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BytePortHandoff { /// Composition name.
+    pub composition_name: String, /// Renderer target.
+    pub target: Target, /// Digest used for apply-time verification.
+    pub digest: String, /// Rendered artifact bytes.
+    pub content: String }
+
+/// Execution-engine handoff containing no cloud credentials or state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NanoVmsHandoff { /// Composition name.
+    pub composition_name: String, /// Immutable plan digest.
+    pub digest: String, /// NanoVMS plan bytes.
+    pub content: String }
+
+impl RenderedPlan {
+    /// Convert a non-NanoVMS plan into a BytePort apply handoff.
+    pub fn byteport_handoff(&self) -> Result<BytePortHandoff, CompositionError> {
+        if self.target == Target::NanoVms { return Err(CompositionError::Invalid("NanoVMS plans must use the execution handoff".into())); }
+        Ok(BytePortHandoff { composition_name: self.composition_name.clone(), target: self.target, digest: self.digest.clone(), content: self.content.clone() })
+    }
+    /// Convert a NanoVMS plan into an execution handoff.
+    pub fn nanovms_handoff(&self) -> Result<NanoVmsHandoff, CompositionError> {
+        if self.target != Target::NanoVms { return Err(CompositionError::Invalid("only NanoVMS plans can use the execution handoff".into())); }
+        Ok(NanoVmsHandoff { composition_name: self.composition_name.clone(), digest: self.digest.clone(), content: self.content.clone() })
+    }
+}
+
 /// Composition validation or rendering error.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum CompositionError { /// Invalid field or relationship.
@@ -134,4 +162,4 @@ fn render_text(c: &Composition, target: Target) -> String {
 }
 
 #[cfg(test)]
-mod tests { use super::*; fn sample() -> Composition { let mut services=BTreeMap::new(); services.insert("web".into(), Service { image:Some("nginx:1".into()), command:None, environment:BTreeMap::new(), ports:vec![Port{name:"http".into(),container_port:80,protocol:Protocol::Tcp}], health:None, resources:Resources::default(), depends_on:BTreeSet::new() }); Composition{name:"demo".into(),services,targets:[Target::Docker,Target::Kubernetes,Target::Process,Target::NanoVms].into_iter().collect()} } #[test] fn all_targets_render_and_digest_is_stable(){ let c=sample(); for t in c.targets.clone(){ let a=c.render(t).unwrap(); let b=c.render(t).unwrap(); assert_eq!(a,b); assert!(a.digest.starts_with("sha256:")); } } #[test] fn detects_unknown_dependency(){ let mut c=sample(); c.services.get_mut("web").unwrap().depends_on.insert("db".into()); assert!(c.validate().is_err()); } }
+mod tests { use super::*; fn sample() -> Composition { let mut services=BTreeMap::new(); services.insert("web".into(), Service { image:Some("nginx:1".into()), command:None, environment:BTreeMap::new(), ports:vec![Port{name:"http".into(),container_port:80,protocol:Protocol::Tcp}], health:None, resources:Resources::default(), depends_on:BTreeSet::new() }); Composition{name:"demo".into(),services,targets:[Target::Docker,Target::Kubernetes,Target::Process,Target::NanoVms].into_iter().collect()} } #[test] fn all_targets_render_and_digest_is_stable(){ let c=sample(); for t in c.targets.clone(){ let a=c.render(t).unwrap(); let b=c.render(t).unwrap(); assert_eq!(a,b); assert!(a.digest.starts_with("sha256:")); } } #[test] fn detects_unknown_dependency(){ let mut c=sample(); c.services.get_mut("web").unwrap().depends_on.insert("db".into()); assert!(c.validate().is_err()); } #[test] fn handoffs_enforce_target_ownership(){ let c=sample(); let docker=c.render(Target::Docker).unwrap(); assert!(docker.byteport_handoff().is_ok()); assert!(docker.nanovms_handoff().is_err()); let nvms=c.render(Target::NanoVms).unwrap(); assert!(nvms.nanovms_handoff().is_ok()); assert!(nvms.byteport_handoff().is_err()); } }
