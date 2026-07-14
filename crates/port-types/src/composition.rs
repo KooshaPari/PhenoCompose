@@ -128,6 +128,15 @@ pub struct ExecutionHandoff { /// Selected runtime backend.
     pub digest: String, /// Rendered plan bytes.
     pub content: String }
 
+/// Desired-state intent sent to the BytePort compute-mesh control plane.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MeshWorkloadIntent { /// Authenticated owner identity.
+    pub owner: String, /// Composition name.
+    pub composition_name: String, /// Immutable render digest.
+    pub digest: String, /// Artifact or plan locator.
+    pub artifact_ref: String, /// Runtime substrate hint.
+    pub backend: ExecutionBackend }
+
 impl RenderedPlan {
     /// Verify that the content still matches the advertised digest.
     pub fn verify_digest(&self) -> bool {
@@ -147,6 +156,15 @@ impl RenderedPlan {
     pub fn execution_handoff(&self, backend: ExecutionBackend) -> Result<ExecutionHandoff, CompositionError> {
         if !backend.supports(self.target) { return Err(CompositionError::Invalid(format!("backend {backend:?} cannot consume target {:?}", self.target))); }
         Ok(ExecutionHandoff { backend, composition_name: self.composition_name.clone(), digest: self.digest.clone(), content: self.content.clone() })
+    }
+    /// Build an owner-scoped desired-state intent for BytePort.
+    pub fn mesh_intent(&self, owner: impl Into<String>, artifact_ref: impl Into<String>, backend: ExecutionBackend) -> Result<MeshWorkloadIntent, CompositionError> {
+        if !backend.supports(self.target) { return Err(CompositionError::Invalid(format!("backend {backend:?} cannot consume target {:?}", self.target))); }
+        let owner = owner.into();
+        let artifact_ref = artifact_ref.into();
+        if owner.trim().is_empty() { return Err(CompositionError::Invalid("mesh intent owner is required".into())); }
+        if artifact_ref.trim().is_empty() { return Err(CompositionError::Invalid("mesh intent artifact_ref is required".into())); }
+        Ok(MeshWorkloadIntent { owner, composition_name: self.composition_name.clone(), digest: self.digest.clone(), artifact_ref, backend })
     }
 }
 
@@ -205,4 +223,4 @@ fn render_text(c: &Composition, target: Target) -> String {
 }
 
 #[cfg(test)]
-mod tests { use super::*; fn sample() -> Composition { let mut services=BTreeMap::new(); services.insert("web".into(), Service { image:Some("nginx:1".into()), command:None, environment:BTreeMap::new(), ports:vec![Port{name:"http".into(),container_port:80,protocol:Protocol::Tcp}], health:None, resources:Resources::default(), depends_on:BTreeSet::new() }); Composition{name:"demo".into(),services,targets:[Target::Docker,Target::Kubernetes,Target::Process,Target::NanoVms].into_iter().collect()} } #[test] fn all_targets_render_and_digest_is_stable(){ let c=sample(); for t in c.targets.clone(){ let a=c.render(t).unwrap(); let b=c.render(t).unwrap(); assert_eq!(a,b); assert!(a.digest.starts_with("sha256:")); assert!(a.verify_digest()); } } #[test] fn detects_unknown_dependency(){ let mut c=sample(); c.services.get_mut("web").unwrap().depends_on.insert("db".into()); assert!(c.validate().is_err()); } #[test] fn handoffs_enforce_target_ownership(){ let c=sample(); let docker=c.render(Target::Docker).unwrap(); assert!(docker.byteport_handoff().is_ok()); assert!(docker.nanovms_handoff().is_err()); let nvms=c.render(Target::NanoVms).unwrap(); assert!(nvms.nanovms_handoff().is_ok()); assert!(nvms.byteport_handoff().is_err()); } #[test] fn execution_backends_match_plan_formats(){ let c=sample(); let docker=c.render(Target::Docker).unwrap(); for backend in [ExecutionBackend::Podman, ExecutionBackend::AppleContainers, ExecutionBackend::WslContainers] { assert_eq!(docker.execution_handoff(backend).unwrap().backend, backend); } assert!(docker.execution_handoff(ExecutionBackend::NanoVms).is_err()); let nvms=c.render(Target::NanoVms).unwrap(); assert!(nvms.execution_handoff(ExecutionBackend::NanoVms).is_ok()); } #[test] fn tampering_invalidates_handoff_digest(){ let c=sample(); let mut plan=c.render(Target::NanoVms).unwrap(); plan.content.push('x'); assert!(!plan.verify_digest()); } }
+mod tests { use super::*; fn sample() -> Composition { let mut services=BTreeMap::new(); services.insert("web".into(), Service { image:Some("nginx:1".into()), command:None, environment:BTreeMap::new(), ports:vec![Port{name:"http".into(),container_port:80,protocol:Protocol::Tcp}], health:None, resources:Resources::default(), depends_on:BTreeSet::new() }); Composition{name:"demo".into(),services,targets:[Target::Docker,Target::Kubernetes,Target::Process,Target::NanoVms].into_iter().collect()} } #[test] fn all_targets_render_and_digest_is_stable(){ let c=sample(); for t in c.targets.clone(){ let a=c.render(t).unwrap(); let b=c.render(t).unwrap(); assert_eq!(a,b); assert!(a.digest.starts_with("sha256:")); assert!(a.verify_digest()); } } #[test] fn detects_unknown_dependency(){ let mut c=sample(); c.services.get_mut("web").unwrap().depends_on.insert("db".into()); assert!(c.validate().is_err()); } #[test] fn handoffs_enforce_target_ownership(){ let c=sample(); let docker=c.render(Target::Docker).unwrap(); assert!(docker.byteport_handoff().is_ok()); assert!(docker.nanovms_handoff().is_err()); let nvms=c.render(Target::NanoVms).unwrap(); assert!(nvms.nanovms_handoff().is_ok()); assert!(nvms.byteport_handoff().is_err()); } #[test] fn execution_backends_match_plan_formats(){ let c=sample(); let docker=c.render(Target::Docker).unwrap(); for backend in [ExecutionBackend::Podman, ExecutionBackend::AppleContainers, ExecutionBackend::WslContainers] { assert_eq!(docker.execution_handoff(backend).unwrap().backend, backend); } assert!(docker.execution_handoff(ExecutionBackend::NanoVms).is_err()); let nvms=c.render(Target::NanoVms).unwrap(); assert!(nvms.execution_handoff(ExecutionBackend::NanoVms).is_ok()); } #[test] fn mesh_intent_is_owner_scoped(){ let c=sample(); let plan=c.render(Target::Docker).unwrap(); let intent=plan.mesh_intent("alice", "oci://registry/demo@sha256:abc", ExecutionBackend::Podman).unwrap(); assert_eq!(intent.owner, "alice"); assert_eq!(intent.digest, plan.digest); assert!(plan.mesh_intent("", "oci://x", ExecutionBackend::Podman).is_err()); } #[test] fn tampering_invalidates_handoff_digest(){ let c=sample(); let mut plan=c.render(Target::NanoVms).unwrap(); plan.content.push('x'); assert!(!plan.verify_digest()); } }
