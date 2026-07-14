@@ -15,6 +15,11 @@ moving cloud state into the composition or execution layers.
    to NanoVMS `DeployWithPlan`; NanoVMS validates the immutable identity and records
    it on the sandbox.
 
+For local/container execution, the same renderer can produce an explicit
+`ExecutionHandoff` for Podman, Apple Containers, or the first-party WSL containers
+extension. These backends consume Docker-format plans and remain runtime adapters;
+they do not become BytePort providers or state stores.
+
 ## Invariants
 
 - BytePort receives rendered artifact metadata, never NanoVMS credentials or runtime
