@@ -95,6 +95,10 @@ pub struct NanoVmsHandoff { /// Composition name.
     pub content: String }
 
 impl RenderedPlan {
+    /// Verify that the content still matches the advertised digest.
+    pub fn verify_digest(&self) -> bool {
+        self.digest == format!("sha256:{:x}", Sha256::digest(self.content.as_bytes()))
+    }
     /// Convert a non-NanoVMS plan into a BytePort apply handoff.
     pub fn byteport_handoff(&self) -> Result<BytePortHandoff, CompositionError> {
         if self.target == Target::NanoVms { return Err(CompositionError::Invalid("NanoVMS plans must use the execution handoff".into())); }
@@ -162,4 +166,4 @@ fn render_text(c: &Composition, target: Target) -> String {
 }
 
 #[cfg(test)]
-mod tests { use super::*; fn sample() -> Composition { let mut services=BTreeMap::new(); services.insert("web".into(), Service { image:Some("nginx:1".into()), command:None, environment:BTreeMap::new(), ports:vec![Port{name:"http".into(),container_port:80,protocol:Protocol::Tcp}], health:None, resources:Resources::default(), depends_on:BTreeSet::new() }); Composition{name:"demo".into(),services,targets:[Target::Docker,Target::Kubernetes,Target::Process,Target::NanoVms].into_iter().collect()} } #[test] fn all_targets_render_and_digest_is_stable(){ let c=sample(); for t in c.targets.clone(){ let a=c.render(t).unwrap(); let b=c.render(t).unwrap(); assert_eq!(a,b); assert!(a.digest.starts_with("sha256:")); } } #[test] fn detects_unknown_dependency(){ let mut c=sample(); c.services.get_mut("web").unwrap().depends_on.insert("db".into()); assert!(c.validate().is_err()); } #[test] fn handoffs_enforce_target_ownership(){ let c=sample(); let docker=c.render(Target::Docker).unwrap(); assert!(docker.byteport_handoff().is_ok()); assert!(docker.nanovms_handoff().is_err()); let nvms=c.render(Target::NanoVms).unwrap(); assert!(nvms.nanovms_handoff().is_ok()); assert!(nvms.byteport_handoff().is_err()); } }
+mod tests { use super::*; fn sample() -> Composition { let mut services=BTreeMap::new(); services.insert("web".into(), Service { image:Some("nginx:1".into()), command:None, environment:BTreeMap::new(), ports:vec![Port{name:"http".into(),container_port:80,protocol:Protocol::Tcp}], health:None, resources:Resources::default(), depends_on:BTreeSet::new() }); Composition{name:"demo".into(),services,targets:[Target::Docker,Target::Kubernetes,Target::Process,Target::NanoVms].into_iter().collect()} } #[test] fn all_targets_render_and_digest_is_stable(){ let c=sample(); for t in c.targets.clone(){ let a=c.render(t).unwrap(); let b=c.render(t).unwrap(); assert_eq!(a,b); assert!(a.digest.starts_with("sha256:")); assert!(a.verify_digest()); } } #[test] fn detects_unknown_dependency(){ let mut c=sample(); c.services.get_mut("web").unwrap().depends_on.insert("db".into()); assert!(c.validate().is_err()); } #[test] fn handoffs_enforce_target_ownership(){ let c=sample(); let docker=c.render(Target::Docker).unwrap(); assert!(docker.byteport_handoff().is_ok()); assert!(docker.nanovms_handoff().is_err()); let nvms=c.render(Target::NanoVms).unwrap(); assert!(nvms.nanovms_handoff().is_ok()); assert!(nvms.byteport_handoff().is_err()); } #[test] fn tampering_invalidates_handoff_digest(){ let c=sample(); let mut plan=c.render(Target::NanoVms).unwrap(); plan.content.push('x'); assert!(!plan.verify_digest()); } }
