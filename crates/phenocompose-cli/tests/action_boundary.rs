@@ -3,7 +3,8 @@ use phenocompose_cli::nvms::{
     EvaluationClient, EvaluationProvenance, EvaluationRequest, EvaluationResult, Lifecycle, ACTION_VERSION,
 };
 use phenocompose_cli::{
-    export_provenance, load_job_provenance, run_action_with_client, CliError, RunLifecycle, RunState,
+    export_provenance, load_job_provenance, run_action_with_client, run_action_with_client_at, CliError, RunLifecycle,
+    RunState,
 };
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -162,6 +163,116 @@ fn maps_action_and_transitive_gpu_closure_without_runtime_commands() {
     let serialized = serde_json::to_string(&request).unwrap();
     assert!(!serialized.contains("\"podman run\""));
     assert!(!serialized.contains("\"wsl.exe\""));
+}
+
+#[test]
+fn resolves_relative_output_root_against_workspace_and_serializes_exactly() {
+    let (directory, state) = setup(|_| {});
+    let workspace = tempfile::tempdir().unwrap();
+    let client = FakeClient::result(success_result(&state, vec![UUID_A.to_owned()]));
+
+    run_action_with_client_at(
+        workspace.path(),
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "relative-root",
+        &client,
+    )
+    .unwrap();
+
+    let request = client.request.lock().unwrap().clone().unwrap();
+    let expected = workspace.path().join("jobs").join("harbor");
+    assert_eq!(request.output_root, expected.to_str().unwrap());
+    let json = serde_json::to_value(&request).unwrap();
+    assert_eq!(json["output_root"], expected.to_str().unwrap());
+    assert!(!directory.path().join(format!("{RUN_ID}.outputs")).exists());
+}
+
+#[test]
+fn accepts_fully_absolute_output_root_without_rebasing() {
+    let workspace = tempfile::tempdir().unwrap();
+    let absolute = workspace.path().join("absolute-output");
+    let (directory, state) = setup(|manifest| {
+        manifest.actions.get_mut("inspect-worker").unwrap().output_root = Some(absolute.to_str().unwrap().to_owned());
+    });
+    let client = FakeClient::result(success_result(&state, vec![UUID_A.to_owned()]));
+
+    run_action_with_client_at(
+        workspace.path(),
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "absolute-root",
+        &client,
+    )
+    .unwrap();
+
+    assert_eq!(
+        client.request.lock().unwrap().as_ref().unwrap().output_root,
+        absolute.to_str().unwrap()
+    );
+}
+
+#[test]
+fn rejects_output_root_traversal_before_calling_client() {
+    for (job_id, root, code) in [
+        ("parent", "jobs/../escape", "action_output_root_traversal"),
+        ("missing", "", "action_output_root_missing"),
+    ] {
+        let (directory, state) = setup(|manifest| {
+            manifest.actions.get_mut("inspect-worker").unwrap().output_root =
+                (!root.is_empty()).then(|| root.to_owned());
+        });
+        let client = FakeClient::result(success_result(&state, vec![UUID_A.to_owned()]));
+        let error = run_action_with_client_at(
+            directory.path(),
+            directory.path(),
+            RUN_ID,
+            "inspect-worker",
+            job_id,
+            &client,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, code);
+        assert!(client.request.lock().unwrap().is_none());
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn rejects_ambiguous_windows_output_roots() {
+    for (job_id, root) in [("drive-relative", r"C:jobs\harbor"), ("root-relative", r"\jobs\harbor")] {
+        let (directory, state) = setup(|manifest| {
+            manifest.actions.get_mut("inspect-worker").unwrap().output_root = Some(root.to_owned());
+        });
+        let client = FakeClient::result(success_result(&state, vec![UUID_A.to_owned()]));
+        let error = run_action_with_client_at(
+            directory.path(),
+            directory.path(),
+            RUN_ID,
+            "inspect-worker",
+            job_id,
+            &client,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, "action_output_root_ambiguous");
+        assert!(client.request.lock().unwrap().is_none());
+    }
+}
+
+#[test]
+fn output_root_changes_plan_digest_deterministically() {
+    let manifest = CompositionManifest::parse(include_str!("../../../examples/composition-v0.yaml")).unwrap();
+    let first = manifest.plan().unwrap();
+    assert_eq!(first, manifest.plan().unwrap());
+
+    let mut changed = manifest;
+    changed.actions.get_mut("inspect-worker").unwrap().output_root = Some("jobs/other".to_owned());
+    let changed_plan = changed.plan().unwrap();
+
+    assert_ne!(first.manifest_sha256, changed_plan.manifest_sha256);
+    assert_eq!(changed_plan, changed.plan().unwrap());
 }
 
 #[test]

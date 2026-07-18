@@ -23,7 +23,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
@@ -358,6 +358,18 @@ pub fn run_action_with_client(
     job_id: &str,
     client: &dyn EvaluationClient,
 ) -> Result<JobProvenance> {
+    let workspace_base = env::current_dir().map_err(|error| CliError::io("current_dir", error))?;
+    run_action_with_client_at(&workspace_base, state_dir, run_id, action_name, job_id, client)
+}
+
+pub fn run_action_with_client_at(
+    workspace_base: &Path,
+    state_dir: &Path,
+    run_id: &str,
+    action_name: &str,
+    job_id: &str,
+    client: &dyn EvaluationClient,
+) -> Result<JobProvenance> {
     validate_slug("run_id", run_id)?;
     validate_slug("job_id", job_id)?;
     let state = load_state(state_dir, run_id)?;
@@ -405,7 +417,7 @@ pub fn run_action_with_client(
         ));
     }
 
-    let request = match build_evaluation_request(state_dir, &state, &job, service) {
+    let request = match build_evaluation_request(workspace_base, state_dir, &state, &job, service) {
         Ok(request) => request,
         Err(error) => return persist_job_failure(state_dir, job, error),
     };
@@ -543,6 +555,7 @@ fn ensure_action_route(state: &RunState) -> Result<()> {
 }
 
 fn build_evaluation_request(
+    workspace_base: &Path,
     state_dir: &Path,
     state: &RunState,
     job: &JobProvenance,
@@ -552,9 +565,19 @@ fn build_evaluation_request(
         .command
         .split_first()
         .ok_or_else(|| CliError::validation("action_command_empty", "action command must not be empty"))?;
+    let output_root = state
+        .manifest
+        .actions
+        .get(&job.action)
+        .and_then(|action| action.output_root.as_deref())
+        .ok_or_else(|| {
+            CliError::validation(
+                "action_output_root_missing",
+                format!("action {} must declare output_root", job.action),
+            )
+        })
+        .and_then(|root| resolve_output_root(workspace_base, root))?;
     let state_dir = absolute_path(state_dir)?;
-    let output_root = state_dir.join(format!("{}.outputs", state.run_id));
-    fs::create_dir_all(&output_root).map_err(|error| CliError::io("action_output_dir_create", error))?;
     let reservation_path = state_dir.join("nanovms-gpu-reservations.json");
     let mut environment = state.manifest.environment.variables.clone();
     environment.extend(service.environment.clone());
@@ -793,6 +816,64 @@ fn absolute_path(path: &Path) -> Result<PathBuf> {
             .map(|directory| directory.join(path))
             .map_err(|error| CliError::io("current_dir", error))
     }
+}
+
+fn resolve_output_root(workspace_base: &Path, declared: &str) -> Result<PathBuf> {
+    let root = Path::new(declared);
+    if declared.trim().is_empty() {
+        return Err(CliError::validation(
+            "action_output_root_empty",
+            "action output_root must not be empty",
+        ));
+    }
+    if root.has_root() && !root.is_absolute() {
+        return Err(CliError::validation(
+            "action_output_root_ambiguous",
+            "action output_root must be fully absolute or relative to the workspace",
+        ));
+    }
+    if root
+        .components()
+        .any(|component| matches!(component, Component::Prefix(_)))
+        && !root.is_absolute()
+    {
+        return Err(CliError::validation(
+            "action_output_root_ambiguous",
+            "action output_root must not use a drive-relative path",
+        ));
+    }
+    let base = absolute_path(workspace_base)?;
+    let resolved = if root.is_absolute() {
+        root.to_owned()
+    } else {
+        base.join(root)
+    };
+    normalize_output_root(&resolved)
+}
+
+fn normalize_output_root(path: &Path) -> Result<PathBuf> {
+    let mut normalized = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::ParentDir => {
+                return Err(CliError::validation(
+                    "action_output_root_traversal",
+                    "action output_root must not contain parent traversal",
+                ));
+            }
+            Component::CurDir => {}
+            Component::Prefix(_) | Component::RootDir | Component::Normal(_) => {
+                normalized.push(component.as_os_str());
+            }
+        }
+    }
+    if !normalized.is_absolute() {
+        return Err(CliError::validation(
+            "action_output_root_ambiguous",
+            "resolved action output_root must be absolute",
+        ));
+    }
+    Ok(normalized)
 }
 
 fn path_string(path: &Path) -> Result<String> {

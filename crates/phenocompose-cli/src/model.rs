@@ -172,6 +172,8 @@ pub struct HealthCheck {
 pub struct Action {
     pub service: String,
     pub command: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_root: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -286,6 +288,12 @@ impl CompositionManifest {
                 return Err(CliError::validation(
                     "action_invalid",
                     format!("action {name} must reference a service and have a command"),
+                ));
+            }
+            if action.output_root.as_ref().is_some_and(|root| root.trim().is_empty()) {
+                return Err(CliError::validation(
+                    "action_output_root_empty",
+                    format!("action {name} output_root must not be empty"),
                 ));
             }
         }

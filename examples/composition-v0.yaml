@@ -52,6 +52,7 @@ actions:
     service: worker
     command:
       - /usr/bin/env
+    output_root: jobs/harbor
 artifacts:
   - name: worker-image
     kind: oci_image
