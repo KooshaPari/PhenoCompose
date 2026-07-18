@@ -30,6 +30,10 @@ fn rendering_and_digest_are_deterministic() {
     let second = render_plan(&manifest).unwrap();
     assert_eq!(first, second);
     assert_eq!(first.manifest_sha256.len(), 64);
+    assert_eq!(
+        first.manifest_sha256,
+        "93160bb77bd0ead347a7e180468715e4c20b35d85e16c9f42799900c6156ed1e"
+    );
 
     let first_json = serde_json::to_string_pretty(&first).unwrap();
     let second_json = serde_json::to_string_pretty(&second).unwrap();

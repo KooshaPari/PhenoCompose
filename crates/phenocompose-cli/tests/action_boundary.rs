@@ -1,7 +1,7 @@
 use phenocompose_cli::model::{CompositionManifest, GpuRequirements, GpuVendor, ResourceRequirements, Service};
 use phenocompose_cli::nvms::{
     EvaluationClient, EvaluationFailure, EvaluationProvenance, EvaluationRequest, EvaluationResult, Lifecycle,
-    ACTION_VERSION,
+    ResourceGpu, ACTION_VERSION,
 };
 use phenocompose_cli::{
     export_provenance, load_job_provenance, run_action_with_client, run_action_with_client_at, CliError, RunLifecycle,
@@ -168,6 +168,44 @@ fn maps_action_and_transitive_gpu_closure_without_runtime_commands() {
     let serialized = serde_json::to_string(&request).unwrap();
     assert!(!serialized.contains("\"podman run\""));
     assert!(!serialized.contains("\"wsl.exe\""));
+}
+
+#[test]
+fn uuid_and_toolkit_only_requests_omit_unverified_gpu_identity() {
+    let (directory, state) = setup(|_| {});
+    let client = FakeClient::result(success_result(&state, vec![UUID_A.to_owned()]));
+
+    run_action_with_client(directory.path(), RUN_ID, "inspect-worker", "identity-omitted", &client).unwrap();
+
+    let request = client.request.lock().unwrap().clone().unwrap();
+    let json = serde_json::to_value(&request).unwrap();
+    let gpu = &json["resource_manifest"]["gpus"][0];
+    assert_eq!(gpu["uuid"], UUID_A);
+    assert_eq!(json["resource_manifest"]["artifact"]["cuda_toolkit"], "12.8");
+    for field in ["name", "architecture", "compute_capability"] {
+        assert!(gpu.get(field).is_none(), "unexpected synthetic GPU claim {field}");
+    }
+    let forbidden = ["PhenoCompose", "declared", "GPU"].join(" ");
+    assert!(!serde_json::to_string(&request).unwrap().contains(&forbidden));
+}
+
+#[test]
+fn explicit_gpu_identity_declarations_are_preserved_exactly() {
+    let gpu = ResourceGpu {
+        uuid: UUID_A.to_owned(),
+        name: Some("NVIDIA GeForce RTX 3090 Ti".to_owned()),
+        architecture: Some("Ampere".to_owned()),
+        compute_capability: Some("8.6".to_owned()),
+        driver_version: String::new(),
+        driver_cuda_ceiling: String::new(),
+        observations: Vec::new(),
+    };
+
+    let json = serde_json::to_value(&gpu).unwrap();
+    assert_eq!(json["name"], "NVIDIA GeForce RTX 3090 Ti");
+    assert_eq!(json["architecture"], "Ampere");
+    assert_eq!(json["compute_capability"], "8.6");
+    assert_eq!(serde_json::from_value::<ResourceGpu>(json).unwrap(), gpu);
 }
 
 #[test]

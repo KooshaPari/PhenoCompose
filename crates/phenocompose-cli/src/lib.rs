@@ -594,9 +594,9 @@ fn build_evaluation_request(
         .iter()
         .map(|binding| ResourceGpu {
             uuid: binding.uuid.clone(),
-            name: "PhenoCompose declared GPU".to_owned(),
-            architecture: String::new(),
-            compute_capability: String::new(),
+            name: None,
+            architecture: None,
+            compute_capability: None,
             driver_version: String::new(),
             driver_cuda_ceiling: String::new(),
             observations: Vec::new(),

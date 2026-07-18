@@ -60,11 +60,12 @@ pub struct ResourceManifest {
 #[serde(deny_unknown_fields)]
 pub struct ResourceGpu {
     pub uuid: String,
-    pub name: String,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub architecture: String,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub compute_capability: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub architecture: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compute_capability: Option<String>,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub driver_version: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
