@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use phenocompose_cli::{
-    apply, down, export_provenance, load_manifest, render_plan, run_action, status, CliError, ErrorKind, Result,
+    apply, down, export_provenance, load_job_provenance, load_manifest, render_plan, run_action, status, CliError,
+    ErrorKind, Result,
 };
 use serde::Serialize;
 use std::fs;
@@ -29,8 +30,13 @@ enum Commands {
     Status { run_id: String },
     /// Stop containers belonging to a persisted run.
     Down { run_id: String },
-    /// Run a declared action when the selected runtime supports exec.
-    RunAction { run_id: String, action: String },
+    /// Run a declared action through the bounded NanoVMS evaluation boundary.
+    RunAction {
+        run_id: String,
+        action: String,
+        #[arg(long)]
+        job_id: String,
+    },
     /// Export provenance from an existing persisted run.
     ExportProvenance {
         run_id: String,
@@ -62,13 +68,15 @@ fn execute(cli: Cli) -> Result<()> {
         }
         Commands::Status { run_id } => print_json(&status(&cli.state_dir, &run_id)?),
         Commands::Down { run_id } => print_json(&down(&cli.state_dir, &run_id)?),
-        Commands::RunAction { run_id, action } => {
-            run_action(&cli.state_dir, &run_id, &action)?;
-            Err(CliError::backend(
-                "unreachable",
-                "action execution returned without an output contract",
-            ))
-        }
+        Commands::RunAction { run_id, action, job_id } => match run_action(&cli.state_dir, &run_id, &action, &job_id) {
+            Ok(provenance) => print_json(&provenance),
+            Err(error) => {
+                if let Ok(provenance) = load_job_provenance(&cli.state_dir, &run_id, &job_id) {
+                    print_json(&provenance)?;
+                }
+                Err(error)
+            }
+        },
         Commands::ExportProvenance { run_id, output } => {
             let provenance = export_provenance(&cli.state_dir, &run_id)?;
             if let Some(path) = output {

@@ -1,8 +1,16 @@
 #![forbid(unsafe_code)]
 
 pub mod model;
+pub mod nvms;
 
-use model::{CompositionManifest, GpuVendor, Plan, ProviderStatus, RuntimeProvider, Service};
+use model::{
+    CompositionManifest, EffectiveEngine, ExternalEngineToken, GpuVendor, Plan, ProviderStatus, RuntimeProvider,
+    Service,
+};
+use nvms::{
+    ArtifactRequirements, EvaluationClient, EvaluationRequest, EvaluationResult, GpuBinding, ProcessEvaluationClient,
+    ResourceGpu, ResourceManifest, ACTION_VERSION, RESOURCE_VERSION,
+};
 use phenocompose_port_composer::{ComposeError, Composer};
 use phenocompose_port_publisher::{PublishError, Publisher};
 use phenocompose_port_runtime::{Runtime, RuntimeError};
@@ -10,8 +18,11 @@ use phenocompose_port_types::{
     ComposedArtifact, ContainerId, ContainerStatus, ImageRef, Manifest, PublishReceipt, PublishTarget,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::fs;
+use sha2::{Digest, Sha256};
+use std::collections::{BTreeMap, BTreeSet};
+use std::env;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -164,6 +175,34 @@ pub struct Provenance {
     pub effective_engine: String,
     pub created_unix_seconds: u64,
     pub containers: BTreeMap<String, String>,
+    pub jobs: BTreeMap<String, JobProvenance>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct JobProvenance {
+    pub provenance_version: String,
+    pub run_id: String,
+    pub job_id: String,
+    pub manifest_sha256: String,
+    pub effective_engine: String,
+    pub resolved_provider: String,
+    pub execution_plane: String,
+    pub action: String,
+    pub service: String,
+    pub command: Vec<String>,
+    pub image: String,
+    pub dependency_services: Vec<String>,
+    pub gpu_bindings: Vec<GpuBinding>,
+    pub timeout_millis: i64,
+    pub max_output_bytes: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lifecycle: Option<nvms::Lifecycle>,
+    pub success: bool,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub error_code: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub error_message: String,
 }
 
 pub fn load_manifest(path: &Path) -> Result<CompositionManifest> {
@@ -308,20 +347,94 @@ pub fn down(state_dir: &Path, run_id: &str) -> Result<StatusOutput> {
     })
 }
 
-pub fn run_action(state_dir: &Path, run_id: &str, action: &str) -> Result<()> {
+pub fn run_action(state_dir: &Path, run_id: &str, action: &str, job_id: &str) -> Result<JobProvenance> {
+    run_action_with_client(state_dir, run_id, action, job_id, &ProcessEvaluationClient)
+}
+
+pub fn run_action_with_client(
+    state_dir: &Path,
+    run_id: &str,
+    action_name: &str,
+    job_id: &str,
+    client: &dyn EvaluationClient,
+) -> Result<JobProvenance> {
+    validate_slug("run_id", run_id)?;
+    validate_slug("job_id", job_id)?;
     let state = load_state(state_dir, run_id)?;
-    if !state.manifest.actions.contains_key(action) {
-        return Err(CliError::not_found(
-            "action_not_found",
-            format!("run {run_id} has no action named {action}"),
+    if state.lifecycle != RunLifecycle::Running {
+        return Err(CliError::conflict(
+            "run_not_running",
+            format!("run {run_id} is not running"),
         ));
     }
-    Err(CliError::unsupported(
-        "action_execution_unsupported",
-        "the current Runtime port has no exec operation; the action was not run",
-        "runtime.exec",
-        &state.provider,
-    ))
+    ensure_action_route(&state)?;
+    let action = state.manifest.actions.get(action_name).ok_or_else(|| {
+        CliError::not_found(
+            "action_not_found",
+            format!("run {run_id} has no action named {action_name}"),
+        )
+    })?;
+    let service = &state.manifest.services[&action.service];
+    let (dependency_services, gpu_bindings) = action_gpu_bindings(&state.manifest, &action.service)?;
+    let command = action.command.clone();
+    let mut job = JobProvenance {
+        provenance_version: "phenocompose.job-provenance/v1".to_owned(),
+        run_id: run_id.to_owned(),
+        job_id: job_id.to_owned(),
+        manifest_sha256: state.manifest_sha256.clone(),
+        effective_engine: "podman".to_owned(),
+        resolved_provider: "podman".to_owned(),
+        execution_plane: "nanovms".to_owned(),
+        action: action_name.to_owned(),
+        service: action.service.clone(),
+        command: command.clone(),
+        image: service.image.clone(),
+        dependency_services,
+        gpu_bindings: gpu_bindings.clone(),
+        timeout_millis: 300_000,
+        max_output_bytes: 1_048_576,
+        lifecycle: None,
+        success: false,
+        error_code: String::new(),
+        error_message: String::new(),
+    };
+    if job_path(state_dir, run_id, job_id).exists() {
+        return Err(CliError::conflict(
+            "job_exists",
+            format!("job {job_id} already has persisted provenance"),
+        ));
+    }
+
+    let request = match build_evaluation_request(state_dir, &state, &job, service) {
+        Ok(request) => request,
+        Err(error) => return persist_job_failure(state_dir, job, error),
+    };
+    let result = match client.execute(&request) {
+        Ok(result) => result,
+        Err(error) => return persist_job_failure(state_dir, job, error),
+    };
+    job.lifecycle = Some(result.lifecycle.clone());
+    job.error_code = result.error_code.clone();
+    job.error_message = result.error_message.clone();
+    if let Err(error) = validate_evaluation_result(&request, &result) {
+        return persist_job_failure(state_dir, job, error);
+    }
+    if !result.success {
+        let code = if result.error_code.is_empty() {
+            "nvms_action_failed"
+        } else {
+            &result.error_code
+        };
+        let message = if result.error_message.is_empty() {
+            "NanoVMS rejected the evaluation action".to_owned()
+        } else {
+            result.error_message
+        };
+        return persist_job_failure(state_dir, job, CliError::backend(code, message));
+    }
+    job.success = true;
+    save_job_provenance(state_dir, &job)?;
+    Ok(job)
 }
 
 pub fn export_provenance(state_dir: &Path, run_id: &str) -> Result<Provenance> {
@@ -341,7 +454,351 @@ pub fn export_provenance(state_dir: &Path, run_id: &str) -> Result<Provenance> {
         effective_engine: state.provider,
         created_unix_seconds: state.created_unix_seconds,
         containers: state.containers,
+        jobs: load_jobs(state_dir, run_id)?,
     })
+}
+
+fn action_gpu_bindings(manifest: &CompositionManifest, root_service: &str) -> Result<(Vec<String>, Vec<GpuBinding>)> {
+    fn visit(manifest: &CompositionManifest, name: &str, visited: &mut BTreeSet<String>, output: &mut Vec<String>) {
+        if !visited.insert(name.to_owned()) {
+            return;
+        }
+        for dependency in &manifest.services[name].depends_on {
+            visit(manifest, dependency, visited, output);
+        }
+        output.push(name.to_owned());
+    }
+
+    let mut closure = Vec::new();
+    visit(manifest, root_service, &mut BTreeSet::new(), &mut closure);
+    let toolkit = &manifest.environment.toolkit;
+    let mut uuids = BTreeSet::new();
+    for name in &closure {
+        let Some(gpu) = manifest.services[name]
+            .resources
+            .as_ref()
+            .and_then(|resources| resources.gpu.as_ref())
+        else {
+            continue;
+        };
+        if gpu.vendor != GpuVendor::Nvidia {
+            return Err(CliError::unsupported(
+                "gpu_vendor_unsupported",
+                format!("action dependency {name} requires a non-NVIDIA GPU"),
+                "evaluation.gpu_uuid",
+                "nanovms",
+            ));
+        }
+        if !toolkit.name.eq_ignore_ascii_case("cuda") || toolkit.version.trim().is_empty() {
+            return Err(CliError::validation(
+                "toolkit_missing",
+                format!("GPU-bearing action dependency {name} requires an explicit CUDA toolkit"),
+            ));
+        }
+        for uuid in &gpu.uuids {
+            let canonical = canonical_gpu_uuid(uuid).ok_or_else(|| {
+                CliError::validation(
+                    "gpu_selector_invalid",
+                    format!("action dependency {name} has invalid GPU UUID {uuid:?}"),
+                )
+            })?;
+            uuids.insert(canonical);
+        }
+    }
+    if uuids.is_empty() {
+        return Err(CliError::validation(
+            "gpu_binding_missing",
+            "NanoVMS evaluation actions require at least one GPU in the service dependency closure",
+        ));
+    }
+    let bindings = uuids
+        .into_iter()
+        .map(|uuid| GpuBinding {
+            cdi_device: format!("nvidia.com/gpu={uuid}"),
+            uuid,
+            cuda_toolkit: toolkit.version.clone(),
+        })
+        .collect();
+    Ok((closure, bindings))
+}
+
+fn ensure_action_route(state: &RunState) -> Result<()> {
+    let compatibility = state.manifest.runtime.portage_compatibility.as_ref();
+    let exact_route = state.provider == "podman"
+        && state.manifest.runtime.provider == RuntimeProvider::Podman
+        && compatibility.is_some_and(|value| {
+            value.external_engine_token == ExternalEngineToken::Docker
+                && value.effective_engine == EffectiveEngine::Podman
+        });
+    if exact_route {
+        Ok(())
+    } else {
+        Err(CliError::unsupported(
+            "action_route_rejected",
+            "evaluation requires the exact Podman route and historical docker schema token without fallback",
+            "evaluation.action",
+            &state.provider,
+        ))
+    }
+}
+
+fn build_evaluation_request(
+    state_dir: &Path,
+    state: &RunState,
+    job: &JobProvenance,
+    service: &Service,
+) -> Result<EvaluationRequest> {
+    let (executable, argv) = job
+        .command
+        .split_first()
+        .ok_or_else(|| CliError::validation("action_command_empty", "action command must not be empty"))?;
+    let state_dir = absolute_path(state_dir)?;
+    let output_root = state_dir.join(format!("{}.outputs", state.run_id));
+    fs::create_dir_all(&output_root).map_err(|error| CliError::io("action_output_dir_create", error))?;
+    let reservation_path = state_dir.join("nanovms-gpu-reservations.json");
+    let mut environment = state.manifest.environment.variables.clone();
+    environment.extend(service.environment.clone());
+    let gpus = job
+        .gpu_bindings
+        .iter()
+        .map(|binding| ResourceGpu {
+            uuid: binding.uuid.clone(),
+            name: "PhenoCompose declared GPU".to_owned(),
+            architecture: String::new(),
+            compute_capability: String::new(),
+            driver_version: String::new(),
+            driver_cuda_ceiling: String::new(),
+            observations: Vec::new(),
+        })
+        .collect();
+    Ok(EvaluationRequest {
+        version: ACTION_VERSION.to_owned(),
+        backend: "podman".to_owned(),
+        fallback_backends: Vec::new(),
+        manifest_sha256: state.manifest_sha256.clone(),
+        executable: executable.clone(),
+        argv: argv.to_vec(),
+        environment,
+        external_engine_token: "docker".to_owned(),
+        podman_pipe: "npipe:////./pipe/podman-machine-default".to_owned(),
+        wsl_distribution: state.manifest.runtime.wsl_distribution.clone().unwrap_or_default(),
+        output_root: path_string(&output_root)?,
+        reservation_path: path_string(&reservation_path)?,
+        lock_invocation: job.command.clone(),
+        resource_manifest: ResourceManifest {
+            version: RESOURCE_VERSION.to_owned(),
+            gpus,
+            artifact: ArtifactRequirements {
+                cuda_toolkit: job.gpu_bindings[0].cuda_toolkit.clone(),
+                compiled_kernels: true,
+            },
+        },
+        gpu_bindings: job.gpu_bindings.clone(),
+        timeout_millis: job.timeout_millis,
+        max_output_bytes: job.max_output_bytes,
+    })
+}
+
+fn validate_evaluation_result(request: &EvaluationRequest, result: &EvaluationResult) -> Result<()> {
+    if result.version != ACTION_VERSION {
+        return Err(CliError::backend(
+            "nvms_version_mismatch",
+            format!("unexpected NanoVMS action version {:?}", result.version),
+        ));
+    }
+    let provenance = &result.provenance;
+    if !provenance
+        .manifest_sha256
+        .eq_ignore_ascii_case(&request.manifest_sha256)
+    {
+        return Err(CliError::backend(
+            "nvms_manifest_mismatch",
+            "NanoVMS returned a different manifest digest",
+        ));
+    }
+    if provenance.effective_engine != "podman"
+        || provenance.resolved_provider != "podman"
+        || provenance.execution_plane != "nanovms"
+    {
+        return Err(CliError::backend(
+            "nvms_route_mismatch",
+            "NanoVMS did not attest the exact podman provider through the nanovms execution plane",
+        ));
+    }
+    if provenance.podman_pipe != request.podman_pipe {
+        return Err(CliError::backend(
+            "nvms_pipe_mismatch",
+            "NanoVMS returned a different Podman pipe",
+        ));
+    }
+    let expected: BTreeSet<_> = request.gpu_bindings.iter().map(|binding| &binding.uuid).collect();
+    let actual: BTreeSet<_> = provenance.gpu_uuids.iter().collect();
+    if expected != actual || actual.len() != provenance.gpu_uuids.len() {
+        return Err(CliError::backend(
+            "nvms_gpu_binding_mismatch",
+            "NanoVMS returned different or duplicate GPU UUID bindings",
+        ));
+    }
+    let lifecycle = &result.lifecycle;
+    if lifecycle.duration_ms < 0
+        || lifecycle.duration_ms > request.timeout_millis
+        || lifecycle.stdout.len() > request.max_output_bytes
+        || lifecycle.stderr.len() > request.max_output_bytes
+    {
+        return Err(CliError::backend(
+            "nvms_lifecycle_limits",
+            "NanoVMS lifecycle evidence exceeded the requested bounds",
+        ));
+    }
+    validate_evidence_hash("stdout", lifecycle.stdout.as_bytes(), &lifecycle.stdout_sha256)?;
+    validate_evidence_hash("stderr", lifecycle.stderr.as_bytes(), &lifecycle.stderr_sha256)?;
+    if result.success
+        && (!result.released
+            || lifecycle.exit_code != 0
+            || lifecycle.timed_out
+            || lifecycle.truncated
+            || !result.error_code.is_empty()
+            || !result.error_message.is_empty())
+    {
+        return Err(CliError::backend(
+            "nvms_success_inconsistent",
+            "NanoVMS success result contains failure lifecycle evidence",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_evidence_hash(label: &str, bytes: &[u8], claimed: &str) -> Result<()> {
+    let actual = format!("{:x}", Sha256::digest(bytes));
+    if !actual.eq_ignore_ascii_case(claimed) {
+        return Err(CliError::backend(
+            "nvms_evidence_hash_mismatch",
+            format!("NanoVMS {label} hash does not match bounded evidence"),
+        ));
+    }
+    Ok(())
+}
+
+fn persist_job_failure<T>(state_dir: &Path, mut job: JobProvenance, error: CliError) -> Result<T> {
+    job.success = false;
+    if job.error_code.is_empty() {
+        job.error_code = error.code.clone();
+    }
+    if job.error_message.is_empty() {
+        job.error_message = error.message.clone();
+    }
+    save_job_provenance(state_dir, &job)?;
+    Err(error)
+}
+
+fn save_job_provenance(state_dir: &Path, job: &JobProvenance) -> Result<()> {
+    let path = job_path(state_dir, &job.run_id, &job.job_id);
+    let parent = path
+        .parent()
+        .ok_or_else(|| CliError::validation("job_path", "job provenance path has no parent"))?;
+    fs::create_dir_all(parent).map_err(|error| CliError::io("job_dir_create", error))?;
+    let temporary = path.with_extension(format!("json.{}.tmp", std::process::id()));
+    let bytes = serde_json::to_vec_pretty(job).map_err(CliError::json)?;
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)
+        .map_err(|error| CliError::io("job_write", error))?;
+    let write_result = file
+        .write_all(&bytes)
+        .and_then(|()| file.sync_all())
+        .map_err(|error| CliError::io("job_write", error));
+    drop(file);
+    if let Err(error) = write_result {
+        let _ = fs::remove_file(&temporary);
+        return Err(error);
+    }
+    fs::rename(&temporary, &path).map_err(|error| {
+        let _ = fs::remove_file(&temporary);
+        CliError::io("job_commit", error)
+    })
+}
+
+pub fn load_job_provenance(state_dir: &Path, run_id: &str, job_id: &str) -> Result<JobProvenance> {
+    validate_slug("run_id", run_id)?;
+    validate_slug("job_id", job_id)?;
+    let input =
+        fs::read_to_string(job_path(state_dir, run_id, job_id)).map_err(|error| CliError::io("job_read", error))?;
+    serde_json::from_str(&input).map_err(CliError::json)
+}
+
+fn load_jobs(state_dir: &Path, run_id: &str) -> Result<BTreeMap<String, JobProvenance>> {
+    let directory = jobs_path(state_dir, run_id);
+    if !directory.exists() {
+        return Ok(BTreeMap::new());
+    }
+    let mut jobs = BTreeMap::new();
+    for entry in fs::read_dir(directory).map_err(|error| CliError::io("jobs_read", error))? {
+        let entry = entry.map_err(|error| CliError::io("jobs_read", error))?;
+        let path = entry.path();
+        if path.extension().and_then(|value| value.to_str()) != Some("json") {
+            continue;
+        }
+        let input = fs::read_to_string(&path).map_err(|error| CliError::io("job_read", error))?;
+        let job: JobProvenance = serde_json::from_str(&input).map_err(CliError::json)?;
+        if job.run_id != run_id || path.file_stem().and_then(|value| value.to_str()) != Some(&job.job_id) {
+            return Err(CliError::validation(
+                "job_identity_mismatch",
+                format!("job provenance identity does not match {}", path.display()),
+            ));
+        }
+        jobs.insert(job.job_id.clone(), job);
+    }
+    Ok(jobs)
+}
+
+fn validate_slug(field: &str, value: &str) -> Result<()> {
+    let valid = !value.is_empty()
+        && value.len() <= 128
+        && value.starts_with(|character: char| character.is_ascii_alphanumeric())
+        && value
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'));
+    if valid {
+        Ok(())
+    } else {
+        Err(CliError::validation(
+            format!("{field}_invalid"),
+            format!("{field} must be a path-safe ASCII slug"),
+        ))
+    }
+}
+
+fn canonical_gpu_uuid(value: &str) -> Option<String> {
+    let body = value.strip_prefix("GPU-").or_else(|| value.strip_prefix("gpu-"))?;
+    if body.len() != 36
+        || !body.chars().enumerate().all(|(index, character)| {
+            if matches!(index, 8 | 13 | 18 | 23) {
+                character == '-'
+            } else {
+                character.is_ascii_hexdigit()
+            }
+        })
+    {
+        return None;
+    }
+    Some(format!("GPU-{}", body.to_ascii_lowercase()))
+}
+
+fn absolute_path(path: &Path) -> Result<PathBuf> {
+    if path.is_absolute() {
+        Ok(path.to_owned())
+    } else {
+        env::current_dir()
+            .map(|directory| directory.join(path))
+            .map_err(|error| CliError::io("current_dir", error))
+    }
+}
+
+fn path_string(path: &Path) -> Result<String> {
+    path.to_str()
+        .map(str::to_owned)
+        .ok_or_else(|| CliError::validation("path_encoding", "NanoVMS paths must be valid UTF-8"))
 }
 
 fn ensure_apply_capabilities(manifest: &CompositionManifest) -> Result<()> {
@@ -445,7 +902,16 @@ fn state_path(state_dir: &Path, run_id: &str) -> PathBuf {
     state_dir.join(format!("{run_id}.json"))
 }
 
+fn jobs_path(state_dir: &Path, run_id: &str) -> PathBuf {
+    state_dir.join(format!("{run_id}.jobs"))
+}
+
+fn job_path(state_dir: &Path, run_id: &str, job_id: &str) -> PathBuf {
+    jobs_path(state_dir, run_id).join(format!("{job_id}.json"))
+}
+
 fn load_state(state_dir: &Path, run_id: &str) -> Result<RunState> {
+    validate_slug("run_id", run_id)?;
     let path = state_path(state_dir, run_id);
     let input = fs::read_to_string(&path).map_err(|error| {
         if error.kind() == std::io::ErrorKind::NotFound {

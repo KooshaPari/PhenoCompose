@@ -1,0 +1,279 @@
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::env;
+use std::ffi::OsString;
+use std::io::{Read, Write};
+use std::process::{Command, Stdio};
+use std::thread;
+use std::time::Duration;
+use wait_timeout::ChildExt;
+
+use crate::{CliError, Result};
+
+pub const ACTION_VERSION: &str = "nanovms.io/evaluation-action/v1";
+pub const RESOURCE_VERSION: &str = "nanovms.io/resources/v1";
+const STDERR_LIMIT: usize = 64 * 1024;
+const RESPONSE_LIMIT: usize = 34 * 1024 * 1024;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct EvaluationRequest {
+    pub version: String,
+    pub backend: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fallback_backends: Vec<String>,
+    pub manifest_sha256: String,
+    pub executable: String,
+    pub argv: Vec<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub environment: BTreeMap<String, String>,
+    pub external_engine_token: String,
+    pub podman_pipe: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub wsl_distribution: String,
+    pub output_root: String,
+    pub reservation_path: String,
+    pub lock_invocation: Vec<String>,
+    pub resource_manifest: ResourceManifest,
+    pub gpu_bindings: Vec<GpuBinding>,
+    pub timeout_millis: i64,
+    pub max_output_bytes: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct GpuBinding {
+    pub uuid: String,
+    pub cuda_toolkit: String,
+    pub cdi_device: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ResourceManifest {
+    pub version: String,
+    pub gpus: Vec<ResourceGpu>,
+    pub artifact: ArtifactRequirements,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ResourceGpu {
+    pub uuid: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub architecture: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub compute_capability: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub driver_version: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub driver_cuda_ceiling: String,
+    pub observations: Vec<ResourceObservation>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ResourceObservation {
+    pub scope: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub scope_id: String,
+    pub observed_index: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ArtifactRequirements {
+    pub cuda_toolkit: String,
+    pub compiled_kernels: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct EvaluationResult {
+    pub version: String,
+    pub success: bool,
+    #[serde(default)]
+    pub error_code: String,
+    #[serde(default)]
+    pub error_message: String,
+    pub lifecycle: Lifecycle,
+    pub provenance: EvaluationProvenance,
+    pub released: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Lifecycle {
+    pub exit_code: i32,
+    pub duration_ms: i64,
+    pub timed_out: bool,
+    pub truncated: bool,
+    pub stdout: String,
+    pub stderr: String,
+    pub stdout_sha256: String,
+    pub stderr_sha256: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct EvaluationProvenance {
+    pub manifest_sha256: String,
+    pub effective_engine: String,
+    pub resolved_provider: String,
+    pub execution_plane: String,
+    pub podman_pipe: String,
+    pub gpu_uuids: Vec<String>,
+    #[serde(default)]
+    pub job_directory: String,
+}
+
+pub trait EvaluationClient {
+    fn execute(&self, request: &EvaluationRequest) -> Result<EvaluationResult>;
+}
+
+#[derive(Debug, Default)]
+pub struct ProcessEvaluationClient;
+
+impl EvaluationClient for ProcessEvaluationClient {
+    fn execute(&self, request: &EvaluationRequest) -> Result<EvaluationResult> {
+        let request_bytes = serde_json::to_vec(request).map_err(CliError::json)?;
+        let executable = resolve_nvms_bin();
+        let mut child = Command::new(&executable)
+            .args(["action", "--request", "-"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|error| CliError::io("nvms_spawn", error))?;
+
+        let Some(mut stdin) = child.stdin.take() else {
+            terminate(&mut child);
+            return Err(CliError::backend("nvms_stdin", "NanoVMS stdin was unavailable"));
+        };
+        if let Err(error) = stdin.write_all(&request_bytes).and_then(|()| stdin.write_all(b"\n")) {
+            drop(stdin);
+            terminate(&mut child);
+            return Err(CliError::io("nvms_request_write", error));
+        }
+        drop(stdin);
+
+        let Some(stdout) = child.stdout.take() else {
+            terminate(&mut child);
+            return Err(CliError::backend("nvms_stdout", "NanoVMS stdout was unavailable"));
+        };
+        let Some(stderr) = child.stderr.take() else {
+            terminate(&mut child);
+            return Err(CliError::backend("nvms_stderr", "NanoVMS stderr was unavailable"));
+        };
+        let stdout_reader = thread::spawn(move || read_bounded(stdout, RESPONSE_LIMIT));
+        let stderr_reader = thread::spawn(move || read_bounded(stderr, STDERR_LIMIT));
+
+        let outer_timeout = Duration::from_millis(
+            u64::try_from(request.timeout_millis)
+                .unwrap_or(0)
+                .saturating_add(10_000),
+        );
+        let waited = match child.wait_timeout(outer_timeout) {
+            Ok(waited) => waited,
+            Err(error) => {
+                terminate(&mut child);
+                let _ = stdout_reader.join();
+                let _ = stderr_reader.join();
+                return Err(CliError::io("nvms_wait", error));
+            }
+        };
+        let status = match waited {
+            Some(status) => status,
+            None => {
+                terminate(&mut child);
+                let _ = stdout_reader.join();
+                let stderr = join_reader(stderr_reader, "nvms_stderr_read")?;
+                return Err(CliError::backend(
+                    "nvms_timeout",
+                    format!("NanoVMS exceeded outer timeout; stderr={}", render_stderr(&stderr)),
+                ));
+            }
+        };
+        let stdout = join_reader(stdout_reader, "nvms_stdout_read")?;
+        let stderr = join_reader(stderr_reader, "nvms_stderr_read")?;
+        if stdout.truncated {
+            return Err(CliError::backend(
+                "nvms_response_too_large",
+                "NanoVMS response exceeded the bounded response size",
+            ));
+        }
+
+        let result: EvaluationResult = serde_json::from_slice(&stdout.bytes).map_err(|error| {
+            CliError::backend(
+                "nvms_malformed_response",
+                format!("{error}; stderr={}", render_stderr(&stderr)),
+            )
+        })?;
+        match status.code() {
+            Some(0) | Some(4) => Ok(result),
+            Some(2) => Err(exit_error("nvms_usage", status.code(), &stderr)),
+            Some(3) => Err(exit_error("nvms_request_rejected", status.code(), &stderr)),
+            Some(5) => Err(exit_error("nvms_encode_failed", status.code(), &stderr)),
+            code => Err(exit_error("nvms_process_failed", code, &stderr)),
+        }
+    }
+}
+
+fn terminate(child: &mut std::process::Child) {
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+fn resolve_nvms_bin() -> OsString {
+    env::var_os("NVMS_BIN")
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "nvms".into())
+}
+
+struct BoundedBytes {
+    bytes: Vec<u8>,
+    truncated: bool,
+}
+
+fn read_bounded(mut reader: impl Read, limit: usize) -> std::io::Result<BoundedBytes> {
+    let mut bytes = Vec::with_capacity(limit.min(8192));
+    let mut buffer = [0_u8; 8192];
+    let mut truncated = false;
+    loop {
+        let count = reader.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        let remaining = limit.saturating_sub(bytes.len());
+        bytes.extend_from_slice(&buffer[..count.min(remaining)]);
+        truncated |= count > remaining;
+    }
+    Ok(BoundedBytes { bytes, truncated })
+}
+
+fn join_reader(handle: thread::JoinHandle<std::io::Result<BoundedBytes>>, code: &str) -> Result<BoundedBytes> {
+    handle
+        .join()
+        .map_err(|_| CliError::backend(code, "NanoVMS output reader panicked"))?
+        .map_err(|error| CliError::io(code, error))
+}
+
+fn render_stderr(stderr: &BoundedBytes) -> String {
+    let mut value = String::from_utf8_lossy(&stderr.bytes).trim().to_owned();
+    if stderr.truncated {
+        value.push_str("…[truncated]");
+    }
+    value
+}
+
+fn exit_error(code: &str, status: Option<i32>, stderr: &BoundedBytes) -> CliError {
+    CliError::backend(
+        code,
+        format!(
+            "NanoVMS exited with code {}; stderr={}",
+            status.map_or_else(|| "unknown".to_owned(), |value| value.to_string()),
+            render_stderr(stderr)
+        ),
+    )
+}
