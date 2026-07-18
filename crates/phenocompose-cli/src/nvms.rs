@@ -127,6 +127,10 @@ pub struct EvaluationProvenance {
     pub gpu_uuids: Vec<String>,
     #[serde(default)]
     pub job_directory: String,
+    #[serde(default)]
+    pub output_root_created: bool,
+    #[serde(default)]
+    pub output_root_available_bytes: Option<u64>,
 }
 
 #[derive(Debug)]

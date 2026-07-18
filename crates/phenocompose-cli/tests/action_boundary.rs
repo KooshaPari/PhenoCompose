@@ -10,6 +10,7 @@ use phenocompose_cli::{
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::fs;
+use std::path::Path;
 use std::sync::Mutex;
 use tempfile::TempDir;
 
@@ -45,7 +46,17 @@ impl FakeClient {
 impl EvaluationClient for FakeClient {
     fn execute(&self, request: &EvaluationRequest) -> Result<EvaluationResult, Box<EvaluationFailure>> {
         *self.request.lock().unwrap() = Some(request.clone());
-        self.result.lock().unwrap().take().unwrap()
+        let result = self.result.lock().unwrap().take().unwrap();
+        result.map(|mut result| {
+            if result.provenance.job_directory == "job-output" {
+                result.provenance.job_directory = Path::new(&request.output_root)
+                    .join("job-output")
+                    .to_str()
+                    .unwrap()
+                    .to_owned();
+            }
+            result
+        })
     }
 }
 
@@ -103,6 +114,8 @@ fn success_result(state: &RunState, uuids: Vec<String>) -> EvaluationResult {
             podman_pipe: "npipe:////./pipe/podman-machine-default".to_owned(),
             gpu_uuids: uuids,
             job_directory: "job-output".to_owned(),
+            output_root_created: false,
+            output_root_available_bytes: None,
         },
         released: true,
     }
@@ -110,6 +123,17 @@ fn success_result(state: &RunState, uuids: Vec<String>) -> EvaluationResult {
 
 fn hash(value: &str) -> String {
     format!("{:x}", Sha256::digest(value.as_bytes()))
+}
+
+fn result_with_output_root_fields(
+    state: &RunState,
+    created: bool,
+    available_bytes: serde_json::Value,
+) -> EvaluationResult {
+    let mut value = serde_json::to_value(success_result(state, vec![UUID_A.to_owned()])).unwrap();
+    value["provenance"]["output_root_created"] = created.into();
+    value["provenance"]["output_root_available_bytes"] = available_bytes;
+    serde_json::from_value(value).unwrap()
 }
 
 fn gpu_service(image: &str, uuid: &str) -> Service {
@@ -257,6 +281,149 @@ fn accepts_fully_absolute_output_root_without_rebasing() {
         client.request.lock().unwrap().as_ref().unwrap().output_root,
         absolute.to_str().unwrap()
     );
+}
+
+#[test]
+fn accepts_present_missing_zero_and_large_output_root_fields() {
+    let (_, state) = setup(|_| {});
+    for (created, available) in [
+        (true, serde_json::json!(0)),
+        (false, serde_json::json!(u64::MAX)),
+        (true, serde_json::Value::Null),
+    ] {
+        let result = result_with_output_root_fields(&state, created, available.clone());
+        let value = serde_json::to_value(result).unwrap();
+        assert_eq!(value["provenance"]["output_root_created"], created);
+        assert_eq!(value["provenance"]["output_root_available_bytes"], available);
+    }
+
+    let result = success_result(&state, vec![UUID_A.to_owned()]);
+    let value = serde_json::to_value(&result).unwrap();
+    let decoded: EvaluationResult = serde_json::from_value(value).unwrap();
+    let decoded = serde_json::to_value(decoded).unwrap();
+    assert_eq!(decoded["provenance"]["output_root_created"], false);
+    assert!(decoded["provenance"]["output_root_available_bytes"].is_null());
+}
+
+#[test]
+fn output_root_fields_remain_strictly_typed_and_unknown_fields_are_rejected() {
+    let (_, state) = setup(|_| {});
+    let base = serde_json::to_value(success_result(&state, vec![UUID_A.to_owned()])).unwrap();
+
+    let mut negative = base.clone();
+    negative["provenance"]["output_root_available_bytes"] = serde_json::json!(-1);
+    assert!(serde_json::from_value::<EvaluationResult>(negative).is_err());
+
+    let mut unknown = base;
+    unknown["provenance"]["unexpected_output_root_field"] = true.into();
+    assert!(serde_json::from_value::<EvaluationResult>(unknown).is_err());
+}
+
+#[test]
+fn persists_and_exports_output_root_fields_on_success() {
+    let (directory, state) = setup(|_| {});
+    let job = run_action_with_client(
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "output-root-success",
+        &FakeClient::result(result_with_output_root_fields(
+            &state,
+            true,
+            serde_json::json!(u64::MAX),
+        )),
+    )
+    .unwrap();
+
+    let persisted = serde_json::to_value(&job).unwrap();
+    assert_eq!(persisted["output_root_created"], true);
+    assert_eq!(persisted["output_root_available_bytes"], serde_json::json!(u64::MAX));
+    assert!(Path::new(persisted["output_root"].as_str().unwrap()).is_absolute());
+    let exported = serde_json::to_value(export_provenance(directory.path(), RUN_ID).unwrap()).unwrap();
+    assert_eq!(exported["jobs"]["output-root-success"]["output_root_created"], true);
+    assert_eq!(
+        exported["jobs"]["output-root-success"]["output_root_available_bytes"],
+        serde_json::json!(u64::MAX)
+    );
+}
+
+#[test]
+fn missing_output_root_fields_persist_backward_compatible_defaults() {
+    let (directory, state) = setup(|_| {});
+    let job = run_action_with_client(
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "older-nanovms",
+        &FakeClient::result(success_result(&state, vec![UUID_A.to_owned()])),
+    )
+    .unwrap();
+
+    let value = serde_json::to_value(job).unwrap();
+    assert_eq!(value["output_root_created"], false);
+    assert!(value["output_root_available_bytes"].is_null());
+}
+
+#[test]
+fn persists_output_root_fields_and_complete_evidence_on_failure_response() {
+    let (directory, state) = setup(|_| {});
+    let mut result = result_with_output_root_fields(&state, true, serde_json::json!(0));
+    result.success = false;
+    result.error_code = "output_root_space_failed".to_owned();
+    result.error_message = "space unavailable".to_owned();
+    result.lifecycle.exit_code = -1;
+
+    let error = run_action_with_client(
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "output-root-failure",
+        &FakeClient::result(result),
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "output_root_space_failed");
+
+    let job = load_job_provenance(directory.path(), RUN_ID, "output-root-failure").unwrap();
+    let value = serde_json::to_value(&job).unwrap();
+    assert_eq!(value["output_root_created"], true);
+    assert_eq!(value["output_root_available_bytes"], 0);
+    assert_eq!(value["error_code"], "output_root_space_failed");
+    assert_eq!(value["error_message"], "space unavailable");
+    assert!(Path::new(value["output_root"].as_str().unwrap()).is_absolute());
+    let lifecycle = job.lifecycle.unwrap();
+    assert_eq!(lifecycle.stdout, "ok");
+    assert_eq!(lifecycle.stderr, "note");
+    assert_eq!(lifecycle.stdout_sha256, hash("ok"));
+    assert_eq!(lifecycle.stderr_sha256, hash("note"));
+}
+
+#[test]
+fn rejects_job_directory_outside_validated_output_root_and_persists_fields() {
+    let (directory, state) = setup(|_| {});
+    let mut result = result_with_output_root_fields(&state, true, serde_json::json!(42));
+    result.provenance.job_directory = directory
+        .path()
+        .join("different-output-root")
+        .join("job-output")
+        .to_str()
+        .unwrap()
+        .to_owned();
+
+    let error = run_action_with_client(
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "output-root-mismatch",
+        &FakeClient::result(result),
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "nvms_output_root_mismatch");
+
+    let value =
+        serde_json::to_value(load_job_provenance(directory.path(), RUN_ID, "output-root-mismatch").unwrap()).unwrap();
+    assert_eq!(value["output_root_created"], true);
+    assert_eq!(value["output_root_available_bytes"], 42);
+    assert!(Path::new(value["output_root"].as_str().unwrap()).is_absolute());
 }
 
 #[test]

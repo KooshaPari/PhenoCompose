@@ -198,6 +198,10 @@ pub struct JobProvenance {
     pub max_output_bytes: usize,
     #[serde(default)]
     pub output_root: String,
+    #[serde(default)]
+    pub output_root_created: bool,
+    #[serde(default)]
+    pub output_root_available_bytes: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lifecycle: Option<nvms::Lifecycle>,
     pub success: bool,
@@ -408,6 +412,8 @@ pub fn run_action_with_client_at(
         timeout_millis: 300_000,
         max_output_bytes: 1_048_576,
         output_root: String::new(),
+        output_root_created: false,
+        output_root_available_bytes: None,
         lifecycle: Some(nvms::Lifecycle::local_failure(b"", b"")),
         success: false,
         error_code: String::new(),
@@ -430,6 +436,8 @@ pub fn run_action_with_client_at(
             return persist_job_failure(state_dir, job, error);
         }
     };
+    job.output_root_created = result.provenance.output_root_created;
+    job.output_root_available_bytes = result.provenance.output_root_available_bytes;
     job.lifecycle = Some(trustworthy_failure_lifecycle(
         result.lifecycle.clone(),
         request.max_output_bytes,
@@ -661,6 +669,16 @@ fn validate_evaluation_result(request: &EvaluationRequest, result: &EvaluationRe
             "nvms_pipe_mismatch",
             "NanoVMS returned a different Podman pipe",
         ));
+    }
+    if !provenance.job_directory.is_empty() {
+        let output_root = Path::new(&request.output_root);
+        let job_directory = Path::new(&provenance.job_directory);
+        if !job_directory.is_absolute() || job_directory.parent() != Some(output_root) {
+            return Err(CliError::backend(
+                "nvms_output_root_mismatch",
+                "NanoVMS returned a job directory outside the requested output root",
+            ));
+        }
     }
     let expected: BTreeSet<_> = request.gpu_bindings.iter().map(|binding| &binding.uuid).collect();
     let actual: BTreeSet<_> = provenance.gpu_uuids.iter().collect();
