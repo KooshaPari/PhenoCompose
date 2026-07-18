@@ -1,6 +1,7 @@
 use phenocompose_cli::model::{CompositionManifest, GpuRequirements, GpuVendor, ResourceRequirements, Service};
 use phenocompose_cli::nvms::{
-    EvaluationClient, EvaluationProvenance, EvaluationRequest, EvaluationResult, Lifecycle, ACTION_VERSION,
+    EvaluationClient, EvaluationFailure, EvaluationProvenance, EvaluationRequest, EvaluationResult, Lifecycle,
+    ACTION_VERSION,
 };
 use phenocompose_cli::{
     export_provenance, load_job_provenance, run_action_with_client, run_action_with_client_at, CliError, RunLifecycle,
@@ -17,7 +18,7 @@ const UUID_A: &str = "GPU-123e4567-e89b-12d3-a456-426614174000";
 const UUID_B: &str = "GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 
 struct FakeClient {
-    result: Mutex<Option<Result<EvaluationResult, CliError>>>,
+    result: Mutex<Option<Result<EvaluationResult, Box<EvaluationFailure>>>>,
     request: Mutex<Option<EvaluationRequest>>,
 }
 
@@ -29,16 +30,20 @@ impl FakeClient {
         }
     }
 
-    fn error(code: &str) -> Self {
+    fn failure(code: &str, stdout: &[u8], stderr: &[u8]) -> Self {
         Self {
-            result: Mutex::new(Some(Err(CliError::backend(code, "injected client failure")))),
+            result: Mutex::new(Some(Err(EvaluationFailure::new(
+                CliError::backend(code, "injected client failure"),
+                stdout,
+                stderr,
+            )))),
             request: Mutex::new(None),
         }
     }
 }
 
 impl EvaluationClient for FakeClient {
-    fn execute(&self, request: &EvaluationRequest) -> phenocompose_cli::Result<EvaluationResult> {
+    fn execute(&self, request: &EvaluationRequest) -> Result<EvaluationResult, Box<EvaluationFailure>> {
         *self.request.lock().unwrap() = Some(request.clone());
         self.result.lock().unwrap().take().unwrap()
     }
@@ -171,7 +176,7 @@ fn resolves_relative_output_root_against_workspace_and_serializes_exactly() {
     let workspace = tempfile::tempdir().unwrap();
     let client = FakeClient::result(success_result(&state, vec![UUID_A.to_owned()]));
 
-    run_action_with_client_at(
+    let job = run_action_with_client_at(
         workspace.path(),
         directory.path(),
         RUN_ID,
@@ -184,6 +189,8 @@ fn resolves_relative_output_root_against_workspace_and_serializes_exactly() {
     let request = client.request.lock().unwrap().clone().unwrap();
     let expected = workspace.path().join("jobs").join("harbor");
     assert_eq!(request.output_root, expected.to_str().unwrap());
+    assert_eq!(job.output_root, request.output_root);
+    assert_ne!(job.output_root, directory.path().to_str().unwrap());
     let json = serde_json::to_value(&request).unwrap();
     assert_eq!(json["output_root"], expected.to_str().unwrap());
     assert!(!directory.path().join(format!("{RUN_ID}.outputs")).exists());
@@ -236,6 +243,7 @@ fn rejects_output_root_traversal_before_calling_client() {
         .unwrap_err();
         assert_eq!(error.code, code);
         assert!(client.request.lock().unwrap().is_none());
+        assert!(load_job_provenance(directory.path(), RUN_ID, job_id).is_err());
     }
 }
 
@@ -300,22 +308,72 @@ fn rejects_missing_toolkit_for_gpu_dependency() {
 }
 
 #[test]
-fn preserves_malformed_and_nonzero_client_failures() {
-    for code in ["nvms_malformed_response", "nvms_request_rejected"] {
+fn persists_malformed_and_empty_response_evidence() {
+    for (job_id, stdout, stderr) in [
+        ("malformed-response", b"not-json".as_slice(), b"decode error".as_slice()),
+        ("empty-response", b"".as_slice(), b"".as_slice()),
+    ] {
         let (directory, _) = setup(|_| {});
         let error = run_action_with_client(
             directory.path(),
             RUN_ID,
             "inspect-worker",
-            code,
-            &FakeClient::error(code),
+            job_id,
+            &FakeClient::failure("nvms_malformed_response", stdout, stderr),
         )
         .unwrap_err();
-        assert_eq!(error.code, code);
-        let job = load_job_provenance(directory.path(), RUN_ID, code).unwrap();
+        assert_eq!(error.code, "nvms_malformed_response");
+        let job = load_job_provenance(directory.path(), RUN_ID, job_id).unwrap();
         assert!(!job.success);
-        assert_eq!(job.error_code, code);
+        assert_eq!(job.error_code, "nvms_malformed_response");
+        assert!(!job.output_root.is_empty());
+        let lifecycle = job.lifecycle.unwrap();
+        assert_eq!(lifecycle.stdout, String::from_utf8_lossy(stdout));
+        assert_eq!(lifecycle.stderr, String::from_utf8_lossy(stderr));
+        assert_eq!(lifecycle.stdout_sha256, hash(&lifecycle.stdout));
+        assert_eq!(lifecycle.stderr_sha256, hash(&lifecycle.stderr));
     }
+}
+
+#[test]
+fn persists_validation_rejection_with_canonical_empty_hashes() {
+    let (directory, _) = setup(|_| {});
+    let error = run_action_with_client(
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "validation-rejection",
+        &FakeClient::failure("nvms_request_rejected", b"", b""),
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "nvms_request_rejected");
+    let job = load_job_provenance(directory.path(), RUN_ID, "validation-rejection").unwrap();
+    assert!(!job.output_root.is_empty());
+    let lifecycle = job.lifecycle.unwrap();
+    assert_eq!(lifecycle.stdout_sha256, hash(""));
+    assert_eq!(lifecycle.stderr_sha256, hash(""));
+}
+
+#[test]
+fn persists_canonical_empty_hashes_for_empty_lifecycle_output() {
+    let (directory, state) = setup(|_| {});
+    let mut result = success_result(&state, vec![UUID_A.to_owned()]);
+    result.lifecycle.stdout.clear();
+    result.lifecycle.stderr.clear();
+    result.lifecycle.stdout_sha256 = hash("");
+    result.lifecycle.stderr_sha256 = hash("");
+
+    let job = run_action_with_client(
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "empty-output",
+        &FakeClient::result(result),
+    )
+    .unwrap();
+    let lifecycle = job.lifecycle.unwrap();
+    assert_eq!(lifecycle.stdout_sha256, hash(""));
+    assert_eq!(lifecycle.stderr_sha256, hash(""));
 }
 
 #[test]
@@ -355,7 +413,14 @@ fn rejects_digest_route_and_binding_mismatches() {
         )
         .unwrap_err();
         assert_eq!(error.code, expected_code);
-        assert!(!load_job_provenance(directory.path(), RUN_ID, job_id).unwrap().success);
+        let job = load_job_provenance(directory.path(), RUN_ID, job_id).unwrap();
+        assert!(!job.success);
+        assert_eq!(job.run_id, RUN_ID);
+        assert_eq!(job.job_id, job_id);
+        assert_eq!(job.manifest_sha256, state.manifest_sha256);
+        assert_eq!(job.action, "inspect-worker");
+        assert_eq!(job.service, "worker");
+        assert!(!job.output_root.is_empty());
     }
 }
 
@@ -383,6 +448,29 @@ fn preserves_timed_out_lifecycle_and_hashes() {
     assert!(lifecycle.timed_out);
     assert_eq!(lifecycle.stdout_sha256, hash(&lifecycle.stdout));
     assert_eq!(lifecycle.stderr_sha256, hash(&lifecycle.stderr));
+}
+
+#[test]
+fn persists_bounded_local_evidence_for_client_timeout() {
+    let (directory, _) = setup(|_| {});
+    let mut failure = EvaluationFailure::new(
+        CliError::backend("nvms_timeout", "outer deadline exceeded"),
+        b"partial",
+        b"deadline",
+    );
+    failure.lifecycle.timed_out = true;
+    let client = FakeClient {
+        result: Mutex::new(Some(Err(failure))),
+        request: Mutex::new(None),
+    };
+    let error =
+        run_action_with_client(directory.path(), RUN_ID, "inspect-worker", "client-timeout", &client).unwrap_err();
+    assert_eq!(error.code, "nvms_timeout");
+    let job = load_job_provenance(directory.path(), RUN_ID, "client-timeout").unwrap();
+    let lifecycle = job.lifecycle.unwrap();
+    assert!(lifecycle.timed_out);
+    assert_eq!(lifecycle.stdout_sha256, hash("partial"));
+    assert_eq!(lifecycle.stderr_sha256, hash("deadline"));
 }
 
 #[test]
@@ -415,6 +503,26 @@ fn rejects_lifecycle_limit_and_hash_mismatch() {
 }
 
 #[test]
+fn rejects_malformed_returned_hash_and_persists_recomputed_evidence() {
+    let (directory, state) = setup(|_| {});
+    let mut result = success_result(&state, vec![UUID_A.to_owned()]);
+    result.lifecycle.stdout_sha256.clear();
+    let error = run_action_with_client(
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "invalid-hash",
+        &FakeClient::result(result),
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "nvms_evidence_hash_invalid");
+    let job = load_job_provenance(directory.path(), RUN_ID, "invalid-hash").unwrap();
+    let lifecycle = job.lifecycle.unwrap();
+    assert_eq!(lifecycle.stdout_sha256, hash(&lifecycle.stdout));
+    assert_eq!(lifecycle.stderr_sha256, hash(&lifecycle.stderr));
+}
+
+#[test]
 fn successful_provenance_is_atomic_and_exported() {
     let (directory, state) = setup(|_| {});
     let job = run_action_with_client(
@@ -436,4 +544,29 @@ fn successful_provenance_is_atomic_and_exported() {
 
     let exported = export_provenance(directory.path(), RUN_ID).unwrap();
     assert_eq!(exported.jobs["success"], job);
+}
+
+#[test]
+fn failed_atomic_commit_does_not_replace_existing_provenance_or_leave_temporary_files() {
+    let (directory, state) = setup(|_| {});
+    let jobs_dir = directory.path().join(format!("{RUN_ID}.jobs"));
+    fs::create_dir_all(&jobs_dir).unwrap();
+    let destination = jobs_dir.join("collision.json");
+    fs::write(&destination, b"existing").unwrap();
+
+    let error = run_action_with_client(
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "collision",
+        &FakeClient::result(success_result(&state, vec![UUID_A.to_owned()])),
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "job_exists");
+    assert_eq!(fs::read(&destination).unwrap(), b"existing");
+    assert!(fs::read_dir(&jobs_dir).unwrap().all(|entry| !entry
+        .unwrap()
+        .file_name()
+        .to_string_lossy()
+        .ends_with(".tmp")));
 }

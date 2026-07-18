@@ -8,7 +8,7 @@ use std::thread;
 use std::time::Duration;
 use wait_timeout::ChildExt;
 
-use crate::{CliError, Result};
+use crate::CliError;
 
 pub const ACTION_VERSION: &str = "nanovms.io/evaluation-action/v1";
 pub const RESOURCE_VERSION: &str = "nanovms.io/resources/v1";
@@ -128,16 +128,47 @@ pub struct EvaluationProvenance {
     pub job_directory: String,
 }
 
+#[derive(Debug)]
+pub struct EvaluationFailure {
+    pub error: CliError,
+    pub lifecycle: Lifecycle,
+}
+
+impl EvaluationFailure {
+    pub fn new(error: CliError, stdout: &[u8], stderr: &[u8]) -> Box<Self> {
+        Box::new(Self {
+            error,
+            lifecycle: Lifecycle::local_failure(stdout, stderr),
+        })
+    }
+}
+
+impl Lifecycle {
+    pub fn local_failure(stdout: &[u8], stderr: &[u8]) -> Self {
+        Self {
+            exit_code: -1,
+            duration_ms: 0,
+            timed_out: false,
+            truncated: false,
+            stdout: String::from_utf8_lossy(stdout).into_owned(),
+            stderr: String::from_utf8_lossy(stderr).into_owned(),
+            stdout_sha256: sha256(stdout),
+            stderr_sha256: sha256(stderr),
+        }
+    }
+}
+
 pub trait EvaluationClient {
-    fn execute(&self, request: &EvaluationRequest) -> Result<EvaluationResult>;
+    fn execute(&self, request: &EvaluationRequest) -> std::result::Result<EvaluationResult, Box<EvaluationFailure>>;
 }
 
 #[derive(Debug, Default)]
 pub struct ProcessEvaluationClient;
 
 impl EvaluationClient for ProcessEvaluationClient {
-    fn execute(&self, request: &EvaluationRequest) -> Result<EvaluationResult> {
-        let request_bytes = serde_json::to_vec(request).map_err(CliError::json)?;
+    fn execute(&self, request: &EvaluationRequest) -> std::result::Result<EvaluationResult, Box<EvaluationFailure>> {
+        let request_bytes =
+            serde_json::to_vec(request).map_err(|error| EvaluationFailure::new(CliError::json(error), b"", b""))?;
         let executable = resolve_nvms_bin();
         let mut child = Command::new(&executable)
             .args(["action", "--request", "-"])
@@ -145,26 +176,42 @@ impl EvaluationClient for ProcessEvaluationClient {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|error| CliError::io("nvms_spawn", error))?;
+            .map_err(|error| EvaluationFailure::new(CliError::io("nvms_spawn", error), b"", b""))?;
 
         let Some(mut stdin) = child.stdin.take() else {
             terminate(&mut child);
-            return Err(CliError::backend("nvms_stdin", "NanoVMS stdin was unavailable"));
+            return Err(EvaluationFailure::new(
+                CliError::backend("nvms_stdin", "NanoVMS stdin was unavailable"),
+                b"",
+                b"",
+            ));
         };
         if let Err(error) = stdin.write_all(&request_bytes).and_then(|()| stdin.write_all(b"\n")) {
             drop(stdin);
             terminate(&mut child);
-            return Err(CliError::io("nvms_request_write", error));
+            return Err(EvaluationFailure::new(
+                CliError::io("nvms_request_write", error),
+                b"",
+                b"",
+            ));
         }
         drop(stdin);
 
         let Some(stdout) = child.stdout.take() else {
             terminate(&mut child);
-            return Err(CliError::backend("nvms_stdout", "NanoVMS stdout was unavailable"));
+            return Err(EvaluationFailure::new(
+                CliError::backend("nvms_stdout", "NanoVMS stdout was unavailable"),
+                b"",
+                b"",
+            ));
         };
         let Some(stderr) = child.stderr.take() else {
             terminate(&mut child);
-            return Err(CliError::backend("nvms_stderr", "NanoVMS stderr was unavailable"));
+            return Err(EvaluationFailure::new(
+                CliError::backend("nvms_stderr", "NanoVMS stderr was unavailable"),
+                b"",
+                b"",
+            ));
         };
         let stdout_reader = thread::spawn(move || read_bounded(stdout, RESPONSE_LIMIT));
         let stderr_reader = thread::spawn(move || read_bounded(stderr, STDERR_LIMIT));
@@ -178,46 +225,80 @@ impl EvaluationClient for ProcessEvaluationClient {
             Ok(waited) => waited,
             Err(error) => {
                 terminate(&mut child);
-                let _ = stdout_reader.join();
-                let _ = stderr_reader.join();
-                return Err(CliError::io("nvms_wait", error));
+                let stdout = join_reader(stdout_reader, "nvms_stdout_read")?;
+                let stderr = join_reader(stderr_reader, "nvms_stderr_read")?;
+                return Err(EvaluationFailure::new(
+                    CliError::io("nvms_wait", error),
+                    &stdout.bytes,
+                    &stderr.bytes,
+                ));
             }
         };
         let status = match waited {
             Some(status) => status,
             None => {
                 terminate(&mut child);
-                let _ = stdout_reader.join();
+                let stdout = join_reader(stdout_reader, "nvms_stdout_read")?;
                 let stderr = join_reader(stderr_reader, "nvms_stderr_read")?;
-                return Err(CliError::backend(
-                    "nvms_timeout",
-                    format!("NanoVMS exceeded outer timeout; stderr={}", render_stderr(&stderr)),
-                ));
+                let mut failure = EvaluationFailure::new(
+                    CliError::backend(
+                        "nvms_timeout",
+                        format!("NanoVMS exceeded outer timeout; stderr={}", render_stderr(&stderr)),
+                    ),
+                    &stdout.bytes,
+                    &stderr.bytes,
+                );
+                failure.lifecycle.timed_out = true;
+                failure.lifecycle.truncated = stdout.truncated || stderr.truncated;
+                return Err(failure);
             }
         };
         let stdout = join_reader(stdout_reader, "nvms_stdout_read")?;
         let stderr = join_reader(stderr_reader, "nvms_stderr_read")?;
         if stdout.truncated {
-            return Err(CliError::backend(
-                "nvms_response_too_large",
-                "NanoVMS response exceeded the bounded response size",
-            ));
+            let mut failure = EvaluationFailure::new(
+                CliError::backend(
+                    "nvms_response_too_large",
+                    "NanoVMS response exceeded the bounded response size",
+                ),
+                &stdout.bytes,
+                &stderr.bytes,
+            );
+            failure.lifecycle.truncated = true;
+            return Err(failure);
         }
 
         let result: EvaluationResult = serde_json::from_slice(&stdout.bytes).map_err(|error| {
-            CliError::backend(
-                "nvms_malformed_response",
-                format!("{error}; stderr={}", render_stderr(&stderr)),
+            EvaluationFailure::new(
+                CliError::backend(
+                    "nvms_malformed_response",
+                    format!("{error}; stderr={}", render_stderr(&stderr)),
+                ),
+                &stdout.bytes,
+                &stderr.bytes,
             )
         })?;
         match status.code() {
             Some(0) | Some(4) => Ok(result),
-            Some(2) => Err(exit_error("nvms_usage", status.code(), &stderr)),
-            Some(3) => Err(exit_error("nvms_request_rejected", status.code(), &stderr)),
-            Some(5) => Err(exit_error("nvms_encode_failed", status.code(), &stderr)),
-            code => Err(exit_error("nvms_process_failed", code, &stderr)),
+            Some(2) => Err(result_failure(exit_error("nvms_usage", status.code(), &stderr), result)),
+            Some(3) => Err(result_failure(
+                exit_error("nvms_request_rejected", status.code(), &stderr),
+                result,
+            )),
+            Some(5) => Err(result_failure(
+                exit_error("nvms_encode_failed", status.code(), &stderr),
+                result,
+            )),
+            code => Err(result_failure(exit_error("nvms_process_failed", code, &stderr), result)),
         }
     }
+}
+
+fn result_failure(error: CliError, result: EvaluationResult) -> Box<EvaluationFailure> {
+    Box::new(EvaluationFailure {
+        error,
+        lifecycle: result.lifecycle,
+    })
 }
 
 fn terminate(child: &mut std::process::Child) {
@@ -252,11 +333,14 @@ fn read_bounded(mut reader: impl Read, limit: usize) -> std::io::Result<BoundedB
     Ok(BoundedBytes { bytes, truncated })
 }
 
-fn join_reader(handle: thread::JoinHandle<std::io::Result<BoundedBytes>>, code: &str) -> Result<BoundedBytes> {
+fn join_reader(
+    handle: thread::JoinHandle<std::io::Result<BoundedBytes>>,
+    code: &str,
+) -> std::result::Result<BoundedBytes, Box<EvaluationFailure>> {
     handle
         .join()
-        .map_err(|_| CliError::backend(code, "NanoVMS output reader panicked"))?
-        .map_err(|error| CliError::io(code, error))
+        .map_err(|_| EvaluationFailure::new(CliError::backend(code, "NanoVMS output reader panicked"), b"", b""))?
+        .map_err(|error| EvaluationFailure::new(CliError::io(code, error), b"", b""))
 }
 
 fn render_stderr(stderr: &BoundedBytes) -> String {
@@ -276,4 +360,10 @@ fn exit_error(code: &str, status: Option<i32>, stderr: &BoundedBytes) -> CliErro
             render_stderr(stderr)
         ),
     )
+}
+
+fn sha256(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+
+    format!("{:x}", Sha256::digest(bytes))
 }

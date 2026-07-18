@@ -196,6 +196,8 @@ pub struct JobProvenance {
     pub gpu_bindings: Vec<GpuBinding>,
     pub timeout_millis: i64,
     pub max_output_bytes: usize,
+    #[serde(default)]
+    pub output_root: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lifecycle: Option<nvms::Lifecycle>,
     pub success: bool,
@@ -405,7 +407,8 @@ pub fn run_action_with_client_at(
         gpu_bindings: gpu_bindings.clone(),
         timeout_millis: 300_000,
         max_output_bytes: 1_048_576,
-        lifecycle: None,
+        output_root: String::new(),
+        lifecycle: Some(nvms::Lifecycle::local_failure(b"", b"")),
         success: false,
         error_code: String::new(),
         error_message: String::new(),
@@ -417,15 +420,20 @@ pub fn run_action_with_client_at(
         ));
     }
 
-    let request = match build_evaluation_request(workspace_base, state_dir, &state, &job, service) {
-        Ok(request) => request,
-        Err(error) => return persist_job_failure(state_dir, job, error),
-    };
+    let request = build_evaluation_request(workspace_base, state_dir, &state, &job, service)?;
+    job.output_root.clone_from(&request.output_root);
     let result = match client.execute(&request) {
         Ok(result) => result,
-        Err(error) => return persist_job_failure(state_dir, job, error),
+        Err(failure) => {
+            let nvms::EvaluationFailure { error, lifecycle } = *failure;
+            job.lifecycle = Some(trustworthy_failure_lifecycle(lifecycle, request.max_output_bytes));
+            return persist_job_failure(state_dir, job, error);
+        }
     };
-    job.lifecycle = Some(result.lifecycle.clone());
+    job.lifecycle = Some(trustworthy_failure_lifecycle(
+        result.lifecycle.clone(),
+        request.max_output_bytes,
+    ));
     job.error_code = result.error_code.clone();
     job.error_message = result.error_message.clone();
     if let Err(error) = validate_evaluation_result(&request, &result) {
@@ -692,6 +700,12 @@ fn validate_evaluation_result(request: &EvaluationRequest, result: &EvaluationRe
 }
 
 fn validate_evidence_hash(label: &str, bytes: &[u8], claimed: &str) -> Result<()> {
+    if claimed.len() != 64 || !claimed.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(CliError::backend(
+            "nvms_evidence_hash_invalid",
+            format!("NanoVMS {label} hash is not a SHA-256 hex digest"),
+        ));
+    }
     let actual = format!("{:x}", Sha256::digest(bytes));
     if !actual.eq_ignore_ascii_case(claimed) {
         return Err(CliError::backend(
@@ -700,6 +714,31 @@ fn validate_evidence_hash(label: &str, bytes: &[u8], claimed: &str) -> Result<()
         ));
     }
     Ok(())
+}
+
+fn trustworthy_failure_lifecycle(mut lifecycle: nvms::Lifecycle, max_output_bytes: usize) -> nvms::Lifecycle {
+    lifecycle.stdout = bounded_string(lifecycle.stdout, max_output_bytes, &mut lifecycle.truncated);
+    lifecycle.stderr = bounded_string(lifecycle.stderr, max_output_bytes, &mut lifecycle.truncated);
+    if validate_evidence_hash("stdout", lifecycle.stdout.as_bytes(), &lifecycle.stdout_sha256).is_err() {
+        lifecycle.stdout_sha256 = format!("{:x}", Sha256::digest(lifecycle.stdout.as_bytes()));
+    }
+    if validate_evidence_hash("stderr", lifecycle.stderr.as_bytes(), &lifecycle.stderr_sha256).is_err() {
+        lifecycle.stderr_sha256 = format!("{:x}", Sha256::digest(lifecycle.stderr.as_bytes()));
+    }
+    lifecycle
+}
+
+fn bounded_string(mut value: String, limit: usize, truncated: &mut bool) -> String {
+    if value.len() <= limit {
+        return value;
+    }
+    let mut boundary = limit;
+    while !value.is_char_boundary(boundary) {
+        boundary -= 1;
+    }
+    value.truncate(boundary);
+    *truncated = true;
+    value
 }
 
 fn persist_job_failure<T>(state_dir: &Path, mut job: JobProvenance, error: CliError) -> Result<T> {
