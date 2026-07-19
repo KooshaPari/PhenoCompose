@@ -2,6 +2,7 @@
 
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Write as _;
 use thiserror::Error;
 
 /// Supported output targets.
@@ -382,6 +383,13 @@ impl Composition {
     }
 }
 
+fn protocol_name(protocol: Protocol) -> &'static str {
+    match protocol {
+        Protocol::Tcp => "tcp",
+        Protocol::Udp => "udp",
+    }
+}
+
 fn valid_name(name: &str) -> Result<(), CompositionError> {
     if name.is_empty()
         || name.len() > 63
@@ -397,6 +405,29 @@ fn valid_name(name: &str) -> Result<(), CompositionError> {
     }
     Ok(())
 }
+fn yaml_quote(value: &str) -> String {
+    let mut out = String::from("\"");
+    for ch in value.chars() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            ch if ch.is_control() => {
+                let _ = write!(out, "\\u{:04x}", ch as u32);
+            }
+            ch => out.push(ch),
+        }
+    }
+    out.push('"');
+    out
+}
+
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\\'', "'\\"'\\"'"))
+}
+
 fn render_text(c: &Composition, target: Target) -> String {
     let mut out = String::new();
     match target {
@@ -405,19 +436,37 @@ fn render_text(c: &Composition, target: Target) -> String {
             for (name, service) in &c.services {
                 out.push_str(&format!("  {name}:\n"));
                 if let Some(image) = &service.image {
-                    out.push_str(&format!("    image: {image}\n"));
+                    out.push_str(&format!("    image: {}\n", yaml_quote(image)));
                 }
                 if let Some(command) = &service.command {
                     out.push_str(&format!(
                         "    command: [{}]\n",
-                        command.iter().map(|x| format!("{x:?}")).collect::<Vec<_>>().join(", ")
+                        command.iter().map(|x| yaml_quote(x)).collect::<Vec<_>>().join(", ")
                     ));
+                }
+                if !service.environment.is_empty() {
+                    out.push_str("    environment:\n");
+                    for (key, value) in &service.environment {
+                        out.push_str(&format!("      {}: {}\n", yaml_quote(key), yaml_quote(value)));
+                    }
+                }
+                if !service.ports.is_empty() {
+                    out.push_str("    ports:\n");
+                    for port in &service.ports {
+                        out.push_str(&format!("      - {}\n", yaml_quote(&format!("{}\/{}", port.container_port, protocol_name(port.protocol)))));
+                    }
+                }
+                if !service.depends_on.is_empty() {
+                    out.push_str("    depends_on:\n");
+                    for dependency in &service.depends_on {
+                        out.push_str(&format!("      - {}\n", yaml_quote(dependency)));
+                    }
                 }
             }
         }
         Target::Kubernetes => {
             for (name, service) in &c.services {
-                out.push_str(&format!("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: {name}\nspec:\n  template:\n    spec:\n      containers:\n      - name: {name}\n        image: {}\n---\n", service.image.as_deref().unwrap_or("scratch")));
+                out.push_str(&format!("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: {name}\nspec:\n  template:\n    spec:\n      containers:\n      - name: {name}\n        image: {}\n---\n", yaml_quote(service.image.as_deref().unwrap_or("scratch"))));
             }
         }
         Target::Process => {
@@ -426,8 +475,8 @@ fn render_text(c: &Composition, target: Target) -> String {
                 let command = service
                     .command
                     .as_ref()
-                    .map(|v| v.join(" "))
-                    .or_else(|| service.image.clone())
+                     .map(|v| v.iter().map(|arg| shell_quote(arg)).collect::<Vec<_>>().join(" "))
+                     .or_else(|| service.image.as_ref().map(|image| shell_quote(image)))
                     .unwrap_or_default();
                 out.push_str(&format!("  {name}:\n    command: {command}\n"));
             }
