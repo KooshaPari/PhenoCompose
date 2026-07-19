@@ -131,6 +131,12 @@ pub struct EvaluationProvenance {
     pub output_root_created: bool,
     #[serde(default)]
     pub output_root_available_bytes: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub toolkit_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub toolkit_root: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub toolkit_executable: Option<String>,
 }
 
 #[derive(Debug)]
