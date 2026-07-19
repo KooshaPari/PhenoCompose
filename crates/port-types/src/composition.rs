@@ -410,7 +410,7 @@ fn yaml_quote(value: &str) -> String {
     for ch in value.chars() {
         match ch {
             '\\' => out.push_str("\\\\"),
-            '"' => out.push_str("\\""),
+            '"' => out.push_str("\\\""),
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
@@ -425,7 +425,7 @@ fn yaml_quote(value: &str) -> String {
 }
 
 fn shell_quote(value: &str) -> String {
-    format!("'{}'", value.replace('\\'', "'\\"'\\"'"))
+    format!("'{}'", value.replace('\'', "'\"'\"'"))
 }
 
 fn render_text(c: &Composition, target: Target) -> String {
@@ -453,7 +453,7 @@ fn render_text(c: &Composition, target: Target) -> String {
                 if !service.ports.is_empty() {
                     out.push_str("    ports:\n");
                     for port in &service.ports {
-                        out.push_str(&format!("      - {}\n", yaml_quote(&format!("{}\/{}", port.container_port, protocol_name(port.protocol)))));
+                        out.push_str(&format!("      - {}\n", yaml_quote(&format!("{}/{}", port.container_port, protocol_name(port.protocol)))));
                     }
                 }
                 if !service.depends_on.is_empty() {
@@ -482,15 +482,15 @@ fn render_text(c: &Composition, target: Target) -> String {
             }
         }
         Target::NanoVms => {
-            out.push_str(&format!("{{\"name\":\"{}\",\"services\":[", c.name));
+            out.push_str(&format!("{{\"name\":{},\"services\":[", yaml_quote(&c.name)));
             for (i, (name, service)) in c.services.iter().enumerate() {
                 if i > 0 {
                     out.push(',');
                 }
                 out.push_str(&format!(
-                    "{{\"name\":\"{name}\",\"image\":{:?}}}",
-                    service.image.as_deref().unwrap_or("")
-                ));
+                    "{{\"name\":{},\"image\":{}}}",
+                    yaml_quote(name),
+                    yaml_quote(service.image.as_deref().unwrap_or(""))
             }
             out.push_str("]}\n");
         }
