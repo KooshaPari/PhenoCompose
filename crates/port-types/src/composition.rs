@@ -537,5 +537,7 @@ mod tests {
         let mut plan = c.render(Target::NanoVms).unwrap();
         plan.content.push('x');
         assert!(!plan.verify_digest());
+        assert!(plan.nanovms_handoff().is_err());
+        assert!(plan.execution_handoff(ExecutionBackend::NanoVms).is_err());
     }
 }
