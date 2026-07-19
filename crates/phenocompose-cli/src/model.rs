@@ -271,7 +271,7 @@ impl CompositionManifest {
                     ));
                 }
                 for uuid in &gpu.uuids {
-                    if !is_gpu_uuid(uuid) {
+                    if canonical_gpu_uuid(uuid).is_none() {
                         return Err(CliError::validation(
                             "gpu_selector_invalid",
                             format!(
@@ -309,7 +309,9 @@ impl CompositionManifest {
     }
 
     pub fn plan(&self) -> Result<Plan> {
-        let normalized_value = canonicalize(serde_json::to_value(self).map_err(CliError::json)?);
+        let mut manifest = self.clone();
+        manifest.normalize_gpu_uuids()?;
+        let normalized_value = canonicalize(serde_json::to_value(&manifest).map_err(CliError::json)?);
         let normalized_bytes = serde_json::to_vec(&normalized_value).map_err(CliError::json)?;
         let digest = format!("{:x}", Sha256::digest(normalized_bytes));
         let normalized = serde_json::from_value(normalized_value).map_err(CliError::json)?;
@@ -354,6 +356,47 @@ impl CompositionManifest {
         }
         Ok(output)
     }
+
+    fn normalize_gpu_uuids(&mut self) -> Result<()> {
+        for (name, service) in &mut self.services {
+            let Some(gpu) = service
+                .resources
+                .as_mut()
+                .and_then(|resources| resources.gpu.as_mut())
+            else {
+                continue;
+            };
+            for uuid in &mut gpu.uuids {
+                let canonical = canonical_gpu_uuid(uuid).ok_or_else(|| {
+                    CliError::validation(
+                        "gpu_selector_invalid",
+                        format!("service {name} GPU selector {uuid:?} is not a UUID; ordinal indices are forbidden"),
+                    )
+                })?;
+                uuid.clone_from(&canonical);
+            }
+        }
+        Ok(())
+    }
+}
+
+pub fn canonical_gpu_uuid(value: &str) -> Option<String> {
+    let body = value
+        .strip_prefix("GPU-")
+        .or_else(|| value.strip_prefix("gpu-"))
+        .unwrap_or(value);
+    if body.len() != 36
+        || !body.chars().enumerate().all(|(index, character)| {
+            if matches!(index, 8 | 13 | 18 | 23) {
+                character == '-'
+            } else {
+                character.is_ascii_hexdigit()
+            }
+        })
+    {
+        return None;
+    }
+    Some(format!("GPU-{}", body.to_ascii_lowercase()))
 }
 
 fn canonicalize(value: Value) -> Value {
@@ -368,21 +411,4 @@ fn canonicalize(value: Value) -> Value {
         }
         other => other,
     }
-}
-
-fn is_gpu_uuid(value: &str) -> bool {
-    let value = value
-        .strip_prefix("GPU-")
-        .or_else(|| value.strip_prefix("gpu-"))
-        .unwrap_or(value);
-    if value.len() != 36 {
-        return false;
-    }
-    value.chars().enumerate().all(|(index, character)| {
-        if matches!(index, 8 | 13 | 18 | 23) {
-            character == '-'
-        } else {
-            character.is_ascii_hexdigit()
-        }
-    })
 }

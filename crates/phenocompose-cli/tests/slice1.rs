@@ -66,6 +66,45 @@ fn gpu_ordinal_selector_is_rejected() {
 }
 
 #[test]
+fn bare_gpu_uuid_is_accepted_and_canonicalized_in_plan() {
+    let bare = "123e4567-e89b-12d3-a456-426614174000";
+    let input =
+        include_str!("../../../examples/composition-v0.yaml").replace("GPU-123e4567-e89b-12d3-a456-426614174000", bare);
+    let plan = CompositionManifest::parse(&input).unwrap().plan().unwrap();
+    assert_eq!(
+        plan.normalized.services["worker"]
+            .resources
+            .as_ref()
+            .unwrap()
+            .gpu
+            .as_ref()
+            .unwrap()
+            .uuids[0],
+        "GPU-123e4567-e89b-12d3-a456-426614174000"
+    );
+}
+
+#[test]
+fn prefixed_and_bare_gpu_uuids_yield_identical_plan_digest() {
+    let prefixed = include_str!("../../../examples/composition-v0.yaml");
+    let bare = prefixed.replace(
+        "GPU-123e4567-e89b-12d3-a456-426614174000",
+        "123e4567-e89b-12d3-a456-426614174000",
+    );
+    assert_eq!(
+        CompositionManifest::parse(prefixed).unwrap().plan().unwrap().manifest_sha256,
+        CompositionManifest::parse(&bare).unwrap().plan().unwrap().manifest_sha256
+    );
+}
+
+#[test]
+fn action_missing_output_root_is_rejected_at_plan() {
+    let input = include_str!("../../../examples/composition-v0.yaml").replace("    output_root: jobs/harbor\n", "");
+    let error = CompositionManifest::parse(&input).unwrap_err();
+    assert_eq!(error.code, "action_output_root_missing");
+}
+
+#[test]
 fn mutating_apply_fails_closed_for_nvms() {
     let mut manifest = sample();
     manifest.runtime.provider = RuntimeProvider::Nvms;

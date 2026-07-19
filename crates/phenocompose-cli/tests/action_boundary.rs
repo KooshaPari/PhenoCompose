@@ -237,6 +237,18 @@ fn uuid_and_toolkit_only_requests_omit_unverified_gpu_identity() {
 }
 
 #[test]
+fn accepts_bare_gpu_uuid_in_run_action() {
+    let bare = "123e4567-e89b-12d3-a456-426614174000";
+    let (directory, state) = setup(|manifest| {
+        manifest.services.get_mut("worker").unwrap().resources.as_mut().unwrap().gpu.as_mut().unwrap().uuids =
+            vec![bare.to_owned()];
+    });
+    let client = FakeClient::result(success_result(&state, vec![UUID_A.to_owned()]));
+    run_action_with_client(directory.path(), RUN_ID, "inspect-worker", "bare-uuid", &client).unwrap();
+    assert_eq!(client.request.lock().unwrap().clone().unwrap().gpu_bindings[0].uuid, UUID_A);
+}
+
+#[test]
 fn explicit_gpu_identity_declarations_are_preserved_exactly() {
     let gpu = ResourceGpu {
         uuid: UUID_A.to_owned(),

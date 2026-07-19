@@ -4,8 +4,8 @@ pub mod model;
 pub mod nvms;
 
 use model::{
-    CompositionManifest, EffectiveEngine, ExternalEngineToken, GpuVendor, Plan, ProviderStatus, RuntimeProvider,
-    Service,
+    canonical_gpu_uuid, CompositionManifest, EffectiveEngine, ExternalEngineToken, GpuVendor, Plan, ProviderStatus,
+    RuntimeProvider, Service,
 };
 use nvms::{
     ArtifactRequirements, EvaluationClient, EvaluationRequest, EvaluationResult, GpuBinding, ProcessEvaluationClient,
@@ -859,22 +859,6 @@ fn validate_slug(field: &str, value: &str) -> Result<()> {
             format!("{field} must be a path-safe ASCII slug"),
         ))
     }
-}
-
-fn canonical_gpu_uuid(value: &str) -> Option<String> {
-    let body = value.strip_prefix("GPU-").or_else(|| value.strip_prefix("gpu-"))?;
-    if body.len() != 36
-        || !body.chars().enumerate().all(|(index, character)| {
-            if matches!(index, 8 | 13 | 18 | 23) {
-                character == '-'
-            } else {
-                character.is_ascii_hexdigit()
-            }
-        })
-    {
-        return None;
-    }
-    Some(format!("GPU-{}", body.to_ascii_lowercase()))
 }
 
 fn absolute_path(path: &Path) -> Result<PathBuf> {
