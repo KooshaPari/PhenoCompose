@@ -433,7 +433,6 @@ fn shell_quote(value: &str) -> String {
         .replace('\'', "'\"'\"'");
     format!("'{escaped}'")
 }
-}
 
 fn render_text(c: &Composition, target: Target) -> String {
     let mut out = String::new();
