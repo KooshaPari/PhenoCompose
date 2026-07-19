@@ -202,6 +202,12 @@ pub struct JobProvenance {
     pub output_root_created: bool,
     #[serde(default)]
     pub output_root_available_bytes: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub toolkit_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub toolkit_root: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub toolkit_executable: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lifecycle: Option<nvms::Lifecycle>,
     pub success: bool,
@@ -414,6 +420,9 @@ pub fn run_action_with_client_at(
         output_root: String::new(),
         output_root_created: false,
         output_root_available_bytes: None,
+        toolkit_version: None,
+        toolkit_root: None,
+        toolkit_executable: None,
         lifecycle: Some(nvms::Lifecycle::local_failure(b"", b"")),
         success: false,
         error_code: String::new(),
@@ -438,6 +447,9 @@ pub fn run_action_with_client_at(
     };
     job.output_root_created = result.provenance.output_root_created;
     job.output_root_available_bytes = result.provenance.output_root_available_bytes;
+    job.toolkit_version = result.provenance.toolkit_version.clone();
+    job.toolkit_root = result.provenance.toolkit_root.clone();
+    job.toolkit_executable = result.provenance.toolkit_executable.clone();
     job.lifecycle = Some(trustworthy_failure_lifecycle(
         result.lifecycle.clone(),
         request.max_output_bytes,
@@ -847,22 +859,6 @@ fn validate_slug(field: &str, value: &str) -> Result<()> {
             format!("{field} must be a path-safe ASCII slug"),
         ))
     }
-}
-
-fn canonical_gpu_uuid(value: &str) -> Option<String> {
-    let body = value.strip_prefix("GPU-").or_else(|| value.strip_prefix("gpu-"))?;
-    if body.len() != 36
-        || !body.chars().enumerate().all(|(index, character)| {
-            if matches!(index, 8 | 13 | 18 | 23) {
-                character == '-'
-            } else {
-                character.is_ascii_hexdigit()
-            }
-        })
-    {
-        return None;
-    }
-    Some(format!("GPU-{}", body.to_ascii_lowercase()))
 }
 
 fn absolute_path(path: &Path) -> Result<PathBuf> {

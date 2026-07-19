@@ -116,6 +116,9 @@ fn success_result(state: &RunState, uuids: Vec<String>) -> EvaluationResult {
             job_directory: "job-output".to_owned(),
             output_root_created: false,
             output_root_available_bytes: None,
+            toolkit_version: None,
+            toolkit_root: None,
+            toolkit_executable: None,
         },
         released: true,
     }
@@ -133,6 +136,26 @@ fn result_with_output_root_fields(
     let mut value = serde_json::to_value(success_result(state, vec![UUID_A.to_owned()])).unwrap();
     value["provenance"]["output_root_created"] = created.into();
     value["provenance"]["output_root_available_bytes"] = available_bytes;
+    serde_json::from_value(value).unwrap()
+}
+
+fn result_with_toolkit_fields(
+    state: &RunState,
+    version: Option<&str>,
+    root: Option<&str>,
+    executable: Option<&str>,
+) -> EvaluationResult {
+    let mut value = serde_json::to_value(success_result(state, vec![UUID_A.to_owned()])).unwrap();
+    let provenance = &mut value["provenance"];
+    if let Some(version) = version {
+        provenance["toolkit_version"] = version.into();
+    }
+    if let Some(root) = root {
+        provenance["toolkit_root"] = root.into();
+    }
+    if let Some(executable) = executable {
+        provenance["toolkit_executable"] = executable.into();
+    }
     serde_json::from_value(value).unwrap()
 }
 
@@ -303,6 +326,126 @@ fn accepts_present_missing_zero_and_large_output_root_fields() {
     let decoded = serde_json::to_value(decoded).unwrap();
     assert_eq!(decoded["provenance"]["output_root_created"], false);
     assert!(decoded["provenance"]["output_root_available_bytes"].is_null());
+}
+
+#[test]
+fn accepts_present_and_missing_toolkit_fields() {
+    let (_, state) = setup(|_| {});
+    for (version, root, executable) in [
+        (Some("12.8"), Some("/opt/cuda/12.8"), Some("/opt/cuda/12.8/bin/nvcc")),
+        (Some("12.8"), None, None),
+        (None, None, None),
+    ] {
+        let result = result_with_toolkit_fields(&state, version, root, executable);
+        let value = serde_json::to_value(result).unwrap();
+        assert_eq!(
+            value["provenance"]["toolkit_version"],
+            version.map(serde_json::Value::from).unwrap_or(serde_json::Value::Null)
+        );
+        assert_eq!(
+            value["provenance"]["toolkit_root"],
+            root.map(serde_json::Value::from).unwrap_or(serde_json::Value::Null)
+        );
+        assert_eq!(
+            value["provenance"]["toolkit_executable"],
+            executable
+                .map(serde_json::Value::from)
+                .unwrap_or(serde_json::Value::Null)
+        );
+    }
+
+    let result = success_result(&state, vec![UUID_A.to_owned()]);
+    let value = serde_json::to_value(&result).unwrap();
+    let decoded: EvaluationResult = serde_json::from_value(value).unwrap();
+    let decoded = serde_json::to_value(decoded).unwrap();
+    assert!(decoded["provenance"]["toolkit_version"].is_null());
+    assert!(decoded["provenance"]["toolkit_root"].is_null());
+    assert!(decoded["provenance"]["toolkit_executable"].is_null());
+}
+
+#[test]
+fn toolkit_fields_remain_strictly_typed_and_unknown_fields_are_rejected() {
+    let (_, state) = setup(|_| {});
+    let base = serde_json::to_value(success_result(&state, vec![UUID_A.to_owned()])).unwrap();
+
+    let mut unknown = base;
+    unknown["provenance"]["unexpected_toolkit_field"] = true.into();
+    assert!(serde_json::from_value::<EvaluationResult>(unknown).is_err());
+}
+
+#[test]
+fn persists_and_exports_toolkit_fields_on_success() {
+    let (directory, state) = setup(|_| {});
+    let job = run_action_with_client(
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "toolkit-success",
+        &FakeClient::result(result_with_toolkit_fields(
+            &state,
+            Some("12.8"),
+            Some("/opt/cuda/12.8"),
+            Some("/opt/cuda/12.8/bin/nvcc"),
+        )),
+    )
+    .unwrap();
+
+    let persisted = serde_json::to_value(&job).unwrap();
+    assert_eq!(persisted["toolkit_version"], "12.8");
+    assert_eq!(persisted["toolkit_root"], "/opt/cuda/12.8");
+    assert_eq!(persisted["toolkit_executable"], "/opt/cuda/12.8/bin/nvcc");
+    let exported = serde_json::to_value(export_provenance(directory.path(), RUN_ID).unwrap()).unwrap();
+    assert_eq!(exported["jobs"]["toolkit-success"]["toolkit_version"], "12.8");
+    assert_eq!(exported["jobs"]["toolkit-success"]["toolkit_root"], "/opt/cuda/12.8");
+    assert_eq!(
+        exported["jobs"]["toolkit-success"]["toolkit_executable"],
+        "/opt/cuda/12.8/bin/nvcc"
+    );
+}
+
+#[test]
+fn missing_toolkit_fields_persist_backward_compatible_defaults() {
+    let (directory, state) = setup(|_| {});
+    let job = run_action_with_client(
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "older-nanovms-toolkit",
+        &FakeClient::result(success_result(&state, vec![UUID_A.to_owned()])),
+    )
+    .unwrap();
+
+    let value = serde_json::to_value(job).unwrap();
+    assert!(value.get("toolkit_version").is_none());
+    assert!(value.get("toolkit_root").is_none());
+    assert!(value.get("toolkit_executable").is_none());
+}
+
+#[test]
+fn persists_toolkit_fields_on_failure_response() {
+    let (directory, state) = setup(|_| {});
+    let mut result = result_with_toolkit_fields(&state, Some("12.8"), Some("/opt/cuda/12.8"), None);
+    result.success = false;
+    result.error_code = "toolkit_probe_failed".to_owned();
+    result.error_message = "toolkit unavailable".to_owned();
+    result.lifecycle.exit_code = -1;
+
+    let error = run_action_with_client(
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "toolkit-failure",
+        &FakeClient::result(result),
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "toolkit_probe_failed");
+
+    let job = load_job_provenance(directory.path(), RUN_ID, "toolkit-failure").unwrap();
+    let value = serde_json::to_value(&job).unwrap();
+    assert_eq!(value["toolkit_version"], "12.8");
+    assert_eq!(value["toolkit_root"], "/opt/cuda/12.8");
+    assert!(value.get("toolkit_executable").is_none());
+    assert_eq!(value["error_code"], "toolkit_probe_failed");
 }
 
 #[test]
