@@ -491,6 +491,7 @@ fn render_text(c: &Composition, target: Target) -> String {
                     "{{\"name\":{},\"image\":{}}}",
                     yaml_quote(name),
                     yaml_quote(service.image.as_deref().unwrap_or(""))
+                ));
             }
             out.push_str("]}\n");
         }
