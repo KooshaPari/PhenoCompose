@@ -2,7 +2,8 @@
 
 `phenocompose.dev/v0` is the first executable PhenoCompose contract. The Rust
 model in `crates/phenocompose-cli/src/model.rs` is authoritative for Slice 1.
-Every object rejects unknown fields.
+Every manifest object uses `#[serde(deny_unknown_fields)]`; unknown keys fail
+parse and validation.
 
 The manifest represents:
 
@@ -15,8 +16,32 @@ The manifest represents:
 - health-check declarations, actions, artifacts, teardown order, and
   provenance requirements.
 
+## GPU selectors
+
 GPU selectors must be UUIDs (with an optional `GPU-` prefix). Device ordinals
 such as `0` are invalid because they are host-order-dependent.
+
+For `run-action`, NanoVMS evaluation requests carry GPU identity as UUID plus
+CUDA toolkit version only. Unverified fields (`name`, `architecture`,
+`compute_capability`) are omitted from outbound `resource_manifest.gpus`; the
+CLI does not synthesize hardware claims from manifest text.
+
+## Actions and output roots
+
+Each action names a target service, command argv, and `output_root`. The path
+must be workspace-relative or fully absolute; drive-relative paths, empty
+values, and parent traversal are rejected. Relative roots resolve against the
+process working directory at invocation time and affect the plan digest.
+
+`run-action` requires a persisted successful Podman apply with the exact
+historical docker-schema route (`runtime.provider: podman` plus
+`portage_compatibility.external_engine_token: docker` and
+`effective_engine: podman`). It executes through the bounded NanoVMS
+evaluation boundary (subprocess JSON protocol), not Runtime container exec.
+
+Job provenance records the resolved absolute `output_root` plus NanoVMS-reported
+`output_root_created` (bool) and `output_root_available_bytes` (optional u64).
+These fields export through `export-provenance` and reject unknown keys.
 
 ## Podman and Portage compatibility
 
@@ -45,10 +70,11 @@ wsl.exe -d <distribution> -- podman ...
   persisted under `.phenocompose/runs`.
 - `status`, `down`, and `export-provenance` require persisted successful run
   state.
-- `run-action` validates the persisted action and then returns a structured
-  unsupported error because the current Runtime port has no exec method.
-- NVMS mutation is rejected because the existing driver destroys instances on
-  drop and has no API to reattach a persisted instance ID.
+- `run-action` validates route, GPU closure, and `output_root`, invokes
+  NanoVMS, validates attested provenance and lifecycle bounds, and persists
+  job provenance under `.phenocompose/runs`.
+- NVMS runtime `apply` mutation is rejected because the existing driver
+  destroys instances on drop and has no API to reattach a persisted instance ID.
 
 Errors are JSON objects with stable `kind` and `code` fields. Unsupported
 errors also identify `capability` and `provider`.
