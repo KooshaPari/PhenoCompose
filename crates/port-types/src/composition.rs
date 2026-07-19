@@ -425,7 +425,14 @@ fn yaml_quote(value: &str) -> String {
 }
 
 fn shell_quote(value: &str) -> String {
-    format!("'{}'", value.replace('\'', "'\"'\"'"))
+    let escaped = value
+        .replace('\\', "\\\\")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
+        .replace('\'', "'\"'\"'");
+    format!("'{escaped}'")
+}
 }
 
 fn render_text(c: &Composition, target: Target) -> String {
