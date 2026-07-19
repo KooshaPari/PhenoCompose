@@ -209,6 +209,11 @@ impl RenderedPlan {
     }
     /// Convert a non-NanoVMS plan into a BytePort apply handoff.
     pub fn byteport_handoff(&self) -> Result<BytePortHandoff, CompositionError> {
+        if !self.verify_digest() {
+            return Err(CompositionError::Invalid(
+                "rendered plan digest does not match content".into(),
+            ));
+        }
         if self.target == Target::NanoVms {
             return Err(CompositionError::Invalid(
                 "NanoVMS plans must use the execution handoff".into(),
@@ -223,6 +228,11 @@ impl RenderedPlan {
     }
     /// Convert a NanoVMS plan into an execution handoff.
     pub fn nanovms_handoff(&self) -> Result<NanoVmsHandoff, CompositionError> {
+        if !self.verify_digest() {
+            return Err(CompositionError::Invalid(
+                "rendered plan digest does not match content".into(),
+            ));
+        }
         if self.target != Target::NanoVms {
             return Err(CompositionError::Invalid(
                 "only NanoVMS plans can use the execution handoff".into(),
@@ -236,6 +246,11 @@ impl RenderedPlan {
     }
     /// Create a runtime handoff after checking backend/renderer compatibility.
     pub fn execution_handoff(&self, backend: ExecutionBackend) -> Result<ExecutionHandoff, CompositionError> {
+        if !self.verify_digest() {
+            return Err(CompositionError::Invalid(
+                "rendered plan digest does not match content".into(),
+            ));
+        }
         if !backend.supports(self.target) {
             return Err(CompositionError::Invalid(format!(
                 "backend {backend:?} cannot consume target {:?}",
@@ -256,6 +271,11 @@ impl RenderedPlan {
         artifact_ref: impl Into<String>,
         backend: ExecutionBackend,
     ) -> Result<MeshWorkloadIntent, CompositionError> {
+        if !self.verify_digest() {
+            return Err(CompositionError::Invalid(
+                "rendered plan digest does not match content".into(),
+            ));
+        }
         if !backend.supports(self.target) {
             return Err(CompositionError::Invalid(format!(
                 "backend {backend:?} cannot consume target {:?}",
