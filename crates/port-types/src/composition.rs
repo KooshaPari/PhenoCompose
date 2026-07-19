@@ -582,6 +582,22 @@ mod tests {
         assert!(plan.mesh_intent("", "oci://x", ExecutionBackend::Podman).is_err());
     }
     #[test]
+    fn renderer_preserves_docker_fields_and_escapes_values() {
+        let mut c = sample();
+        let service = c.services.get_mut("web").unwrap();
+        service.image = Some("evil\nimage".into());
+        service.environment.insert("TOKEN".into(), "line\nvalue".into());
+        let docker = c.render(Target::Docker).unwrap();
+        assert!(docker.content.contains("environment:"));
+        assert!(docker.content.contains("\"TOKEN\": \"line\\nvalue\""));
+        assert!(docker.content.contains("ports:"));
+        assert!(!docker.content.contains("evil\nimage"));
+        assert!(docker.content.contains("evil\\nimage"));
+        let process = c.render(Target::Process).unwrap();
+        assert!(!process.content.contains("evil\nimage"));
+    }
+
+    #[test]
     fn tampering_invalidates_handoff_digest() {
         let c = sample();
         let mut plan = c.render(Target::NanoVms).unwrap();
