@@ -11,7 +11,9 @@ use wait_timeout::ChildExt;
 use crate::CliError;
 
 pub const ACTION_VERSION: &str = "nanovms.io/evaluation-action/v1";
+pub const SERVICE_LIFECYCLE_VERSION: &str = "nanovms.io/service-lifecycle/v1";
 pub const RESOURCE_VERSION: &str = "nanovms.io/resources/v1";
+pub const DEFAULT_PODMAN_PIPE: &str = "npipe:////./pipe/podman-machine-default";
 const STDERR_LIMIT: usize = 64 * 1024;
 const RESPONSE_LIMIT: usize = 34 * 1024 * 1024;
 
@@ -377,4 +379,198 @@ fn sha256(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
 
     format!("{:x}", Sha256::digest(bytes))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ServiceLifecycleRequest {
+    pub version: String,
+    pub schema_version: String,
+    pub manifest_sha256: String,
+    pub run_id: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub wsl_distribution: String,
+    pub podman_pipe: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub order: Vec<String>,
+    pub intents: Vec<ServiceLifecycleIntent>,
+    pub services: BTreeMap<String, ServiceDefinition>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ServiceLifecycleIntent {
+    pub phase: String,
+    pub service: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub depends_on: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ServiceDefinition {
+    pub image: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub depends_on: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub command: Vec<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub environment: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cpu_millis: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory_bytes: Option<u64>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub gpu_uuids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ServiceLifecycleResult {
+    pub version: String,
+    pub success: bool,
+    #[serde(default)]
+    pub error_code: String,
+    #[serde(default)]
+    pub error_message: String,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub containers: BTreeMap<String, String>,
+    pub effective_engine: String,
+    pub resolved_provider: String,
+    pub podman_pipe: String,
+}
+
+#[derive(Debug)]
+pub struct ServiceLifecycleFailure {
+    pub error: CliError,
+    pub result: ServiceLifecycleResult,
+}
+
+pub trait LifecycleClient {
+    fn execute(
+        &self,
+        request: &ServiceLifecycleRequest,
+    ) -> std::result::Result<ServiceLifecycleResult, Box<ServiceLifecycleFailure>>;
+}
+
+#[derive(Debug, Default)]
+pub struct ProcessLifecycleClient;
+
+impl LifecycleClient for ProcessLifecycleClient {
+    fn execute(
+        &self,
+        request: &ServiceLifecycleRequest,
+    ) -> std::result::Result<ServiceLifecycleResult, Box<ServiceLifecycleFailure>> {
+        let request_bytes =
+            serde_json::to_vec(request).map_err(|error| Box::new(ServiceLifecycleFailure {
+                error: CliError::json(error),
+                result: ServiceLifecycleResult {
+                    version: SERVICE_LIFECYCLE_VERSION.to_owned(),
+                    success: false,
+                    error_code: String::new(),
+                    error_message: String::new(),
+                    containers: BTreeMap::new(),
+                    effective_engine: String::new(),
+                    resolved_provider: String::new(),
+                    podman_pipe: request.podman_pipe.clone(),
+                },
+            }))?;
+        let executable = resolve_nvms_bin();
+        let mut child = Command::new(&executable)
+            .args(["lifecycle", "--request", "-"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|error| Box::new(ServiceLifecycleFailure {
+                error: CliError::io("nvms_spawn", error),
+                result: empty_lifecycle_result(request),
+            }))?;
+
+        let Some(mut stdin) = child.stdin.take() else {
+            terminate(&mut child);
+            return Err(Box::new(ServiceLifecycleFailure {
+                error: CliError::backend("nvms_stdin", "NanoVMS stdin was unavailable"),
+                result: empty_lifecycle_result(request),
+            }));
+        };
+        if let Err(error) = stdin.write_all(&request_bytes).and_then(|()| stdin.write_all(b"\n")) {
+            drop(stdin);
+            terminate(&mut child);
+            return Err(Box::new(ServiceLifecycleFailure {
+                error: CliError::io("nvms_request_write", error),
+                result: empty_lifecycle_result(request),
+            }));
+        }
+        drop(stdin);
+
+        let output = child
+            .wait_with_output()
+            .map_err(|error| Box::new(ServiceLifecycleFailure {
+                error: CliError::io("nvms_wait", error),
+                result: empty_lifecycle_result(request),
+            }))?;
+        let result: ServiceLifecycleResult = serde_json::from_slice(&output.stdout).map_err(|error| {
+            Box::new(ServiceLifecycleFailure {
+                error: CliError::backend(
+                    "nvms_malformed_response",
+                    format!(
+                        "{error}; stderr={}",
+                        String::from_utf8_lossy(&output.stderr).trim()
+                    ),
+                ),
+                result: empty_lifecycle_result(request),
+            })
+        })?;
+        match output.status.code() {
+            Some(0) | Some(4) => Ok(result),
+            Some(2) => Err(lifecycle_failure(
+                exit_error("nvms_usage", output.status.code(), &BoundedBytes {
+                    bytes: output.stderr.clone(),
+                    truncated: false,
+                }),
+                result,
+            )),
+            Some(3) => Err(lifecycle_failure(
+                exit_error("nvms_request_rejected", output.status.code(), &BoundedBytes {
+                    bytes: output.stderr.clone(),
+                    truncated: false,
+                }),
+                result,
+            )),
+            Some(5) => Err(lifecycle_failure(
+                exit_error("nvms_encode_failed", output.status.code(), &BoundedBytes {
+                    bytes: output.stderr.clone(),
+                    truncated: false,
+                }),
+                result,
+            )),
+            code => Err(lifecycle_failure(
+                exit_error("nvms_process_failed", code, &BoundedBytes {
+                    bytes: output.stderr.clone(),
+                    truncated: false,
+                }),
+                result,
+            )),
+        }
+    }
+}
+
+fn empty_lifecycle_result(request: &ServiceLifecycleRequest) -> ServiceLifecycleResult {
+    ServiceLifecycleResult {
+        version: SERVICE_LIFECYCLE_VERSION.to_owned(),
+        success: false,
+        error_code: String::new(),
+        error_message: String::new(),
+        containers: BTreeMap::new(),
+        effective_engine: String::new(),
+        resolved_provider: String::new(),
+        podman_pipe: request.podman_pipe.clone(),
+    }
+}
+
+fn lifecycle_failure(error: CliError, result: ServiceLifecycleResult) -> Box<ServiceLifecycleFailure> {
+    Box::new(ServiceLifecycleFailure { error, result })
 }

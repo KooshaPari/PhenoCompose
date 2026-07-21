@@ -6,7 +6,7 @@ pub mod service_graph;
 
 pub use service_graph::{
     ensure_service_lifecycle_capability, execute_lifecycle_plan, plan_lifecycle, IntentPhase, LifecyclePlan,
-    RollbackContract, SERVICE_LIFECYCLE_CAPABILITY,
+    LIFECYCLE_SCHEMA_VERSION, RollbackContract, SERVICE_LIFECYCLE_CAPABILITY,
 };
 
 use model::{
@@ -14,8 +14,10 @@ use model::{
     RuntimeProvider, Service,
 };
 use nvms::{
-    ArtifactRequirements, EvaluationClient, EvaluationRequest, EvaluationResult, GpuBinding, ProcessEvaluationClient,
-    ResourceGpu, ResourceManifest, ACTION_VERSION, RESOURCE_VERSION,
+    ArtifactRequirements, EvaluationClient, EvaluationRequest, EvaluationResult, GpuBinding, LifecycleClient,
+    ProcessEvaluationClient, ProcessLifecycleClient, ResourceGpu, ResourceManifest, ServiceDefinition,
+    ServiceLifecycleIntent, ServiceLifecycleRequest, ServiceLifecycleResult, ACTION_VERSION, DEFAULT_PODMAN_PIPE,
+    RESOURCE_VERSION, SERVICE_LIFECYCLE_VERSION,
 };
 use phenocompose_port_composer::{ComposeError, Composer};
 use phenocompose_port_publisher::{PublishError, Publisher};
@@ -234,6 +236,15 @@ pub fn render_plan(manifest: &CompositionManifest) -> Result<Plan> {
 }
 
 pub fn apply(manifest: CompositionManifest, state_dir: &Path, dry_run: bool) -> Result<ApplyOutput> {
+    apply_with_lifecycle_client(manifest, state_dir, dry_run, &ProcessLifecycleClient)
+}
+
+pub fn apply_with_lifecycle_client(
+    manifest: CompositionManifest,
+    state_dir: &Path,
+    dry_run: bool,
+    lifecycle_client: &dyn LifecycleClient,
+) -> Result<ApplyOutput> {
     let plan = manifest.plan()?;
     let lifecycle = plan_lifecycle(&manifest, &plan.manifest_sha256)?;
     let run_id = format!(
@@ -263,12 +274,9 @@ pub fn apply(manifest: CompositionManifest, state_dir: &Path, dry_run: bool) -> 
         ));
     }
 
-    let mut containers = BTreeMap::new();
-    let mut rollback = RollbackContract::default();
     let composer = PrebuiltImageComposer;
     let publisher = PodmanLocalPublisher::new(&manifest.runtime.wsl_distribution);
     publisher.probe()?;
-
     for intent in &lifecycle.intents {
         if intent.phase != IntentPhase::Create {
             continue;
@@ -280,19 +288,21 @@ pub fn apply(manifest: CompositionManifest, state_dir: &Path, dry_run: bool) -> 
         publisher
             .publish(&artifact, &PublishTarget::new("podman-local", &service.image))
             .map_err(map_publish_error)?;
-        let runtime = PodmanRuntime::for_service(&manifest.runtime.wsl_distribution, &run_id, name, service);
-        match runtime.spawn(&artifact.image) {
-            Ok(container_id) => {
-                rollback.record_create(name, container_id.clone());
-                containers.insert(name.clone(), container_id.id);
-            }
-            Err(error) => {
-                let bare = PodmanRuntime::bare(&manifest.runtime.wsl_distribution);
-                rollback.rollback(&bare);
-                return Err(map_runtime_error(error));
-            }
-        }
     }
+
+    let request = build_lifecycle_request(&manifest, &lifecycle, &run_id, &plan.manifest_sha256)?;
+    let result = match lifecycle_client.execute(&request) {
+        Ok(result) => result,
+        Err(failure) => {
+            rollback_containers_from_map(&manifest.runtime.wsl_distribution, &failure.result.containers);
+            return Err(failure.error);
+        }
+    };
+    if let Err(error) = validate_lifecycle_result(&request, &result) {
+        rollback_containers_from_map(&manifest.runtime.wsl_distribution, &result.containers);
+        return Err(error);
+    }
+    let containers = result.containers;
 
     let state = RunState {
         state_version: "phenocompose.run/v0".to_owned(),
@@ -305,7 +315,7 @@ pub fn apply(manifest: CompositionManifest, state_dir: &Path, dry_run: bool) -> 
         manifest,
     };
     if let Err(error) = save_state(state_dir, &state) {
-        rollback_containers(&state.manifest.runtime.wsl_distribution, &containers);
+        rollback_containers_from_map(&state.manifest.runtime.wsl_distribution, &containers);
         return Err(error);
     }
     Ok(ApplyOutput {
@@ -652,7 +662,7 @@ fn build_evaluation_request(
         argv: argv.to_vec(),
         environment,
         external_engine_token: "docker".to_owned(),
-        podman_pipe: "npipe:////./pipe/podman-machine-default".to_owned(),
+        podman_pipe: DEFAULT_PODMAN_PIPE.to_owned(),
         wsl_distribution: state.manifest.runtime.wsl_distribution.clone().unwrap_or_default(),
         output_root: path_string(&output_root)?,
         reservation_path: path_string(&reservation_path)?,
@@ -1052,11 +1062,100 @@ fn ensure_persisted_provider(state: &RunState) -> Result<()> {
     }
 }
 
-fn rollback_containers(distribution: &Option<String>, containers: &BTreeMap<String, String>) {
+fn rollback_containers_from_map(distribution: &Option<String>, containers: &BTreeMap<String, String>) {
     let runtime = PodmanRuntime::bare(distribution);
     for id in containers.values().rev() {
         let _ = runtime.stop(&ContainerId::new(id));
     }
+}
+
+fn build_lifecycle_request(
+    manifest: &CompositionManifest,
+    plan: &LifecyclePlan,
+    run_id: &str,
+    manifest_sha256: &str,
+) -> Result<ServiceLifecycleRequest> {
+    let mut services = BTreeMap::new();
+    for (name, service) in &manifest.services {
+        let resources = service.resources.as_ref();
+        services.insert(
+            name.clone(),
+            ServiceDefinition {
+                image: service.image.clone(),
+                depends_on: service.depends_on.clone(),
+                command: service.command.clone(),
+                environment: service.environment.clone(),
+                cpu_millis: resources.and_then(|value| value.cpu_millis),
+                memory_bytes: resources.and_then(|value| value.memory_bytes),
+                gpu_uuids: resources
+                    .and_then(|value| value.gpu.as_ref())
+                    .map(|gpu| gpu.uuids.clone())
+                    .unwrap_or_default(),
+            },
+        );
+    }
+    let intents = plan
+        .intents
+        .iter()
+        .map(|intent| ServiceLifecycleIntent {
+            phase: match intent.phase {
+                IntentPhase::Create => "create".to_owned(),
+                IntentPhase::Start => "start".to_owned(),
+            },
+            service: intent.service.clone(),
+            image: intent.image.clone(),
+            depends_on: intent.depends_on.clone(),
+        })
+        .collect();
+    Ok(ServiceLifecycleRequest {
+        version: SERVICE_LIFECYCLE_VERSION.to_owned(),
+        schema_version: LIFECYCLE_SCHEMA_VERSION.to_owned(),
+        manifest_sha256: manifest_sha256.to_owned(),
+        run_id: run_id.to_owned(),
+        wsl_distribution: manifest.runtime.wsl_distribution.clone().unwrap_or_default(),
+        podman_pipe: DEFAULT_PODMAN_PIPE.to_owned(),
+        order: plan.order.clone(),
+        intents,
+        services,
+    })
+}
+
+fn validate_lifecycle_result(request: &ServiceLifecycleRequest, result: &ServiceLifecycleResult) -> Result<()> {
+    if result.version != SERVICE_LIFECYCLE_VERSION {
+        return Err(CliError::backend(
+            "nvms_version_mismatch",
+            format!("unexpected NanoVMS lifecycle version {:?}", result.version),
+        ));
+    }
+    if !result.success {
+        let code = if result.error_code.is_empty() {
+            "nvms_lifecycle_failed".to_owned()
+        } else {
+            result.error_code.clone()
+        };
+        return Err(CliError::backend(code, result.error_message.clone()));
+    }
+    if result.effective_engine != "podman" || result.resolved_provider != "podman" {
+        return Err(CliError::backend(
+            "nvms_route_mismatch",
+            "NanoVMS did not attest the podman provider for service lifecycle",
+        ));
+    }
+    if result.podman_pipe != request.podman_pipe {
+        return Err(CliError::backend(
+            "nvms_pipe_mismatch",
+            "NanoVMS returned a different Podman pipe",
+        ));
+    }
+    for service in &request.order {
+        if !result.containers.contains_key(service) {
+            return Err(CliError::backend(
+                "nvms_container_missing",
+                format!("NanoVMS lifecycle result is missing container for service {service}"),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn state_path(state_dir: &Path, run_id: &str) -> PathBuf {
@@ -1207,6 +1306,7 @@ impl PodmanRuntime {
         }
     }
 
+    #[allow(dead_code)]
     fn for_service(distribution: &Option<String>, run_id: &str, service_name: &str, service: &Service) -> Self {
         let resources = service.resources.as_ref();
         Self {
@@ -1350,5 +1450,50 @@ pub fn map_runtime_error(error: RuntimeError) -> CliError {
         RuntimeError::Validation(message) => CliError::validation("runtime_validation", message),
         RuntimeError::Backend(message) => CliError::backend("runtime_backend", message),
         other => CliError::backend("runtime_unknown", other.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod lifecycle_bridge_tests {
+    use super::*;
+    use crate::model::CompositionManifest;
+
+    #[test]
+    fn lifecycle_request_maps_manifest_services_and_intents() {
+        let manifest = CompositionManifest::parse(include_str!("../../../examples/composition-v0.yaml")).unwrap();
+        let plan = manifest.plan().unwrap();
+        let lifecycle = plan_lifecycle(&manifest, &plan.manifest_sha256).unwrap();
+        let request = build_lifecycle_request(&manifest, &lifecycle, "run-id", &plan.manifest_sha256).unwrap();
+        assert_eq!(request.version, SERVICE_LIFECYCLE_VERSION);
+        assert_eq!(request.schema_version, LIFECYCLE_SCHEMA_VERSION);
+        assert_eq!(request.intents[0].phase, "create");
+        assert_eq!(request.services["worker"].gpu_uuids[0], "GPU-123e4567-e89b-12d3-a456-426614174000");
+    }
+
+    #[test]
+    fn lifecycle_result_validation_requires_podman_attestation() {
+        let request = ServiceLifecycleRequest {
+            version: SERVICE_LIFECYCLE_VERSION.to_owned(),
+            schema_version: LIFECYCLE_SCHEMA_VERSION.to_owned(),
+            manifest_sha256: "0".repeat(64),
+            run_id: "run".to_owned(),
+            wsl_distribution: String::new(),
+            podman_pipe: DEFAULT_PODMAN_PIPE.to_owned(),
+            order: vec!["worker".to_owned()],
+            intents: Vec::new(),
+            services: BTreeMap::new(),
+        };
+        let result = ServiceLifecycleResult {
+            version: SERVICE_LIFECYCLE_VERSION.to_owned(),
+            success: true,
+            error_code: String::new(),
+            error_message: String::new(),
+            containers: BTreeMap::from([("worker".to_owned(), "abc".to_owned())]),
+            effective_engine: "gvisor".to_owned(),
+            resolved_provider: "podman".to_owned(),
+            podman_pipe: DEFAULT_PODMAN_PIPE.to_owned(),
+        };
+        let error = validate_lifecycle_result(&request, &result).unwrap_err();
+        assert_eq!(error.code, "nvms_route_mismatch");
     }
 }
