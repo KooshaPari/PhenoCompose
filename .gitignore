@@ -102,3 +102,8 @@ llvm-cov-*
 .draft/
 # ===== End standard hygiene =====
 ".forge/"  
+
+# Local grading and test scratch; authoritative reports are committed separately.
+/.grade-reports/*.raw
+/.pytest-tmp/
+/audits/branch-clean/evidence/A9-grade-after.*
