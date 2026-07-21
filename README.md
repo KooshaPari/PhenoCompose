@@ -1,19 +1,42 @@
-Work State: `docs/readme-m2` | ready for review | README top-of-file polish complete
+# PhenoCompose
 
-Progress: ██████████ 10/10
+PhenoCompose currently provides a Rust composition planner and a deliberately
+limited Podman runtime CLI. It does not claim that the NVMS, health-check,
+action-exec, or artifact publication paths are implemented.
 
-PhenoCompose is the Phenotype project’s Compose-facing orchestration layer for unified container and microVM workflows, pairing a CLI-driven developer experience with the project’s isolation and runtime abstractions. This repository README now front-loads the current work state, a clear progress indicator, and the minimum usage path so a reader can orient quickly before diving into the fuller project history below.
-
-## Usage / Quickstart
+## Rust CLI quickstart
 
 ```bash
-git clone https://github.com/KooshaPari/PhenoCompose.git
-cd PhenoCompose
-go build ./...
-go test ./...
+cargo build --release --manifest-path crates/phenocompose-cli/Cargo.toml
+crates/phenocompose-cli/target/release/pheno-compose plan examples/composition-v0.yaml
+crates/phenocompose-cli/target/release/pheno-compose apply examples/composition-v0.yaml --dry-run
 ```
 
-Use `go build` to confirm the repo compiles, then `go test` to verify the current codebase. For active development, follow the repo guidance in `CLAUDE.md` before making changes.
+On Windows, the binary is
+`crates\phenocompose-cli\target\release\pheno-compose.exe`. Errors are emitted as JSON on stderr.
+Mutating `apply` fails closed unless every required capability is backed by an
+available provider. The sample intentionally contains placeholders, so it is a
+planning and dry-run example rather than a deployable claim.
+
+## Slice 1 capability matrix
+
+| Capability | Current behavior |
+| --- | --- |
+| Strict V0 YAML parsing and validation | Implemented; unknown fields fail |
+| Deterministic normalized JSON and SHA-256 | Implemented by `plan` |
+| Dry-run rendering | Implemented; no provider process or state mutation |
+| Podman image readiness and container lifecycle | Implemented through the existing Composer, Publisher, and Runtime ports |
+| WSL distribution routing | Implemented with `wsl.exe -d <distribution> -- podman` |
+| GPU selection | NVIDIA CDI UUID selectors only; ordinal indices rejected |
+| Persisted `status`, `down`, provenance export | Implemented for successful Podman runs |
+| NVMS apply/status reattachment | Unsupported; current driver cannot reattach persisted IDs |
+| Service health-check enforcement | Planned; explicit unsupported error |
+| `run-action` execution | Planned; current Runtime port has no exec operation |
+| Declared artifact publication | Planned; explicit unsupported error |
+| No-op providers in mutating apply | Forbidden |
+
+See [the V0 manifest contract](docs/composition-manifest-v0.md) for the schema
+surface and fail-closed rules.
 
 <!-- AI-DD-META:START -->
 <!-- This repository is planned, maintained, and managed by AI Agents only. -->
