@@ -453,7 +453,10 @@ pub fn run_action_with_client_at(
         ));
     }
 
-    let request = build_evaluation_request(workspace_base, state_dir, &state, &job, service)?;
+    let request = match build_evaluation_request(workspace_base, state_dir, &state, &job, service) {
+        Ok(request) => request,
+        Err(error) => return persist_job_failure(state_dir, job, error),
+    };
     job.output_root.clone_from(&request.output_root);
     let result = match client.execute(&request) {
         Ok(result) => result,

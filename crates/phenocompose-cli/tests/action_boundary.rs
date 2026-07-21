@@ -599,7 +599,9 @@ fn rejects_output_root_traversal_before_calling_client() {
     .unwrap_err();
     assert_eq!(error.code, "action_output_root_traversal");
     assert!(client.request.lock().unwrap().is_none());
-    assert!(load_job_provenance(directory.path(), RUN_ID, "parent").is_err());
+    let job = load_job_provenance(directory.path(), RUN_ID, "parent").unwrap();
+    assert!(!job.success);
+    assert_eq!(job.error_code, "action_output_root_traversal");
 }
 
 #[test]
