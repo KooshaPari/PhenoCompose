@@ -33,17 +33,22 @@ Removed in this commit:
 | Path                                  | Status | Notes                                                    |
 | ------------------------------------- | ------ | -------------------------------------------------------- |
 | `bindings/rust-ffi/`                  | Kept   | Manual `extern "C"` declarations matching the C ABI      |
-| `bindings/go-c-export/nvms_core.go`   | Kept   | C-export shim that should move to nanovms in a follow-up |
+| `nanovms/cgo-shim/nvms_export.{go,h}` | Kept   | C-export shim + committed C ABI header (T09; was `bindings/go-c-export/nvms_core.go`) |
 | `bindings/mojo/`, `bindings/zig/`     | Kept   | Unrelated language bindings                              |
 | `pheno-compose-driver/`               | Kept   | High-level Rust wrapper around `nvms-ffi`                |
 | `docs/`, `integrations/`, `worklogs/` | Kept   | PhenoCompose-specific content                            |
 
 ## Recommended follow-up
 
-1. **Move `bindings/go-c-export/nvms_core.go` into nanovms** as
+1. ~~**Move `bindings/go-c-export/nvms_core.go` into nanovms** as
    `cmd/nanovms-cgo/main.go` and add a CGo build target in nanovms's
    `Makefile`/`Taskfile.yml` (e.g. `make nvms-c-archive` →
-   `libnvms_core_$(GOOS)_$(GOARCH).a`).
+   `libnvms_core_$(GOOS)_$(GOARCH).a`).~~ **Done by T09 (2026-07-02)** —
+   the surviving local copy was extracted to `nanovms/cgo-shim/` with a
+   committed `nvms_export.h` ABI header; `bindings/rust-ffi/build.rs` was
+   refreshed. The upstream rename to `nanovms/cmd/nvms-cgo/main.go` is
+   now a one-file drop-in for the nanovms repo maintainer (see the new
+   shim's README).
 2. **Wire `bindings/rust-ffi/build.rs`** to call
    `cargo:rustc-link-lib=static=nvms_core` and
    `cargo:rustc-link-search=native=../nanovms/build` so the `staticlib`

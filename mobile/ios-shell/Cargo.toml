@@ -1,0 +1,22 @@
+[package]
+name = "pheno-ios-shell"
+version = "0.1.0"
+edition = "2021"
+description = "iOS shell extension + deploy-monitor for PhenoCompose via swift-rs + UIKit"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/KooshaPari/PhenoCompose"
+keywords = ["phenocompose", "ios", "uikit", "swift", "ffi"]
+categories = ["api-bindings", "os::macos-apis"]
+rust-version = "1.75"
+publish = false
+
+[features]
+default = []
+native-bridge = ["swift-rs"]
+
+[dependencies]
+swift-rs = { version = "0.1", optional = true }
+
+[lib]
+crate-type = ["staticlib", "lib"]
+name = "pheno_ios_shell"

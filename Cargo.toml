@@ -8,9 +8,42 @@ resolver = "2"
 members = [
     "bindings/rust-ffi",     # nvms-ffi
     "pheno-compose-driver",  # pheno-compose-driver
+    "crates/apple-container-adapter",
     "crates/pheno-config",   # pheno-config
+    "crates/wslc-adapter",
+    "windows/scm-service",   # pheno-scm-service (PR-B scaffold; L123/L130)
+    "mobile/macos-shell",    # pheno-macos-shell (PR-A scaffold; L121/L130)
+    "mobile/android-monitor",# pheno-android-monitor (PR-A scaffold; L125/L130)
+    "tools/update",          # P2 lift (L34)
+    "tools/release-notes",   # P2 lift (L23)
+    "crates/i18n",           # P2 lift (L17)
+    "crates/agentctl",
+    "crates/plugin-api",
+    "crates/plugin-sample",
+    "tools/fuzz",            # P2 lift (L22)
+    "benches",             # P5 lift (L6/L19) criterion benchmarks
+]
+exclude = [
+    "crates/port-composer",
+    "crates/port-publisher",
+    "crates/port-runtime",
+    "crates/port-secret",
+    "crates/port-types",
 ]
 
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+similar_names = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

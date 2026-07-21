@@ -13,7 +13,7 @@
 #     - bindings/rust-ffi     (Rust FFI bindings, staticlib + cdylib + rlib)
 #     - bindings/nvms-core-sys (Rust sys bindings, when present)
 #   Go:
-#     - bindings/go-c-export  (Go c-archive layer, single .go file with //go:build ignore)
+#     - nanovms/cgo-shim      (Go c-archive layer + nvms_export.h C ABI; single .go file with //go:build ignore)
 #   Cross-platform Python build orchestrator:
 #     - bindings/build_cross_platform.py
 #   Docs:
@@ -38,7 +38,7 @@ env:
 vars:
   CARGO: 'cargo'
   CARGO_TGT: 'pheno-compose-driver bindings/rust-ffi bindings/nvms-core-sys'
-  GO_BINDINGS_DIR: 'bindings/go-c-export'
+  GO_BINDINGS_DIR: 'nanovms/cgo-shim'
   CROSS_PLATFORM_PY: 'bindings/build_cross_platform.py'
   # Per L1 audit: cargo check on the polyglot crate set does not
   # complete within bounded local runs; allow 10m for the long-running
@@ -99,7 +99,7 @@ tasks:
     timeout: '{{.LONG_TIMEOUT}}'
 
   test:
-    desc: 'Run `cargo test --workspace` over the Rust crates + `go test ./...` in bindings/go-c-export. Timeout: {{.LONG_TIMEOUT}}.'
+    desc: 'Run `cargo test --workspace` over the Rust crates + `go test ./...` in nanovms/cgo-shim. Timeout: {{.LONG_TIMEOUT}}.'
     dir: '{{.TASKFILE_DIR}}'
     cmds:
       - |
@@ -122,7 +122,7 @@ tasks:
     timeout: '{{.LONG_TIMEOUT}}'
 
   lint:
-    desc: 'Run `cargo clippy` over the Rust crates + `go vet ./...` on bindings/go-c-export.'
+    desc: 'Run `cargo clippy` over the Rust crates + `go vet ./...` on nanovms/cgo-shim.'
     dir: '{{.TASKFILE_DIR}}'
     cmds:
       - |
@@ -142,7 +142,7 @@ tasks:
         fi
 
   fmt:
-    desc: 'Verify formatting: `cargo fmt --all -- --check` + `gofmt -l .` on bindings/go-c-export.'
+    desc: 'Verify formatting: `cargo fmt --all -- --check` + `gofmt -l .` on nanovms/cgo-shim.'
     dir: '{{.TASKFILE_DIR}}'
     cmds:
       - |
@@ -162,7 +162,7 @@ tasks:
         fi
 
   fmt-fix:
-    desc: 'Apply formatting: `cargo fmt --all` + `gofmt -w .` on bindings/go-c-export.'
+    desc: 'Apply formatting: `cargo fmt --all` + `gofmt -w .` on nanovms/cgo-shim.'
     dir: '{{.TASKFILE_DIR}}'
     cmds:
       - |

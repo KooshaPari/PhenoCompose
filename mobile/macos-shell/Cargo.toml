@@ -1,0 +1,30 @@
+[package]
+name = "pheno-macos-shell"
+version = "0.1.0"
+edition = "2021"
+description = "PhenoCompose macOS shell-extension scaffold — swift-rs bridge to AppKit + launchd plist host. PILLAR-TAXONOMY-v2 L121/L130."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/KooshaPari/PhenoCompose"
+authors = ["kooshapari"]
+publish = false
+
+[features]
+# Default `swift` feature is macOS-only — gates the swift-rs build dep.
+# On linux/Windows the crate still compiles and exposes the stub surface.
+default = []
+swift = ["dep:swift-rs"]
+
+[dependencies]
+# swift-rs is the Brendonovich FFI bridge (Rust → Swift) — only meaningful
+# when targeting aarch64-apple-darwin / x86_64-apple-darwin. The dep is
+# declared but `default-features` is off so `cargo check` on linux passes
+# without invoking the Swift toolchain.
+swift-rs = { version = "0.1", optional = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lib]
+name = "pheno_macos_shell"
+crate-type = ["lib", "staticlib", "cdylib"]

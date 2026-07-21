@@ -1,0 +1,33 @@
+[package]
+name = "pheno-scm-service"
+version = "0.1.0"
+edition = "2021"
+description = "PhenoCompose Windows SCM-registered service-mode scaffold — windows-rs 0.58 SCM registration for pheno-compose-driver. PILLAR-TAXONOMY-v2 L123/L130."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/KooshaPari/PhenoCompose"
+authors = ["kooshapari"]
+publish = false
+
+[features]
+# The `service` feature pulls in `windows = "0.58"` (Win32_System_Services).
+# It is gated to target_os = "windows" so `cargo check --workspace` on
+# linux-x86_64 still succeeds without a Windows toolchain.
+default = []
+service = ["dep:windows"]
+
+[target.'cfg(target_os = "windows")'.dependencies]
+# `Win32_System_Services` covers ServiceMain / RegisterServiceCtrlHandlerEx /
+# StartServiceCtrlDispatcher. `Win32_Foundation` for the basic types.
+# `Win32_System_Console` is intentionally NOT enabled — services have no
+# console — but is documented in WINDOWS-SCM.md for future tray work.
+windows = { version = "0.58", features = [
+    "Win32_System_Services",
+    "Win32_Foundation",
+], optional = true }
+
+[dependencies]
+thiserror = { workspace = true }
+
+[lib]
+name = "pheno_scm_service"
+crate-type = ["lib", "staticlib", "cdylib"]
