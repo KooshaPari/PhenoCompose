@@ -290,6 +290,12 @@ impl CompositionManifest {
                     format!("action {name} must reference a service and have a command"),
                 ));
             }
+            if action.output_root.is_none() {
+                return Err(CliError::validation(
+                    "action_output_root_missing",
+                    format!("action {name} must declare output_root"),
+                ));
+            }
             if action.output_root.as_ref().is_some_and(|root| root.trim().is_empty()) {
                 return Err(CliError::validation(
                     "action_output_root_empty",

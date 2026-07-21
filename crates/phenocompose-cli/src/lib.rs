@@ -2,6 +2,12 @@
 
 pub mod model;
 pub mod nvms;
+pub mod service_graph;
+
+pub use service_graph::{
+    ensure_service_lifecycle_capability, execute_lifecycle_plan, plan_lifecycle, IntentPhase, LifecyclePlan,
+    RollbackContract, SERVICE_LIFECYCLE_CAPABILITY,
+};
 
 use model::{
     canonical_gpu_uuid, CompositionManifest, EffectiveEngine, ExternalEngineToken, GpuVendor, Plan, ProviderStatus,
@@ -157,6 +163,7 @@ pub struct ApplyOutput {
     pub provider: String,
     pub dry_run: bool,
     pub mutation: bool,
+    pub lifecycle: LifecyclePlan,
     pub containers: BTreeMap<String, String>,
 }
 
@@ -228,22 +235,26 @@ pub fn render_plan(manifest: &CompositionManifest) -> Result<Plan> {
 
 pub fn apply(manifest: CompositionManifest, state_dir: &Path, dry_run: bool) -> Result<ApplyOutput> {
     let plan = manifest.plan()?;
+    let lifecycle = plan_lifecycle(&manifest, &plan.manifest_sha256)?;
     let run_id = format!(
         "{}-{}",
         sanitize_name(&manifest.metadata.name),
         &plan.manifest_sha256[..12]
     );
+    let provider = runtime_provider_name(&manifest.runtime.provider).to_owned();
     if dry_run {
         return Ok(ApplyOutput {
             run_id,
             manifest_sha256: plan.manifest_sha256,
-            provider: runtime_provider_name(&manifest.runtime.provider).to_owned(),
+            provider,
             dry_run: true,
             mutation: false,
+            lifecycle,
             containers: BTreeMap::new(),
         });
     }
     ensure_apply_capabilities(&manifest)?;
+    ensure_service_lifecycle_capability(&manifest)?;
     let state_path = state_path(state_dir, &run_id);
     if state_path.exists() {
         return Err(CliError::conflict(
@@ -253,25 +264,31 @@ pub fn apply(manifest: CompositionManifest, state_dir: &Path, dry_run: bool) -> 
     }
 
     let mut containers = BTreeMap::new();
-    let order = manifest.service_order()?;
+    let mut rollback = RollbackContract::default();
     let composer = PrebuiltImageComposer;
     let publisher = PodmanLocalPublisher::new(&manifest.runtime.wsl_distribution);
     publisher.probe()?;
 
-    for name in order {
-        let service = &manifest.services[&name];
-        let port_manifest = Manifest::new(&name).with_tag("image", &service.image);
+    for intent in &lifecycle.intents {
+        if intent.phase != IntentPhase::Create {
+            continue;
+        }
+        let name = &intent.service;
+        let service = &manifest.services[name];
+        let port_manifest = Manifest::new(name).with_tag("image", &service.image);
         let artifact = composer.compose(&port_manifest).map_err(map_compose_error)?;
         publisher
             .publish(&artifact, &PublishTarget::new("podman-local", &service.image))
             .map_err(map_publish_error)?;
-        let runtime = PodmanRuntime::for_service(&manifest.runtime.wsl_distribution, &run_id, &name, service);
+        let runtime = PodmanRuntime::for_service(&manifest.runtime.wsl_distribution, &run_id, name, service);
         match runtime.spawn(&artifact.image) {
             Ok(container_id) => {
-                containers.insert(name, container_id.id);
+                rollback.record_create(name, container_id.clone());
+                containers.insert(name.clone(), container_id.id);
             }
             Err(error) => {
-                rollback(&manifest.runtime.wsl_distribution, &containers);
+                let bare = PodmanRuntime::bare(&manifest.runtime.wsl_distribution);
+                rollback.rollback(&bare);
                 return Err(map_runtime_error(error));
             }
         }
@@ -288,7 +305,7 @@ pub fn apply(manifest: CompositionManifest, state_dir: &Path, dry_run: bool) -> 
         manifest,
     };
     if let Err(error) = save_state(state_dir, &state) {
-        rollback(&state.manifest.runtime.wsl_distribution, &containers);
+        rollback_containers(&state.manifest.runtime.wsl_distribution, &containers);
         return Err(error);
     }
     Ok(ApplyOutput {
@@ -297,6 +314,7 @@ pub fn apply(manifest: CompositionManifest, state_dir: &Path, dry_run: bool) -> 
         provider: "podman".to_owned(),
         dry_run: false,
         mutation: true,
+        lifecycle,
         containers,
     })
 }
@@ -956,6 +974,9 @@ fn ensure_apply_capabilities(manifest: &CompositionManifest) -> Result<()> {
         }
     }
     for (name, provider) in &manifest.providers {
+        if provider.capability == SERVICE_LIFECYCLE_CAPABILITY {
+            continue;
+        }
         if provider.status != ProviderStatus::Available {
             return Err(CliError::unsupported(
                 "provider_unavailable",
@@ -965,7 +986,10 @@ fn ensure_apply_capabilities(manifest: &CompositionManifest) -> Result<()> {
             ));
         }
     }
-    if manifest.services.values().any(|service| service.health_check.is_some()) {
+    let lifecycle_available = manifest.providers.values().any(|provider| {
+        provider.capability == SERVICE_LIFECYCLE_CAPABILITY && provider.status == ProviderStatus::Available
+    });
+    if lifecycle_available && manifest.services.values().any(|service| service.health_check.is_some()) {
         return Err(CliError::unsupported(
             "health_check_unsupported",
             "health-check enforcement is not represented by the current Runtime port",
@@ -1025,7 +1049,7 @@ fn ensure_persisted_provider(state: &RunState) -> Result<()> {
     }
 }
 
-fn rollback(distribution: &Option<String>, containers: &BTreeMap<String, String>) {
+fn rollback_containers(distribution: &Option<String>, containers: &BTreeMap<String, String>) {
     let runtime = PodmanRuntime::bare(distribution);
     for id in containers.values().rev() {
         let _ = runtime.stop(&ContainerId::new(id));
@@ -1317,7 +1341,7 @@ fn map_publish_error(error: PublishError) -> CliError {
     CliError::backend("publish_failed", error.to_string())
 }
 
-fn map_runtime_error(error: RuntimeError) -> CliError {
+pub fn map_runtime_error(error: RuntimeError) -> CliError {
     match error {
         RuntimeError::NotFound(message) => CliError::not_found("runtime_not_found", message),
         RuntimeError::Validation(message) => CliError::validation("runtime_validation", message),

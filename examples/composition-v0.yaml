@@ -23,6 +23,10 @@ providers:
     capability: resources.gpu.discovery
     status: placeholder
     implementation: null
+  service-lifecycle:
+    capability: runtime.service_lifecycle
+    status: placeholder
+    implementation: nanovms-podman-bridge
   nvms-isolation:
     capability: runtime.nvms.persistence
     status: unsupported

@@ -32,7 +32,7 @@ fn rendering_and_digest_are_deterministic() {
     assert_eq!(first.manifest_sha256.len(), 64);
     assert_eq!(
         first.manifest_sha256,
-        "93160bb77bd0ead347a7e180468715e4c20b35d85e16c9f42799900c6156ed1e"
+        "69b4f35ff771775f0a8f4c32d2bcfa68b778e79da4be1aa636caed1c3a2c899e"
     );
 
     let first_json = serde_json::to_string_pretty(&first).unwrap();
@@ -99,8 +99,9 @@ fn prefixed_and_bare_gpu_uuids_yield_identical_plan_digest() {
 
 #[test]
 fn action_missing_output_root_is_rejected_at_plan() {
-    let input = include_str!("../../../examples/composition-v0.yaml").replace("    output_root: jobs/harbor\n", "");
-    let error = CompositionManifest::parse(&input).unwrap_err();
+    let mut manifest = CompositionManifest::parse(include_str!("../../../examples/composition-v0.yaml")).unwrap();
+    manifest.actions.get_mut("inspect-worker").unwrap().output_root = None;
+    let error = manifest.validate().unwrap_err();
     assert_eq!(error.code, "action_output_root_missing");
 }
 
@@ -133,6 +134,8 @@ fn dry_run_does_not_require_provider_or_write_state() {
     assert!(output.dry_run);
     assert!(!output.mutation);
     assert!(output.containers.is_empty());
+    assert_eq!(output.lifecycle.order, vec!["worker"]);
+    assert_eq!(output.lifecycle.intents.len(), 2);
     assert!(directory.path().read_dir().unwrap().next().is_none());
 }
 

@@ -1,0 +1,93 @@
+# Harness-facing manifest stub for pheno-harness dogfood lanes.
+api_version: phenocompose.dev/v0
+kind: Composition
+metadata:
+  name: harness-dual-gpu-stub
+  labels:
+    purpose: harness-dogfood-stub
+    source_manifest: examples/dual-gpu-inference-v0.yaml
+environment:
+  platform: windows_wsl
+  toolkit:
+    name: cuda
+    version: "13.0"
+  variables:
+    PHENO_HARNESS_LANE: phenocompose-dogfood
+runtime:
+  provider: podman
+  capability: runtime.podman
+  wsl_distribution: Ubuntu-24.04
+  portage_compatibility:
+    external_engine_token: docker
+    effective_engine: podman
+providers:
+  gpu-discovery:
+    capability: resources.gpu.discovery
+    status: available
+    implementation: hwledger
+  service-lifecycle:
+    capability: runtime.service_lifecycle
+    status: placeholder
+    implementation: nanovms-podman-bridge
+services:
+  sglang-primary:
+    image: lmsysorg/sglang:latest
+    depends_on: []
+    resources:
+      gpu:
+        vendor: nvidia
+        uuids:
+          - GPU-8d337a84-43de-158d-7526-7175288a6064
+    health_check:
+      command: [curl, -sf, http://127.0.0.1:30000/health]
+      interval_seconds: 15
+      timeout_seconds: 5
+      retries: 5
+  llama-primary:
+    image: ghcr.io/ggerganov/llama.cpp:server-cuda
+    depends_on: []
+    resources:
+      gpu:
+        vendor: nvidia
+        uuids:
+          - GPU-8d337a84-43de-158d-7526-7175288a6064
+    health_check:
+      command: [curl, -sf, http://127.0.0.1:8081/health]
+      interval_seconds: 10
+      timeout_seconds: 3
+      retries: 5
+  llama-helper:
+    image: ghcr.io/ggerganov/llama.cpp:server-cuda
+    depends_on: []
+    resources:
+      gpu:
+        vendor: nvidia
+        uuids:
+          - GPU-e1e28703-34bd-e46b-6dc1-d7c39fa5612c
+    health_check:
+      command: [curl, -sf, http://127.0.0.1:8082/health]
+      interval_seconds: 10
+      timeout_seconds: 3
+      retries: 5
+  pheno-serve:
+    image: localhost/pheno-serve:dev
+    depends_on:
+      - sglang-primary
+      - llama-primary
+      - llama-helper
+    health_check:
+      command: [curl, -sf, http://127.0.0.1:21080/healthz]
+      interval_seconds: 10
+      timeout_seconds: 3
+      retries: 5
+teardown:
+  order:
+    - pheno-serve
+    - llama-helper
+    - llama-primary
+    - sglang-primary
+  remove_volumes: false
+provenance:
+  required: false
+  format: phenocompose_v0
+  include: []

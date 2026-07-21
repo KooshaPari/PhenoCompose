@@ -583,28 +583,31 @@ fn rejects_job_directory_outside_validated_output_root_and_persists_fields() {
 
 #[test]
 fn rejects_output_root_traversal_before_calling_client() {
-    for (job_id, root, code) in [
-        ("parent", "jobs/../escape", "action_output_root_traversal"),
-        ("missing", "", "action_output_root_missing"),
-    ] {
-        let (directory, state) = setup(|manifest| {
-            manifest.actions.get_mut("inspect-worker").unwrap().output_root =
-                (!root.is_empty()).then(|| root.to_owned());
-        });
-        let client = FakeClient::result(success_result(&state, vec![UUID_A.to_owned()]));
-        let error = run_action_with_client_at(
-            directory.path(),
-            directory.path(),
-            RUN_ID,
-            "inspect-worker",
-            job_id,
-            &client,
-        )
-        .unwrap_err();
-        assert_eq!(error.code, code);
-        assert!(client.request.lock().unwrap().is_none());
-        assert!(load_job_provenance(directory.path(), RUN_ID, job_id).is_err());
-    }
+    let (directory, state) = setup(|manifest| {
+        manifest.actions.get_mut("inspect-worker").unwrap().output_root =
+            Some("jobs/../escape".to_owned());
+    });
+    let client = FakeClient::result(success_result(&state, vec![UUID_A.to_owned()]));
+    let error = run_action_with_client_at(
+        directory.path(),
+        directory.path(),
+        RUN_ID,
+        "inspect-worker",
+        "parent",
+        &client,
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "action_output_root_traversal");
+    assert!(client.request.lock().unwrap().is_none());
+    assert!(load_job_provenance(directory.path(), RUN_ID, "parent").is_err());
+}
+
+#[test]
+fn rejects_missing_output_root_at_validate() {
+    let mut manifest = CompositionManifest::parse(include_str!("../../../examples/composition-v0.yaml")).unwrap();
+    manifest.actions.get_mut("inspect-worker").unwrap().output_root = None;
+    let error = manifest.validate().unwrap_err();
+    assert_eq!(error.code, "action_output_root_missing");
 }
 
 #[cfg(windows)]
