@@ -1,0 +1,69 @@
+api_version: phenocompose.dev/v0
+kind: Composition
+metadata:
+  name: phenotype-lab
+  labels:
+    purpose: slice-1-contract
+environment:
+  platform: windows_wsl
+  toolkit:
+    name: cuda
+    version: "13.0"
+  variables:
+    PHENO_ENV: lab
+runtime:
+  provider: podman
+  capability: runtime.podman
+  wsl_distribution: Ubuntu-24.04
+  portage_compatibility:
+    external_engine_token: docker
+    effective_engine: podman
+providers:
+  gpu-discovery:
+    capability: resources.gpu.discovery
+    status: placeholder
+    implementation: null
+  nvms-isolation:
+    capability: runtime.nvms.persistence
+    status: unsupported
+    implementation: nvms-driver
+services:
+  worker:
+    image: quay.io/podman/hello:latest
+    depends_on: []
+    command: []
+    environment:
+      WORKER_MODE: inference
+    resources:
+      cpu_millis: 1000
+      memory_bytes: 1073741824
+      gpu:
+        vendor: nvidia
+        uuids:
+          - GPU-123e4567-e89b-12d3-a456-426614174000
+    health_check:
+      command:
+        - /usr/bin/healthcheck
+      interval_seconds: 10
+      timeout_seconds: 3
+      retries: 3
+actions:
+  inspect-worker:
+    service: worker
+    command:
+      - /usr/bin/env
+artifacts:
+  - name: worker-image
+    kind: oci_image
+    source: quay.io/podman/hello:latest
+    publisher: podman-local
+teardown:
+  order:
+    - worker
+  remove_volumes: false
+provenance:
+  required: true
+  format: phenocompose_v0
+  include:
+    - manifest_sha256
+    - container_ids

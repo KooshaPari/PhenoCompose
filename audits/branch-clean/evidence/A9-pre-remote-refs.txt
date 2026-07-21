@@ -1,0 +1,12 @@
+branch|tip_sha|commit_date|subject|merged_into_main|ahead_of_main|behind_main|archive_tag|archive_sha|matches
+chore/CC1-005-sota-2026-06-11|dc40a11f4a06|2026-06-12T02:23:11-07:00|CC1-005(forge-commit): 4 files from agent worktree|False|91|13|archive/CC1-2026-06-11|dc40a11f4a06|YES
+chore/CC2-005-sota-2026-06-11|0b726024dabe|2026-06-12T02:23:12-07:00|CC2-005(forge-commit): 5 files from agent worktree|False|91|13|archive/CC2-2026-06-11|0b726024dabe|YES
+chore/CC3-005-sota-2026-06-11|08f93ed21c2b|2026-06-14T23:53:11-07:00|wip(chore/CC3-005-sota-2026-06-11): SOTA work from resume session|False|93|13|archive/CC3-2026-06-11|08f93ed21c2b|YES
+chore/CC4-005-sota-2026-06-11|5ae4e2cfb96e|2026-06-12T02:23:12-07:00|CC4-005(forge-commit): 3 files from agent worktree|False|91|13|archive/CC4-2026-06-11|5ae4e2cfb96e|YES
+chore/QC1-005-sota-2026-06-11|c24feaa8c743|2026-06-12T02:23:13-07:00|QC1-005(forge-commit): 9 files from agent worktree|False|91|13|archive/QC1-2026-06-11|c24feaa8c743|YES
+chore/QC2-005-sota-2026-06-11|8054b373a21e|2026-06-12T02:23:13-07:00|QC2-005(forge-commit): 6 files from agent worktree|False|91|13|archive/QC2-2026-06-11|8054b373a21e|YES
+chore/QC3-005-sota-2026-06-11|da529d9b1a17|2026-06-12T02:23:14-07:00|QC3-005(forge-commit): 7 files from agent worktree|False|91|13|archive/QC3-2026-06-11|da529d9b1a17|YES
+chore/QC4-005-sota-2026-06-11|83c546cf32cd|2026-06-12T02:23:14-07:00|QC4-005(forge-commit): 3 files from agent worktree|False|91|13|archive/QC4-2026-06-11|83c546cf32cd|YES
+chore/SD2-004-sota-2026-06-11|d882d3cfe212|2026-06-12T02:23:14-07:00|SD2(forge-commit): 5 files from agent worktree|False|91|13|archive/SD2-2026-06-11|d882d3cfe212|YES
+chore/SD3-004-sota-2026-06-11|4638a5a91c48|2026-06-12T02:23:15-07:00|SD3(forge-commit): 2 files from agent worktree|False|91|13|archive/SD3-2026-06-11|4638a5a91c48|YES
+chore/SD4-004-sota-2026-06-11|53d84eeeba75|2026-06-12T02:23:15-07:00|SD4(forge-commit): 2 files from agent worktree|False|91|13|archive/SD4-2026-06-11|53d84eeeba75|YES
