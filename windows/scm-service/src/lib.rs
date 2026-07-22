@@ -71,9 +71,9 @@ pub fn capabilities() -> ScmCapabilities {
 pub fn install_service(binary_path: &str) -> Result<(), ScmServiceError> {
     #[cfg(all(target_os = "windows", feature = "service"))]
     {
-        service_main::install_via_scm(binary_path)?;
+        service_main::install_via_scm(binary_path)
     }
-    #[cfg(not(all(target_os = "windows", feature = "service")))]
+    #[cfg(not(target_os = "windows"))]
     {
         let _ = binary_path;
         Err(ScmServiceError::BridgeUnavailable)
@@ -91,7 +91,7 @@ pub fn stop_service() -> Result<(), ScmServiceError> {
     {
         service_main::stop_via_scm()
     }
-    #[cfg(not(all(target_os = "windows", feature = "service")))]
+    #[cfg(not(target_os = "windows"))]
     {
         Err(ScmServiceError::BridgeUnavailable)
     }
