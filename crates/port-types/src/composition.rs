@@ -459,7 +459,10 @@ fn render_text(c: &Composition, target: Target) -> String {
                 if !service.ports.is_empty() {
                     out.push_str("    ports:\n");
                     for port in &service.ports {
-                        out.push_str(&format!("      - {}\n", yaml_quote(&format!("{}/{}", port.container_port, protocol_name(port.protocol)))));
+                        out.push_str(&format!(
+                            "      - {}\n",
+                            yaml_quote(&format!("{}/{}", port.container_port, protocol_name(port.protocol)))
+                        ));
                     }
                 }
                 if !service.depends_on.is_empty() {
@@ -468,11 +471,70 @@ fn render_text(c: &Composition, target: Target) -> String {
                         out.push_str(&format!("      - {}\n", yaml_quote(dependency)));
                     }
                 }
+                if let Some(h) = &service.health {
+                    out.push_str("    healthcheck:\n      test: [\"CMD-SHELL\", ");
+                    out.push_str(&yaml_quote(match h.kind {
+                        HealthKind::Http => "curl",
+                        HealthKind::Tcp => "nc",
+                        HealthKind::Command => "test",
+                    }));
+                    out.push_str("]\n");
+                }
+                if service.resources.cpu.is_some() || service.resources.memory.is_some() {
+                    out.push_str("    deploy:\n      resources:\n        limits:\n");
+                    if let Some(cpu) = &service.resources.cpu {
+                        out.push_str(&format!("          cpus: {}\n", yaml_quote(cpu)));
+                    }
+                    if let Some(mem) = &service.resources.memory {
+                        out.push_str(&format!("          memory: {}\n", yaml_quote(mem)));
+                    }
+                }
             }
         }
         Target::Kubernetes => {
             for (name, service) in &c.services {
-                out.push_str(&format!("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: {name}\nspec:\n  template:\n    spec:\n      containers:\n      - name: {name}\n        image: {}\n---\n", yaml_quote(service.image.as_deref().unwrap_or("scratch"))));
+                out.push_str(&format!("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: {name}\nspec:\n  template:\n    spec:\n      containers:\n      - name: {name}\n        image: {}\n", yaml_quote(service.image.as_deref().unwrap_or("scratch"))));
+                if let Some(cmd) = &service.command {
+                    out.push_str(&format!(
+                        "        command: [{}]\n",
+                        cmd.iter().map(|x| yaml_quote(x)).collect::<Vec<_>>().join(", ")
+                    ));
+                }
+                if !service.environment.is_empty() {
+                    out.push_str("        env:\n");
+                    for (k, v) in &service.environment {
+                        out.push_str(&format!(
+                            "        - name: {}\n          value: {}\n",
+                            yaml_quote(k),
+                            yaml_quote(v)
+                        ));
+                    }
+                }
+                if !service.ports.is_empty() {
+                    out.push_str("        ports:\n");
+                    for p in &service.ports {
+                        out.push_str(&format!("        - containerPort: {}\n", p.container_port));
+                    }
+                }
+                if service.resources.cpu.is_some() || service.resources.memory.is_some() {
+                    out.push_str("        resources:\n          limits:\n");
+                    if let Some(v) = &service.resources.cpu {
+                        out.push_str(&format!("            cpu: {}\n", yaml_quote(v)));
+                    }
+                    if let Some(v) = &service.resources.memory {
+                        out.push_str(&format!("            memory: {}\n", yaml_quote(v)));
+                    }
+                }
+                if let Some(h) = &service.health {
+                    if h.kind == HealthKind::Http {
+                        out.push_str(&format!(
+                            "        livenessProbe:\n          httpGet:\n            path: {}\n            port: {}\n",
+                            yaml_quote(h.path.as_deref().unwrap_or("/")),
+                            h.port.unwrap_or(80)
+                        ));
+                    }
+                }
+                out.push_str("---\n");
             }
         }
         Target::Process => {
@@ -481,10 +543,28 @@ fn render_text(c: &Composition, target: Target) -> String {
                 let command = service
                     .command
                     .as_ref()
-                     .map(|v| v.iter().map(|arg| shell_quote(arg)).collect::<Vec<_>>().join(" "))
-                     .or_else(|| service.image.as_ref().map(|image| shell_quote(image)))
+                    .map(|v| v.iter().map(|arg| shell_quote(arg)).collect::<Vec<_>>().join(" "))
+                    .or_else(|| service.image.as_ref().map(|image| shell_quote(image)))
                     .unwrap_or_default();
                 out.push_str(&format!("  {name}:\n    command: {command}\n"));
+                if !service.environment.is_empty() {
+                    out.push_str("    environment:\n");
+                    for (k, v) in &service.environment {
+                        out.push_str(&format!("      {}: {}\n", yaml_quote(k), yaml_quote(v)));
+                    }
+                }
+                if !service.depends_on.is_empty() {
+                    out.push_str("    depends_on:\n");
+                    for d in &service.depends_on {
+                        out.push_str(&format!("      - {}\n", yaml_quote(d)));
+                    }
+                }
+                if let Some(h) = &service.health {
+                    out.push_str(&format!(
+                        "    readiness_probe: {}\n",
+                        yaml_quote(h.path.as_deref().unwrap_or("/"))
+                    ));
+                }
             }
         }
         Target::NanoVms => {
@@ -494,9 +574,13 @@ fn render_text(c: &Composition, target: Target) -> String {
                     out.push(',');
                 }
                 out.push_str(&format!(
-                    "{{\"name\":{},\"image\":{}}}",
+                    "{{\"name\":{},\"image\":{},\"command\":{},\"cpu\":{},\"memory\":{},\"health\":{}}}",
                     yaml_quote(name),
-                    yaml_quote(service.image.as_deref().unwrap_or(""))
+                    yaml_quote(service.image.as_deref().unwrap_or("")),
+                    yaml_quote(&service.command.as_ref().map(|v| v.join(" ")).unwrap_or_default()),
+                    yaml_quote(service.resources.cpu.as_deref().unwrap_or("")),
+                    yaml_quote(service.resources.memory.as_deref().unwrap_or("")),
+                    yaml_quote(&service.health.as_ref().and_then(|h| h.path.clone()).unwrap_or_default())
                 ));
             }
             out.push_str("]}\n");
