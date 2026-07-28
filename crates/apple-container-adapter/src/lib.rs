@@ -7,7 +7,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
-use phenocompose_port_runtime::{Runtime, RuntimeError};
+use phenocompose_port_runtime::{CapabilityProbe, Runtime, RuntimeCapabilities, RuntimeError};
 use phenocompose_port_types::{ContainerId, ContainerStatus, ImageRef};
 
 /// Runtime adapter for Apple's `/usr/local/bin/container` CLI.
@@ -18,6 +18,23 @@ impl AppleContainerRuntime {
     /// Construct a new Apple container runtime adapter.
     pub fn new() -> Self {
         Self
+    }
+}
+
+impl CapabilityProbe for AppleContainerRuntime {
+    fn probe(&self) -> Result<RuntimeCapabilities, RuntimeError> {
+        #[cfg(target_os = "macos")]
+        {
+            let output = std::process::Command::new("/usr/local/bin/container")
+                .arg("--version").output()
+                .map_err(|e| RuntimeError::backend(format!("container probe failed: {e}")))?;
+            if !output.status.success() { return Err(RuntimeError::backend("container --version failed")); }
+            let version = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+            if version.is_empty() { return Err(RuntimeError::backend("container --version returned no version")); }
+            Ok(RuntimeCapabilities { backend: self.name().into(), executable: "/usr/local/bin/container".into(), version })
+        }
+        #[cfg(not(target_os = "macos"))]
+        { Err(RuntimeError::backend("apple-container runtime is only available on macOS")) }
     }
 }
 

@@ -10,7 +10,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
-use phenocompose_port_runtime::{Runtime, RuntimeError};
+use phenocompose_port_runtime::{CapabilityProbe, Runtime, RuntimeCapabilities, RuntimeError};
 use phenocompose_port_types::{ContainerId, ContainerStatus, ImageRef};
 
 /// Runtime adapter for the `wslc.exe` CLI.
@@ -21,6 +21,22 @@ impl WslcRuntime {
     /// Construct a new `wslc.exe` runtime adapter.
     pub fn new() -> Self {
         Self
+    }
+}
+
+impl CapabilityProbe for WslcRuntime {
+    fn probe(&self) -> Result<RuntimeCapabilities, RuntimeError> {
+        #[cfg(target_os = "windows")]
+        {
+            let output = std::process::Command::new("wslc.exe").arg("--version").output()
+                .map_err(|e| RuntimeError::backend(format!("wslc probe failed: {e}")))?;
+            if !output.status.success() { return Err(RuntimeError::backend("wslc.exe --version failed")); }
+            let version = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+            if version.is_empty() { return Err(RuntimeError::backend("wslc.exe --version returned no version")); }
+            Ok(RuntimeCapabilities { backend: self.name().into(), executable: "wslc.exe".into(), version })
+        }
+        #[cfg(not(target_os = "windows"))]
+        { Err(RuntimeError::backend("wslc runtime is only available on Windows")) }
     }
 }
 

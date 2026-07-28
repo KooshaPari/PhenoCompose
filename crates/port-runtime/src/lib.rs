@@ -79,6 +79,23 @@ pub trait Runtime: Send + Sync {
     }
 }
 
+/// Capability information discovered from a concrete runtime executable.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuntimeCapabilities {
+    /// Provider-neutral backend name.
+    pub backend: String,
+    /// Executable that was probed.
+    pub executable: String,
+    /// Version text returned by the executable, when available.
+    pub version: String,
+}
+
+/// Probe whether a runtime adapter is actually available on this host.
+pub trait CapabilityProbe {
+    /// Perform a fail-closed executable/version probe.
+    fn probe(&self) -> Result<RuntimeCapabilities, RuntimeError>;
+}
+
 /// Errors a [`Runtime`] can return.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[non_exhaustive]
