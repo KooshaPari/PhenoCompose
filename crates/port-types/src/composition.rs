@@ -493,7 +493,11 @@ fn render_text(c: &Composition, target: Target) -> String {
         }
         Target::Kubernetes => {
             for (name, service) in &c.services {
-                out.push_str(&format!("apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: {name}\nspec:\n  template:\n    spec:\n      containers:\n      - name: {name}\n        image: {}\n", yaml_quote(service.image.as_deref().unwrap_or("scratch"))));
+                out.push_str(&format!(
+                    "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: {name}\n  namespace: {}\nspec:\n  selector:\n    matchLabels:\n      app: {name}\n  template:\n    metadata:\n      labels:\n        app: {name}\n    spec:\n      containers:\n      - name: {name}\n        image: {}\n",
+                    yaml_quote(&c.name),
+                    yaml_quote(service.image.as_deref().unwrap_or("scratch"))
+                ));
                 if let Some(cmd) = &service.command {
                     out.push_str(&format!(
                         "        command: [{}]\n",
@@ -513,7 +517,12 @@ fn render_text(c: &Composition, target: Target) -> String {
                 if !service.ports.is_empty() {
                     out.push_str("        ports:\n");
                     for p in &service.ports {
-                        out.push_str(&format!("        - containerPort: {}\n", p.container_port));
+                        out.push_str(&format!(
+                            "        - name: {}\n          containerPort: {}\n          protocol: {}\n",
+                            yaml_quote(&p.name),
+                            p.container_port,
+                            protocol_name(p.protocol).to_ascii_uppercase()
+                        ));
                     }
                 }
                 if service.resources.cpu.is_some() || service.resources.memory.is_some() {
@@ -535,10 +544,26 @@ fn render_text(c: &Composition, target: Target) -> String {
                     }
                 }
                 out.push_str("---\n");
+                if !service.ports.is_empty() {
+                    out.push_str(&format!(
+                        "apiVersion: v1\nkind: Service\nmetadata:\n  name: {name}\n  namespace: {}\nspec:\n  selector:\n    app: {name}\n  ports:\n",
+                        yaml_quote(&c.name)
+                    ));
+                    for p in &service.ports {
+                        out.push_str(&format!(
+                            "  - name: {}\n    port: {}\n    targetPort: {}\n    protocol: {}\n",
+                            yaml_quote(&p.name),
+                            p.container_port,
+                            p.container_port,
+                            protocol_name(p.protocol).to_ascii_uppercase()
+                        ));
+                    }
+                    out.push_str("---\n");
+                }
             }
         }
         Target::Process => {
-            out.push_str("version: \"0.5\"\nprocesses:\n");
+            out.push_str("version: \"0.5\"\nservices:\n");
             for (name, service) in &c.services {
                 let command = service
                     .command
@@ -550,7 +575,7 @@ fn render_text(c: &Composition, target: Target) -> String {
                 if !service.environment.is_empty() {
                     out.push_str("    environment:\n");
                     for (k, v) in &service.environment {
-                        out.push_str(&format!("      {}: {}\n", yaml_quote(k), yaml_quote(v)));
+                        out.push_str(&format!("      - {}\n", yaml_quote(&format!("{k}={v}"))));
                     }
                 }
                 if !service.depends_on.is_empty() {
@@ -560,10 +585,24 @@ fn render_text(c: &Composition, target: Target) -> String {
                     }
                 }
                 if let Some(h) = &service.health {
-                    out.push_str(&format!(
-                        "    readiness_probe: {}\n",
-                        yaml_quote(h.path.as_deref().unwrap_or("/"))
-                    ));
+                    let key = match h.kind {
+                        HealthKind::Http => "http_get",
+                        HealthKind::Tcp => "tcp",
+                        HealthKind::Command => "command",
+                    };
+                    let endpoint = match h.kind {
+                        HealthKind::Http => format!(
+                            "http://localhost:{}{}",
+                            h.port.unwrap_or(80),
+                            h.path.as_deref().unwrap_or("/")
+                        ),
+                        HealthKind::Tcp => format!("localhost:{}", h.port.unwrap_or(80)),
+                        HealthKind::Command => h.path.clone().unwrap_or_default(),
+                    };
+                    out.push_str("    health_check:\n");
+                    out.push_str(&format!("      {key}: {}\n", yaml_quote(&endpoint)));
+                    out.push_str("    readiness_probe:\n");
+                    out.push_str(&format!("      {key}: {}\n", yaml_quote(&endpoint)));
                 }
             }
         }
@@ -574,13 +613,19 @@ fn render_text(c: &Composition, target: Target) -> String {
                     out.push(',');
                 }
                 out.push_str(&format!(
-                    "{{\"name\":{},\"image\":{},\"command\":{},\"cpu\":{},\"memory\":{},\"health\":{}}}",
+                    "{{\"name\":{},\"image\":{},\"command\":{},\"cpu\":{},\"memory\":{},\"health\":{},\"depends_on\":[{}]}}",
                     yaml_quote(name),
                     yaml_quote(service.image.as_deref().unwrap_or("")),
                     yaml_quote(&service.command.as_ref().map(|v| v.join(" ")).unwrap_or_default()),
                     yaml_quote(service.resources.cpu.as_deref().unwrap_or("")),
                     yaml_quote(service.resources.memory.as_deref().unwrap_or("")),
-                    yaml_quote(&service.health.as_ref().and_then(|h| h.path.clone()).unwrap_or_default())
+                    yaml_quote(&service.health.as_ref().and_then(|h| h.path.clone()).unwrap_or_default()),
+                    service
+                        .depends_on
+                        .iter()
+                        .map(|dependency| yaml_quote(dependency))
+                        .collect::<Vec<_>>()
+                        .join(",")
                 ));
             }
             out.push_str("]}\n");
@@ -685,6 +730,47 @@ mod tests {
         assert!(docker.content.contains("evil\\nimage"));
         let process = c.render(Target::Process).unwrap();
         assert!(!process.content.contains("evil\nimage"));
+    }
+
+    #[test]
+    fn target_renderers_match_checked_in_schemas() {
+        let mut c = sample();
+        let service = c.services.get_mut("web").unwrap();
+        service.command = Some(vec!["serve".into(), "--port".into(), "80".into()]);
+        service.environment.insert("MODE".into(), "test".into());
+        service.health = Some(HealthCheck {
+            kind: HealthKind::Http,
+            path: Some("/healthz".into()),
+            port: Some(80),
+        });
+
+        let kubernetes = c.render(Target::Kubernetes).unwrap().content;
+        assert!(kubernetes.contains("  namespace: \"demo\""));
+        assert!(kubernetes.contains("  selector:\n    matchLabels:\n      app: web"));
+        assert!(kubernetes.contains("      labels:\n        app: web"));
+        assert!(kubernetes.contains("kind: Service"));
+        assert!(kubernetes.contains("protocol: TCP"));
+
+        let process = c.render(Target::Process).unwrap().content;
+        assert!(process.starts_with("version: \"0.5\"\nservices:\n"));
+        assert!(process.contains("      - \"MODE=test\""));
+        assert!(process.contains("    readiness_probe:\n      http_get: \"http://localhost:80/healthz\""));
+
+        let nanovms = c.render(Target::NanoVms).unwrap().content;
+        assert!(nanovms.contains("\"depends_on\":[]"));
+    }
+
+    #[test]
+    fn nanovms_dependencies_are_deterministic() {
+        let mut c = sample();
+        let mut db = c.services.get("web").unwrap().clone();
+        db.image = Some("postgres:16".into());
+        c.services.insert("db".into(), db);
+        c.services.get_mut("web").unwrap().depends_on.insert("db".into());
+        let first = c.render(Target::NanoVms).unwrap().content;
+        let second = c.render(Target::NanoVms).unwrap().content;
+        assert_eq!(first, second);
+        assert!(first.contains("\"depends_on\":[\"db\"]"));
     }
 
     #[test]
