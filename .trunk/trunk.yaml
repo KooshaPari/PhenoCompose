@@ -1,6 +1,6 @@
 # Trunk.io — plugin and repository checks.
 # Schema follows Trunk 0.1 (the previous map-shaped file was rejected by
-# Trunk 1.22.2: `linters`, `formatters`, and `actions` must be lists).
+# Trunk 1.22.2; linter configuration belongs under `lint`).
 
 version: 0.1
 cli:
@@ -13,71 +13,60 @@ plugins:
     - id: community
       ref: main
 
-linters:
-  - name: actionlint
-    enabled: true
-    direct_configs:
-      - .github/workflows/*.yml
-  - name: black
-    enabled: true
-    direct_configs:
-      - pyproject.toml
-      - ruff.toml
-  - name: clippy
-    enabled: true
-    direct_configs:
-      - clippy.toml
-  - name: eslint
-    enabled: true
-    direct_configs:
-      - .eslintrc.*
-      - eslint.config.*
-  - name: golangci-lint
-    enabled: true
-    direct_configs:
-      - .golangci.yml
-      - .golangci.yaml
-  - name: mypy
-    enabled: true
-    direct_configs:
-      - pyproject.toml
-  - name: ruff
-    enabled: true
-    direct_configs:
-      - ruff.toml
-      - pyproject.toml
-  - name: shellcheck
-    enabled: true
-  - name: taplo
-    enabled: true
-  - name: yamllint
-    enabled: true
-
-formatters:
-  - name: black
-    enabled: true
-    direct_configs:
-      - pyproject.toml
-  - name: prettier
-    enabled: true
-    direct_configs:
-      - .prettierrc
-      - prettier.config.*
-  - name: rustfmt
-    enabled: true
-    direct_configs:
-      - rustfmt.toml
-
-ignore:
-  - paths:
-      - node_modules/
-      - target/
-      - dist/
-      - build/
-      - .git/
-      - vendor/
-      - "*.lock"
-    type: include
-
-ci:
-  enabled: true
+lint:
+  enabled:
+    - actionlint
+    - black
+    - clippy
+    - eslint
+    - golangci-lint
+    - mypy
+    - prettier
+    - ruff
+    - rustfmt
+    - shellcheck
+    - taplo
+    - yamllint
+  definitions:
+    - name: actionlint
+      direct_configs:
+        - .github/workflows/*.yml
+    - name: black
+      direct_configs:
+        - pyproject.toml
+        - ruff.toml
+    - name: clippy
+      direct_configs:
+        - clippy.toml
+    - name: eslint
+      direct_configs:
+        - .eslintrc.*
+        - eslint.config.*
+    - name: golangci-lint
+      direct_configs:
+        - .golangci.yml
+        - .golangci.yaml
+    - name: mypy
+      direct_configs:
+        - pyproject.toml
+    - name: ruff
+      direct_configs:
+        - ruff.toml
+        - pyproject.toml
+    - name: prettier
+      direct_configs:
+        - .prettierrc
+        - prettier.config.*
+    - name: rustfmt
+      direct_configs:
+        - rustfmt.toml
+  ignore:
+    - linters: [ALL]
+      paths:
+        - node_modules/
+        - target/
+        - dist/
+        - build/
+        - .git/
+        - vendor/
+        - "*.lock"
