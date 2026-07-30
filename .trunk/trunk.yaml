@@ -10,8 +10,6 @@ plugins:
   sources:
     - id: trunk
       ref: v1.2.2
-    - id: community
-      ref: main
 
 lint:
   enabled:
