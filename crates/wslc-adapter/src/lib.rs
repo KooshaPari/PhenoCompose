@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! `phenocompose-wslc-adapter`
 //!
-//! `wslc.exe` CLI-backed [`Runtime`](phenocompose_port_runtime::Runtime)
-//! adapter. The exact `wslc.exe` subcommand surface should be
-//! confirmed against Microsoft documentation before relying on
-//! this adapter in production; this crate currently expects
-//! `run`, `stop`, and `inspect`.
+//! Windows Containers CLI-backed [`Runtime`](phenocompose_port_runtime::Runtime)
+//! adapter. `container.exe` (the first-party Windows Containers CLI) is
+//! preferred, with the project-owned `wslc.exe` compatibility CLI as a
+//! fallback. Both CLIs are expected to expose `run`, `stop`, and `inspect`.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -16,6 +15,8 @@ use phenocompose_port_types::{ContainerId, ContainerStatus, ImageRef};
 /// Runtime adapter for the `wslc.exe` CLI.
 #[derive(Debug, Default)]
 pub struct WslcRuntime;
+
+const COMMAND_CANDIDATES: [&str; 2] = ["container.exe", "wslc.exe"];
 
 impl WslcRuntime {
     /// Construct a new `wslc.exe` runtime adapter.
@@ -48,13 +49,10 @@ impl Runtime for WslcRuntime {
 
 #[cfg(target_os = "windows")]
 fn spawn_container(image: &ImageRef) -> Result<ContainerId, RuntimeError> {
-    let output = std::process::Command::new("wslc.exe")
-        .args(["run", "-d", image.as_ref()])
-        .output()
-        .map_err(|e| RuntimeError::backend(format!("failed to run wslc.exe: {e}")))?;
+    let (command, output) = run_command(["run", "-d", image.as_ref()])?;
 
     if !output.status.success() {
-        return Err(RuntimeError::backend(command_error("wslc run", &output)));
+        return Err(RuntimeError::backend(command_error(&format!("{command} run"), &output)));
     }
 
     let id = String::from_utf8_lossy(&output.stdout).trim().to_owned();
@@ -67,43 +65,33 @@ fn spawn_container(image: &ImageRef) -> Result<ContainerId, RuntimeError> {
 
 #[cfg(not(target_os = "windows"))]
 fn spawn_container(_image: &ImageRef) -> Result<ContainerId, RuntimeError> {
-    Err(RuntimeError::backend(
-        "wslc runtime is only available on Windows",
-    ))
+    Err(RuntimeError::backend("wslc runtime is only available on Windows"))
 }
 
 #[cfg(target_os = "windows")]
 fn stop_container(id: &ContainerId) -> Result<(), RuntimeError> {
-    let output = std::process::Command::new("wslc.exe")
-        .args(["stop", id.as_ref()])
-        .output()
-        .map_err(|e| RuntimeError::backend(format!("failed to stop container: {e}")))?;
+    let (command, output) = run_command(["stop", id.as_ref()])?;
 
     if output.status.success() {
         Ok(())
     } else if output_mentions_not_found(&output) {
-        Err(RuntimeError::not_found(format!(
-            "no container with id {}",
-            id.as_ref()
-        )))
+        Err(RuntimeError::not_found(format!("no container with id {}", id.as_ref())))
     } else {
-        Err(RuntimeError::backend(command_error("wslc stop", &output)))
+        Err(RuntimeError::backend(command_error(
+            &format!("{command} stop"),
+            &output,
+        )))
     }
 }
 
 #[cfg(not(target_os = "windows"))]
 fn stop_container(_id: &ContainerId) -> Result<(), RuntimeError> {
-    Err(RuntimeError::backend(
-        "wslc runtime is only available on Windows",
-    ))
+    Err(RuntimeError::backend("wslc runtime is only available on Windows"))
 }
 
 #[cfg(target_os = "windows")]
 fn container_status(id: &ContainerId) -> Result<ContainerStatus, RuntimeError> {
-    let output = std::process::Command::new("wslc.exe")
-        .args(["inspect", id.as_ref()])
-        .output()
-        .map_err(|e| RuntimeError::backend(format!("failed to inspect container: {e}")))?;
+    let (command, output) = run_command(["inspect", id.as_ref()])?;
 
     if output.status.success() {
         return Ok(parse_status(&String::from_utf8_lossy(&output.stdout)));
@@ -112,15 +100,35 @@ fn container_status(id: &ContainerId) -> Result<ContainerStatus, RuntimeError> {
     if output_mentions_not_found(&output) {
         Ok(ContainerStatus::NotFound)
     } else {
-        Err(RuntimeError::backend(command_error("wslc inspect", &output)))
+        Err(RuntimeError::backend(command_error(
+            &format!("{command} inspect"),
+            &output,
+        )))
     }
+}
+
+#[cfg(target_os = "windows")]
+fn run_command<const N: usize>(args: [&str; N]) -> Result<(&'static str, std::process::Output), RuntimeError> {
+    let mut last_not_found = None;
+    for command in COMMAND_CANDIDATES {
+        match std::process::Command::new(command).args(args.iter().copied()).output() {
+            Ok(output) => return Ok((command, output)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                last_not_found = Some(error);
+            }
+            Err(error) => return Err(RuntimeError::backend(format!("failed to run {command}: {error}"))),
+        }
+    }
+
+    let error = last_not_found.expect("command candidates are non-empty");
+    Err(RuntimeError::backend(format!(
+        "neither container.exe nor wslc.exe is available: {error}"
+    )))
 }
 
 #[cfg(not(target_os = "windows"))]
 fn container_status(_id: &ContainerId) -> Result<ContainerStatus, RuntimeError> {
-    Err(RuntimeError::backend(
-        "wslc runtime is only available on Windows",
-    ))
+    Err(RuntimeError::backend("wslc runtime is only available on Windows"))
 }
 
 #[cfg(target_os = "windows")]
@@ -182,5 +190,10 @@ mod tests {
         let r = WslcRuntime::new();
         _takes_dyn(&r);
         let _boxed: Box<dyn Runtime> = Box::new(r);
+    }
+
+    #[test]
+    fn first_party_cli_is_preferred_over_compatibility_fallback() {
+        assert_eq!(COMMAND_CANDIDATES, ["container.exe", "wslc.exe"]);
     }
 }
