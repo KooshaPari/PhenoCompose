@@ -62,10 +62,5 @@ lint:
   ignore:
     - linters: [ALL]
       paths:
-        - node_modules/
-        - target/
-        - dist/
-        - build/
         - .git/
-        - vendor/
         - "*.lock"
