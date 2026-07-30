@@ -61,8 +61,8 @@ pub mod composition;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]
