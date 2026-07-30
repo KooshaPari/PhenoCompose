@@ -1,3 +1,4 @@
+---
 # Trunk.io — plugin and repository checks.
 # Schema follows Trunk 0.1 (the previous map-shaped file was rejected by
 # Trunk 1.22.2; linter configuration belongs under `lint`).

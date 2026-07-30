@@ -30,6 +30,10 @@ jobs:
 
       - name: Trunk Check
         uses: trunk-io/trunk-action@04ba50e7658c81db7356da96657e6e77f220bfa3  # v1
+        with:
+          cache-key: phenocompose-trunk-v2
+          setup-deps: true
+          save-annotations: true
 
       - name: Trunk Upgrade (on schedule only)
         if: github.event_name == 'schedule'

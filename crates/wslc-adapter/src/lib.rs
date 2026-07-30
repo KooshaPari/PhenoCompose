@@ -16,6 +16,7 @@ use phenocompose_port_types::{ContainerId, ContainerStatus, ImageRef};
 #[derive(Debug, Default)]
 pub struct WslcRuntime;
 
+#[cfg(target_os = "windows")]
 const COMMAND_CANDIDATES: [&str; 2] = ["container.exe", "wslc.exe"];
 
 impl WslcRuntime {
@@ -192,6 +193,7 @@ mod tests {
         let _boxed: Box<dyn Runtime> = Box::new(r);
     }
 
+    #[cfg(target_os = "windows")]
     #[test]
     fn first_party_cli_is_preferred_over_compatibility_fallback() {
         assert_eq!(COMMAND_CANDIDATES, ["container.exe", "wslc.exe"]);
