@@ -2,6 +2,8 @@
 name = "phenocompose-benches"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
+repository.workspace = true
 publish = false
 
 [lib]
@@ -14,4 +16,4 @@ harness = false
 
 [dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-phenocompose-port-types = { path = "../crates/port-types" }
+phenocompose-port-types = { path = "../crates/port-types", version = "0.1.0" }

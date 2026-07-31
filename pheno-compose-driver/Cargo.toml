@@ -11,8 +11,8 @@ categories = ["development-tools"]
 authors = ["kooshapari"]
 
 [dependencies]
-nvms-ffi = { path = "../bindings/rust-ffi", optional = true }
-pheno-config = { path = "../crates/pheno-config" }
+nvms-ffi = { path = "../bindings/rust-ffi", version = "0.1.0", optional = true }
+pheno-config = { path = "../crates/pheno-config", version = "0.1.0" }
 
 [features]
 default = ["nvms"]

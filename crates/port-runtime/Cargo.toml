@@ -17,5 +17,5 @@ authors = ["kooshapari"]
 path = "src/lib.rs"
 
 [dependencies]
-phenocompose-port-types = { path = "../port-types" }
+phenocompose-port-types = { path = "../port-types", version = "0.1.0" }
 thiserror = "2.0"

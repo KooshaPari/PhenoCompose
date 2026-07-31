@@ -7,7 +7,9 @@ ignore = []
 
 [licenses]
 version = 2
-allow = ["MIT", "Apache-2.0", "Apache-2.0 WITH LLVM-exception", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unicode-DFS-2016", "Unicode-3.0", "Zlib", "CC0-1.0", "MPL-2.0", "0BSD", "OpenSSL"]
+# ureq's webpki-roots dependency is distributed under this permissive data
+# license; keep it explicit so transitive license review remains fail-closed.
+allow = ["MIT", "Apache-2.0", "Apache-2.0 WITH LLVM-exception", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unicode-DFS-2016", "Unicode-3.0", "Zlib", "CC0-1.0", "MPL-2.0", "0BSD", "OpenSSL", "CDLA-Permissive-2.0"]
 
 [bans]
 multiple-versions = "warn"
