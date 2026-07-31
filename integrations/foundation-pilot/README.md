@@ -2,6 +2,11 @@
 
 `intent.json` is the provider-neutral handoff shared by the three layers.
 
+This file is a **non-runnable fixture**. Its `a...a` composition digest and
+`b...b` artifact digest are deliberate placeholders and must never be recorded
+as a successful pilot receipt. Generate both values from the rendered plan and
+attested OCI artifact at run time.
+
 1. Render a Docker plan in PhenoCompose and replace the fixture digest with the
    rendered SHA-256.
 2. Submit the JSON body to BytePort's authenticated `POST /mesh/workloads`.

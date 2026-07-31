@@ -1,5 +1,6 @@
 {
   "name": "foundation-demo",
+  "evidence_status": "fixture-placeholder",
   "composition_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "artifact_ref": "oci://registry.example/foundation-demo@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
   "execution_backend": "podman",
