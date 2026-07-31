@@ -5,6 +5,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use thiserror::Error;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// Supported output targets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Target {
@@ -201,6 +204,303 @@ pub struct MeshWorkloadIntent {
     pub artifact_ref: String,
     /// Runtime substrate hint.
     pub backend: ExecutionBackend,
+}
+
+/// JSON envelope for the two provider-facing bridge payloads.
+///
+/// BytePort and NanoVMS expose different HTTP contracts: the former accepts
+/// one desired-state request while the latter accepts one `SandboxConfig` per
+/// sandbox. Keeping both exact payload shapes in one envelope lets an offline
+/// fixture prove deterministic serialization without pretending that either
+/// service accepts the other's fields.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct BridgeContract {
+    /// Exact body for `POST /api/v1/mesh/workloads`.
+    pub byteport: BytePortMeshWorkloadRequest,
+    /// Exact bodies for one or more `POST /v1/deploy` calls.
+    pub nanovms: Vec<NanoVmsDeployRequest>,
+}
+
+impl BridgeContract {
+    /// Construct a bridge envelope from the provider-specific payloads.
+    #[must_use]
+    pub fn new(
+        byteport: BytePortMeshWorkloadRequest,
+        nanovms: Vec<NanoVmsDeployRequest>,
+    ) -> Self {
+        Self { byteport, nanovms }
+    }
+}
+
+/// BytePort's authenticated `/api/v1/mesh/workloads` request body.
+///
+/// The authenticated owner is deliberately absent: BytePort derives it from
+/// the request credentials rather than trusting a body field.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct BytePortMeshWorkloadRequest {
+    /// DNS-label-compatible composition name.
+    pub name: String,
+    /// Immutable rendered-plan digest (`sha256:<64 hex characters>`).
+    pub composition_digest: String,
+    /// OCI artifact or plan locator.
+    pub artifact_ref: String,
+    /// BytePort execution-backend identifier.
+    pub execution_backend: BytePortExecutionBackend,
+    /// Portable placement preferences and constraints.
+    pub placement: BytePortPlacement,
+}
+
+impl BytePortMeshWorkloadRequest {
+    /// Convert an already validated mesh intent to BytePort's wire shape.
+    ///
+    /// `owner` is intentionally not copied because the BytePort endpoint
+    /// obtains it from authentication context.
+    #[must_use]
+    pub fn from_intent(intent: &MeshWorkloadIntent, placement: BytePortPlacement) -> Self {
+        Self {
+            name: intent.composition_name.clone(),
+            composition_digest: intent.digest.clone(),
+            artifact_ref: intent.artifact_ref.clone(),
+            execution_backend: intent.backend.into(),
+            placement,
+        }
+    }
+}
+
+/// Execution backend names accepted by BytePort's mesh workload endpoint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum BytePortExecutionBackend {
+    /// NanoVMS execution backend (`nanovms`).
+    #[cfg_attr(feature = "serde", serde(rename = "nanovms"))]
+    NanoVms,
+    /// Podman-compatible OCI backend (`podman`).
+    #[cfg_attr(feature = "serde", serde(rename = "podman"))]
+    Podman,
+    /// Apple Containers backend (`apple-containers`).
+    #[cfg_attr(feature = "serde", serde(rename = "apple-containers"))]
+    AppleContainers,
+    /// WSL containers backend (`wsl-containers`).
+    #[cfg_attr(feature = "serde", serde(rename = "wsl-containers"))]
+    WslContainers,
+}
+
+impl From<ExecutionBackend> for BytePortExecutionBackend {
+    fn from(backend: ExecutionBackend) -> Self {
+        match backend {
+            ExecutionBackend::NanoVms => Self::NanoVms,
+            ExecutionBackend::Podman => Self::Podman,
+            ExecutionBackend::AppleContainers => Self::AppleContainers,
+            ExecutionBackend::WslContainers => Self::WslContainers,
+        }
+    }
+}
+
+/// Portable placement fields accepted by BytePort.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct BytePortPlacement {
+    /// Optional region preference.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub region: Option<String>,
+    /// Optional availability-zone preference.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub zone: Option<String>,
+    /// Optional node-pool preference.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub node_pool: Option<String>,
+    /// Stable placement labels.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "map_is_empty"))]
+    pub labels: BTreeMap<String, String>,
+    /// Provider placement constraints.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "map_is_empty"))]
+    pub constraints: BTreeMap<String, String>,
+}
+
+/// NanoVMS `POST /v1/deploy` request body.
+///
+/// These fields intentionally mirror the tagged fields of NanoVMS'
+/// `domain.SandboxConfig`. The composition digest is not a NanoVMS HTTP field;
+/// callers correlate it through the `env` map (for example,
+/// `phenocompose.sha256`) when using this endpoint.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct NanoVmsDeployRequest {
+    /// Stable sandbox name.
+    pub name: String,
+    /// OCI image reference.
+    pub image: String,
+    /// NanoVMS VM flavor (`native`, `lima`, `wsl`, `microvm`, or `wasm`).
+    pub vm_type: String,
+    /// Optional NanoVMS VM tier/flavor override.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub vm_tier: Option<String>,
+    /// Optional VM-specific configuration.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub vm_config: Option<NanoVmConfig>,
+    /// Isolation type (`vm`, `container`, `wasm`, `process`, or `native`).
+    pub sandbox_type: String,
+    /// Optional primary sandbox layer.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub sandbox_layer: Option<String>,
+    /// Optional stacked isolation layers.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "vec_is_empty"))]
+    pub sandbox_layers: Vec<String>,
+    /// Optional native-sandbox configuration.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub native_sandbox: Option<NanoNativeSandboxConfig>,
+    /// Correlation labels, including composition identity when needed.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "map_is_empty"))]
+    pub labels: BTreeMap<String, String>,
+    /// Filesystem mounts.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "vec_is_empty"))]
+    pub mounts: Vec<NanoMount>,
+    /// Environment values (`env` on the NanoVMS wire contract).
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "env", default, skip_serializing_if = "map_is_empty")
+    )]
+    pub environment: BTreeMap<String, String>,
+    /// Whether the root filesystem is read-only.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub read_only_rootfs: Option<bool>,
+    /// Whether a temporary filesystem is mounted at `/tmp`.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub tmpfs_tmp: Option<bool>,
+    /// Optional seccomp profile.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub seccomp_profile: Option<String>,
+    /// Optional working directory.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub work_dir: Option<String>,
+    /// Optional Firejail profile.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub firejail_profile: Option<String>,
+    /// Optional runtime path.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub runtime_path: Option<String>,
+}
+
+/// NanoVMS VM configuration.
+///
+/// The upstream Go type currently has no JSON tags, so its nested keys retain
+/// Go's default exported names. This shape is included for completeness but is
+/// not required by the minimal fixture.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct NanoVmConfig {
+    /// VM configuration name.
+    #[cfg_attr(feature = "serde", serde(rename = "Name"))]
+    pub name: String,
+    /// VM flavor.
+    #[cfg_attr(feature = "serde", serde(rename = "VMFlavor"))]
+    pub vm_flavor: String,
+    /// VM image.
+    #[cfg_attr(feature = "serde", serde(rename = "Image"))]
+    pub image: String,
+    /// Resource limits.
+    #[cfg_attr(feature = "serde", serde(rename = "Resources"))]
+    pub resources: NanoResourceConfig,
+    /// Network configuration.
+    #[cfg_attr(feature = "serde", serde(rename = "Network"))]
+    pub network: NanoNetworkConfig,
+}
+
+/// NanoVMS native sandbox configuration.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct NanoNativeSandboxConfig {
+    /// Native isolation implementation.
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
+    pub kind: String,
+    /// Optional command.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "vec_is_empty"))]
+    pub command: Vec<String>,
+    /// Optional working directory.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub work_dir: Option<String>,
+    /// Native environment values.
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "env", default, skip_serializing_if = "map_is_empty")
+    )]
+    pub environment: BTreeMap<String, String>,
+    /// Read-only native sandbox.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub read_only: Option<bool>,
+    /// Whether networking is enabled.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub network: Option<bool>,
+    /// Native resource limits.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub resources: Option<NanoResourceConfig>,
+}
+
+/// NanoVMS resource limits.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct NanoResourceConfig {
+    /// Number of CPUs.
+    pub cpu: i32,
+    /// Memory limit in megabytes.
+    pub memory: i32,
+    /// Disk limit in megabytes.
+    pub disk: i32,
+}
+
+/// NanoVMS network configuration.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct NanoNetworkConfig {
+    /// Network type.
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
+    pub kind: String,
+    /// Network subnet.
+    pub subnet: String,
+    /// Port mappings.
+    pub ports: Vec<NanoPortMapping>,
+}
+
+/// NanoVMS port mapping.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct NanoPortMapping {
+    /// Host port.
+    pub host_port: i32,
+    /// Sandbox/container port.
+    pub container_port: i32,
+    /// Transport protocol.
+    pub protocol: String,
+}
+
+/// NanoVMS filesystem mount.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct NanoMount {
+    /// Host source path.
+    pub source: String,
+    /// Sandbox target path.
+    pub target: String,
+    /// Mount type.
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
+    pub kind: String,
+    /// Whether the mount is read-only.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "is_false"))]
+    pub read_only: bool,
+}
+
+fn map_is_empty<T>(value: &BTreeMap<String, T>) -> bool {
+    value.is_empty()
+}
+
+fn vec_is_empty<T>(value: &[T]) -> bool {
+    value.is_empty()
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 impl RenderedPlan {
@@ -781,5 +1081,20 @@ mod tests {
         assert!(!plan.verify_digest());
         assert!(plan.nanovms_handoff().is_err());
         assert!(plan.execution_handoff(ExecutionBackend::NanoVms).is_err());
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn bridge_fixture_round_trips_deterministically() {
+        let fixture = include_str!("../../../integrations/foundation-pilot/bridge.json");
+        let bridge: BridgeContract = serde_json::from_str(fixture).unwrap();
+        let rendered = format!("{}\n", serde_json::to_string_pretty(&bridge).unwrap());
+        assert_eq!(rendered, fixture);
+        assert_eq!(bridge.byteport.execution_backend, BytePortExecutionBackend::NanoVms);
+        assert_eq!(bridge.nanovms.len(), 1);
+        assert_eq!(
+            bridge.nanovms[0].environment.get("phenocompose.sha256"),
+            Some(&"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_owned())
+        );
     }
 }

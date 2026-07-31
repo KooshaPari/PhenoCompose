@@ -1,0 +1,31 @@
+{
+  "byteport": {
+    "name": "foundation-demo",
+    "composition_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "artifact_ref": "oci://registry.example/foundation-demo@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "execution_backend": "nanovms",
+    "placement": {
+      "region": "local",
+      "node_pool": "containers",
+      "labels": {
+        "environment": "pilot"
+      },
+      "constraints": {
+        "arch": "amd64"
+      }
+    }
+  },
+  "nanovms": [
+    {
+      "name": "foundation-demo",
+      "image": "registry.example/foundation-demo@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "vm_type": "microvm",
+      "sandbox_type": "vm",
+      "env": {
+        "nvms.backend": "nanovms",
+        "phenocompose.name": "foundation-demo",
+        "phenocompose.sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  ]
+}

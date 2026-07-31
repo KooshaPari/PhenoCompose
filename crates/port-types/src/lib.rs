@@ -59,9 +59,6 @@ pub use secret::{Secret, SecretRef};
 /// Deterministic, target-neutral composition model and renderers.
 pub mod composition;
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 #[cfg(test)]
 mod tests {
     use super::*;
