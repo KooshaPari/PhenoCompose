@@ -63,7 +63,7 @@ jobs:
           test -f ${{ matrix.scope.lock }} || { echo "::error::${{ matrix.scope.lock }} missing — run 'cargo generate-lockfile'"; exit 1; }
 
       - name: Install cargo-deny
-        run: cargo install --locked cargo-deny --version "^0.16"
+        run: cargo install --locked cargo-deny --version "0.20.2"
 
       - name: cargo-deny check (advisories, licenses, sources, bans)
         working-directory: ${{ matrix.scope.workdir }}

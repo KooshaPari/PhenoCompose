@@ -128,7 +128,7 @@ jobs:
             crates/pheno-config -> crates/pheno-config/target
 
       - name: Install cargo-deny
-        run: cargo install --locked cargo-deny
+        run: cargo install --locked cargo-deny --version "0.20.2"
 
       - name: cargo deny check
         run: cargo deny check
