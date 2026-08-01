@@ -55,7 +55,9 @@ pub struct Reference {
     repository: String,
     /// Optional tag (e.g. `"latest"`, `"1.2.3"`).
     tag: Option<String>,
-    /// Optional digest (e.g. `"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"`).
+    /// Optional digest (e.g.
+    /// `"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    /// `).
     digest: Option<String>,
 }
 
@@ -128,7 +130,8 @@ impl std::fmt::Display for Reference {
 /// * `<repository>:<tag>` — e.g. `"ubuntu:22.04"`
 /// * `<repository>@<digest>` — e.g. `"ubuntu@sha256:abc..."`
 /// * `<registry>/<repository>:<tag>` — e.g. `"docker.io/library/ubuntu:22.04"`
-/// * `<registry>/<repository>@<digest>` — e.g. `"quay.io/prometheus/node-exporter@sha256:abc..."`
+/// * `<registry>/<repository>@<digest>` — e.g.
+///   `"quay.io/prometheus/node-exporter@sha256:abc..."`
 /// * `<registry>/<repository>:<tag>@<digest>` — both tag and digest
 /// * `<registry>:<port>/<repository>:<tag>` — registry with explicit port
 ///
@@ -205,9 +208,7 @@ fn split_tag(input: &str) -> Result<(&str, Option<String>), String> {
 /// Split the registry host from a `<registry>/<repository>` string.
 fn split_registry(input: &str) -> (Option<String>, String) {
     match input.split_once('/') {
-        Some((potential_host, rest))
-            if potential_host.contains('.') || potential_host.contains(':') =>
-        {
+        Some((potential_host, rest)) if potential_host.contains('.') || potential_host.contains(':') => {
             (Some(potential_host.to_string()), rest.to_string())
         }
         _ => (None, input.to_string()),
@@ -285,10 +286,7 @@ mod tests {
 
     #[test]
     fn parse_repo_digest() {
-        let r = parse(
-            "ubuntu@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        )
-        .unwrap();
+        let r = parse("ubuntu@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855").unwrap();
         assert_eq!(r.registry(), None);
         assert_eq!(r.repository(), "ubuntu");
         assert_eq!(r.tag(), None);
@@ -333,19 +331,13 @@ mod tests {
     #[test]
     fn parse_digest_without_algorithm_prefix_returns_err() {
         let err = parse("ubuntu@abc123").unwrap_err();
-        assert!(
-            err.contains("algorithm"),
-            "expected algorithm error, got: {err}"
-        );
+        assert!(err.contains("algorithm"), "expected algorithm error, got: {err}");
     }
 
     #[test]
     fn parse_empty_digest_returns_err() {
         let err = parse("ubuntu@").unwrap_err();
-        assert!(
-            err.contains("empty digest"),
-            "expected empty digest error, got: {err}"
-        );
+        assert!(err.contains("empty digest"), "expected empty digest error, got: {err}");
     }
 
     // --- Display / to_string ----------------------------------------------
@@ -359,8 +351,7 @@ mod tests {
 
     #[test]
     fn to_string_roundtrip_repo_digest() {
-        let s =
-            "ubuntu@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        let s = "ubuntu@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
         let r = parse(s).unwrap();
         assert_eq!(r.to_string(), s);
     }
@@ -389,10 +380,7 @@ mod tests {
 
     #[test]
     fn with_digest_no_registry() {
-        assert_eq!(
-            with_digest(None, "my-app", "sha256:abc"),
-            "my-app@sha256:abc"
-        );
+        assert_eq!(with_digest(None, "my-app", "sha256:abc"), "my-app@sha256:abc");
     }
 
     #[test]

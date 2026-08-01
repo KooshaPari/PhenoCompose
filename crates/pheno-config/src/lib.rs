@@ -27,18 +27,18 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
-use figment::providers::{Env, Format, Serialized, Toml};
-use figment::Figment;
-use serde::{Deserialize, Serialize};
-
+use figment::{
+    providers::{Env, Format, Serialized, Toml},
+    Figment,
+};
 // ---------------------------------------------------------------------------
 // Re-exports
 // ---------------------------------------------------------------------------
-
 pub use gpu::GpuConfig;
 pub use nvms::NvmsConfig;
 pub use perf::PerfConfig;
 pub use sandbox::SandboxConfig;
+use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
 // Top-level config
@@ -105,12 +105,10 @@ const fn default_firecracker_memory() -> u64 {
 // NvmsConfig
 // ---------------------------------------------------------------------------
 
-
-pub mod nvms;
-pub mod sandbox;
-pub mod perf;
 pub mod gpu;
-
+pub mod nvms;
+pub mod perf;
+pub mod sandbox;
 
 // ---------------------------------------------------------------------------
 // Combined defaults — derived via #[derive(Default)] on PhenoConfig

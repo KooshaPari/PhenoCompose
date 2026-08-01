@@ -14,9 +14,9 @@ fn main() {
     // CARGO_MANIFEST_DIR is <repo-root>/bindings/rust-ffi.
     let manifest_dir = Path::new(std::env!("CARGO_MANIFEST_DIR"));
     let nanovms_build = manifest_dir
-        .join("..")  // bindings/
-        .join("..")  // repo root (PhenoCompose)
-        .join("..")  // repos/
+        .join("..") // bindings/
+        .join("..") // repo root (PhenoCompose)
+        .join("..") // repos/
         .join("nanovms")
         .join("build");
     let default_path = nanovms_build.to_str().unwrap_or("").to_string();
@@ -39,10 +39,7 @@ fn main() {
     let found_staticlib = search_dirs.iter().any(|dir| {
         let candidate = Path::new(dir).join("libnvms_core.a");
         if candidate.exists() {
-            println!(
-                "cargo:rustc-link-search=native={}",
-                Path::new(dir).display()
-            );
+            println!("cargo:rustc-link-search=native={}", Path::new(dir).display());
             println!("cargo:rustc-link-lib=static=nvms_core");
             println!("cargo:rerun-if-changed={}", candidate.display());
             true

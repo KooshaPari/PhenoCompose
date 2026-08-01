@@ -22,8 +22,9 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
-use phenocompose_port_types::{ContainerId, ContainerStatus, ImageRef, PortError};
 use std::fmt;
+
+use phenocompose_port_types::{ContainerId, ContainerStatus, ImageRef, PortError};
 use thiserror::Error;
 
 /// The Runtime port trait — `Send + Sync` + no generics + no
@@ -164,10 +165,7 @@ impl Runtime for NoopRuntime {
         }
         let n = self.next_id.fetch_add(1, Ordering::SeqCst);
         let id = format!("noop-{}", n);
-        self.alive
-            .lock()
-            .expect("noop runtime mutex poisoned")
-            .push(id.clone());
+        self.alive.lock().expect("noop runtime mutex poisoned").push(id.clone());
         Ok(ContainerId::new(id))
     }
 
@@ -179,10 +177,7 @@ impl Runtime for NoopRuntime {
                 guard.swap_remove(i);
                 Ok(())
             }
-            None => Err(RuntimeError::not_found(format!(
-                "no container with id {}",
-                id.as_ref()
-            ))),
+            None => Err(RuntimeError::not_found(format!("no container with id {}", id.as_ref()))),
         }
     }
 
@@ -202,8 +197,9 @@ impl Runtime for NoopRuntime {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use phenocompose_port_types::ImageRef;
+
+    use super::*;
 
     #[test]
     fn noop_runtime_spawn_assigns_unique_ids() {

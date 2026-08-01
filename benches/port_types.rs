@@ -54,5 +54,12 @@ fn secret_new(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, manifest_new, manifest_clone, secret_ref_locator, port_error_display, secret_new);
+criterion_group!(
+    benches,
+    manifest_new,
+    manifest_clone,
+    secret_ref_locator,
+    port_error_display,
+    secret_new
+);
 criterion_main!(benches);

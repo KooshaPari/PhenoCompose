@@ -1,8 +1,7 @@
 //! L17 i18n runtime: `t(key)` returns the localized string from the
 //! embedded locale table. Defaults to "en" if the key is not found.
 
-use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::{collections::HashMap, sync::OnceLock};
 
 fn table() -> &'static HashMap<String, String> {
     static TABLE: OnceLock<HashMap<String, String>> = OnceLock::new();
@@ -34,7 +33,16 @@ pub fn t(key: &str) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn known_key() { assert_eq!(t("app.name"), "PhenoCompose"); }
-    #[test] fn unknown_key() { assert_eq!(t("nope"), "?"); }
-    #[test] fn no_panic_on_empty() { assert_eq!(t(""), "?"); }
+    #[test]
+    fn known_key() {
+        assert_eq!(t("app.name"), "PhenoCompose");
+    }
+    #[test]
+    fn unknown_key() {
+        assert_eq!(t("nope"), "?");
+    }
+    #[test]
+    fn no_panic_on_empty() {
+        assert_eq!(t(""), "?");
+    }
 }

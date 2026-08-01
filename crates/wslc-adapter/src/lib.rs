@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! `phenocompose-wslc-adapter`
 //!
-//! Windows Containers CLI-backed [`Runtime`](phenocompose_port_runtime::Runtime)
-//! adapter. `container.exe` (the first-party Windows Containers CLI) is
-//! preferred, with the project-owned `wslc.exe` compatibility CLI as a
-//! fallback. Both CLIs are expected to expose `run`, `stop`, and `inspect`.
+//! Windows Containers CLI-backed
+//! [`Runtime`](phenocompose_port_runtime::Runtime) adapter. `container.exe`
+//! (the first-party Windows Containers CLI) is preferred, with the
+//! project-owned `wslc.exe` compatibility CLI as a fallback. Both CLIs are
+//! expected to expose `run`, `stop`, and `inspect`.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -168,9 +169,10 @@ fn command_error(command: &str, output: &std::process::Output) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use phenocompose_port_runtime::RuntimeError;
     use phenocompose_port_types::ImageRef;
+
+    use super::*;
 
     #[test]
     fn wslc_runtime_name_is_stable() {

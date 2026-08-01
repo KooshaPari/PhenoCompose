@@ -6,8 +6,9 @@
 //! callers can respond to failures without inspecting raw FFI
 //! error codes.
 
-use nvms_ffi::NvmsError;
 use std::fmt;
+
+use nvms_ffi::NvmsError;
 
 use crate::Tier;
 
@@ -156,8 +157,9 @@ impl std::error::Error for DriverError {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::error::Error;
+
+    use super::*;
 
     #[test]
     fn driver_error_recovery_hints_are_not_empty() {

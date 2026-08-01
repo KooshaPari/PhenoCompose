@@ -79,10 +79,7 @@ fn stop_container(id: &ContainerId) -> Result<(), RuntimeError> {
     if output.status.success() {
         Ok(())
     } else if output_mentions_not_found(&output) {
-        Err(RuntimeError::not_found(format!(
-            "no container with id {}",
-            id.as_ref()
-        )))
+        Err(RuntimeError::not_found(format!("no container with id {}", id.as_ref())))
     } else {
         Err(RuntimeError::backend(command_error("container stop", &output)))
     }
@@ -170,9 +167,10 @@ fn command_error(command: &str, output: &std::process::Output) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use phenocompose_port_runtime::{Runtime, RuntimeError};
     use phenocompose_port_types::ImageRef;
+
+    use super::*;
 
     #[test]
     fn apple_container_runtime_name_is_stable() {

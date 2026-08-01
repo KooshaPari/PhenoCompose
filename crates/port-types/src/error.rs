@@ -40,4 +40,3 @@ pub enum PortError {
     #[error("unsupported: {0}")]
     Unsupported(String),
 }
-

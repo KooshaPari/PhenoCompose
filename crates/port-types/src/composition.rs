@@ -1,12 +1,14 @@
 //! A small, deterministic composition model shared by renderers.
 
-use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, BTreeSet};
-use std::fmt::Write as _;
-use thiserror::Error;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Write as _,
+};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use thiserror::Error;
 
 /// Supported output targets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -225,10 +227,7 @@ pub struct BridgeContract {
 impl BridgeContract {
     /// Construct a bridge envelope from the provider-specific payloads.
     #[must_use]
-    pub fn new(
-        byteport: BytePortMeshWorkloadRequest,
-        nanovms: Vec<NanoVmsDeployRequest>,
-    ) -> Self {
+    pub fn new(byteport: BytePortMeshWorkloadRequest, nanovms: Vec<NanoVmsDeployRequest>) -> Self {
         Self { byteport, nanovms }
     }
 }

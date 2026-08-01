@@ -3,10 +3,12 @@
 //! dispatcher schema.
 //!
 //! Usage:
-//!   echo '{"method":"manifest.parse","params":{"name":"hello"}}' | phenocompose-agentctl
+//!   echo '{"method":"manifest.parse","params":{"name":"hello"}}' |
+//! phenocompose-agentctl
+
+use std::io::{self, BufRead, Write};
 
 use serde::{Deserialize, Serialize};
-use std::io::{self, BufRead, Write};
 
 #[derive(Deserialize, Debug)]
 struct Request {
@@ -27,10 +29,15 @@ struct Response {
 fn dispatch(req: &Request) -> Response {
     match req.method.as_str() {
         "manifest.parse" => {
-            // Stub: real implementation would call phenocompose_port_composer::Composer::Compose
+            // Stub: real implementation would call
+            // phenocompose_port_composer::Composer::Compose
             let name = req.params.get("name").and_then(|v| v.as_str()).unwrap_or("");
             if name.is_empty() {
-                return Response { ok: false, result: None, error: Some("manifest.parse: missing 'name'".into()) };
+                return Response {
+                    ok: false,
+                    result: None,
+                    error: Some("manifest.parse: missing 'name'".into()),
+                };
             }
             Response {
                 ok: true,
@@ -41,7 +48,11 @@ fn dispatch(req: &Request) -> Response {
         "secret.get" => {
             let id = req.params.get("id").and_then(|v| v.as_str()).unwrap_or("");
             if id.is_empty() {
-                return Response { ok: false, result: None, error: Some("secret.get: missing 'id'".into()) };
+                return Response {
+                    ok: false,
+                    result: None,
+                    error: Some("secret.get: missing 'id'".into()),
+                };
             }
             Response {
                 ok: true,
@@ -49,8 +60,16 @@ fn dispatch(req: &Request) -> Response {
                 error: None,
             }
         }
-        "secret.list" => Response { ok: true, result: Some(serde_json::json!([])), error: None },
-        other => Response { ok: false, result: None, error: Some(format!("unknown method: {}", other)) },
+        "secret.list" => Response {
+            ok: true,
+            result: Some(serde_json::json!([])),
+            error: None,
+        },
+        other => Response {
+            ok: false,
+            result: None,
+            error: Some(format!("unknown method: {}", other)),
+        },
     }
 }
 
@@ -65,9 +84,16 @@ fn main() {
         let req: Request = match serde_json::from_str(&line) {
             Ok(r) => r,
             Err(e) => {
-                let _ = writeln!(stdout, "{}", serde_json::to_string(&Response {
-                    ok: false, result: None, error: Some(format!("invalid json: {}", e)),
-                }).unwrap());
+                let _ = writeln!(
+                    stdout,
+                    "{}",
+                    serde_json::to_string(&Response {
+                        ok: false,
+                        result: None,
+                        error: Some(format!("invalid json: {}", e)),
+                    })
+                    .unwrap()
+                );
                 continue;
             }
         };

@@ -34,7 +34,6 @@ mod instance;
 pub use config::NvmsConfig;
 pub use error::DriverError;
 pub use instance::{Instance, InstanceStatus, Tier};
-
 pub use nvms_ffi;
 use nvms_ffi::Tier as FfiTier;
 

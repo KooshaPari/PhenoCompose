@@ -23,8 +23,7 @@ pub mod service_main;
 
 pub const SERVICE_NAME: &str = "PhenoCompose";
 pub const SERVICE_DISPLAY: &str = "PhenoCompose Driver (NVMS orchestrator)";
-pub const SERVICE_DESCRIPTION: &str =
-    "PhenoCompose NVMS driver — composition + 3-tier isolation. See PLAN.md.";
+pub const SERVICE_DESCRIPTION: &str = "PhenoCompose NVMS driver — composition + 3-tier isolation. See PLAN.md.";
 
 #[derive(Debug, Error)]
 pub enum ScmServiceError {

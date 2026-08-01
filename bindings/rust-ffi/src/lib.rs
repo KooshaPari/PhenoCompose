@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Rust bindings for the PhenoCompose NVMS C API.
 
-use std::ffi::{c_char, c_void, CStr, CString};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{
+    ffi::{c_char, c_void, CStr, CString},
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 pub mod sys {
     use std::os::raw::{c_char, c_int, c_ulonglong};
@@ -470,8 +472,9 @@ fn write_name(dst: &mut [c_char; 256], value: &str) {
 
 #[cfg(not(nvms_real_ffi))]
 mod shim {
-    use super::*;
     use std::sync::Mutex;
+
+    use super::*;
 
     static INSTANCE_COUNTER: AtomicU64 = AtomicU64::new(0);
     pub(crate) static INSTANCES: Mutex<Vec<(u64, sys::NvmsTier, sys::NvmsStatus, String)>> = Mutex::new(Vec::new());

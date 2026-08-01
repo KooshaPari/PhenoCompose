@@ -44,6 +44,9 @@ pub struct ShellCapabilities {
     pub spotlight: bool,
 }
 
+// The platform capability defaults are intentionally computed at compile
+// time; deriving Default would incorrectly make every target report false.
+#[allow(clippy::derivable_impls)]
 impl Default for ShellCapabilities {
     fn default() -> Self {
         Self {
@@ -94,7 +97,6 @@ mod tests {
 
     #[test]
     fn notify_is_noop_on_stub_path() {
-        notify_deploy_event("evt-001", "{\"deploy_id\":\"d-1\"}")
-            .expect("stub notify must succeed");
+        notify_deploy_event("evt-001", "{\"deploy_id\":\"d-1\"}").expect("stub notify must succeed");
     }
 }

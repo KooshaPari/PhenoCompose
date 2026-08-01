@@ -18,8 +18,7 @@ pub const PLIST_FILENAME: &str = "ai.phenotype.pheno-compose-driver.plist";
 /// Where the plist should be installed for the current user.
 /// `~/Library/LaunchAgents/` is the standard per-user agent location.
 pub fn launch_agent_dir() -> Result<PathBuf, MacosShellError> {
-    let home = std::env::var_os("HOME")
-        .ok_or_else(|| MacosShellError::LaunchdBootstrap("$HOME not set".into()))?;
+    let home = std::env::var_os("HOME").ok_or_else(|| MacosShellError::LaunchdBootstrap("$HOME not set".into()))?;
     Ok(Path::new(&home).join("Library").join("LaunchAgents"))
 }
 
@@ -93,9 +92,7 @@ pub fn install_plist(driver_binary: &Path) -> Result<PathBuf, MacosShellError> {
 /// Capability query for the launchd surface — used by `boot_shell_extension`
 /// to populate `ShellCapabilities.launchd_service`.
 pub fn capabilities() -> ShellCapabilities {
-    let mut caps = ShellCapabilities::default();
-    caps.launchd_service = cfg!(target_os = "macos");
-    caps
+    ShellCapabilities::default()
 }
 
 #[cfg(test)]
