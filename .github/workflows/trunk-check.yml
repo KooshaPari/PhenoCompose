@@ -28,8 +28,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
+      - name: Set up pinned nightly Rust tools
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4
+        with:
+          toolchain: nightly-2026-07-31
+          components: rustfmt, rust-src
+
       - name: Trunk Check
         uses: trunk-io/trunk-action@04ba50e7658c81db7356da96657e6e77f220bfa3  # v1
+        env:
+          # Trunk's Rust linters must use the same nightly formatter as the
+          # repository's real cargo fmt gate; otherwise stable rustfmt rejects
+          # the intentional nightly options in rustfmt.toml.
+          RUSTUP_TOOLCHAIN: nightly-2026-07-31
         with:
           cache-key: phenocompose-trunk-v2
           setup-deps: true
