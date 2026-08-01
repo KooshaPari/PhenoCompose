@@ -491,14 +491,17 @@ pub struct NanoMount {
     pub read_only: bool,
 }
 
+#[cfg(feature = "serde")]
 fn map_is_empty<T>(value: &BTreeMap<String, T>) -> bool {
     value.is_empty()
 }
 
+#[cfg(feature = "serde")]
 fn vec_is_empty<T>(value: &[T]) -> bool {
     value.is_empty()
 }
 
+#[cfg(feature = "serde")]
 fn is_false(value: &bool) -> bool {
     !*value
 }

@@ -60,11 +60,24 @@ jobs:
 
       - name: Run cargo audit (rust-ffi crate)
         working-directory: bindings/rust-ffi
-        run: cargo audit --deny warnings
+        run: |
+          set -euo pipefail
+          # This package is a root-workspace member and intentionally has no
+          # nested lockfile. Audit the committed workspace lock explicitly so
+          # the target remains portable when launched from this subdirectory.
+          lockfile="${GITHUB_WORKSPACE}/Cargo.lock"
+          test -f "${lockfile}"
+          cargo audit --deny warnings --file "${lockfile}"
 
       - name: Run cargo audit (driver crate)
         working-directory: pheno-compose-driver
-        run: cargo audit --deny warnings
+        run: |
+          set -euo pipefail
+          # The driver is also a root-workspace member; use the same
+          # committed lockfile explicitly rather than assuming a nested path.
+          lockfile="${GITHUB_WORKSPACE}/Cargo.lock"
+          test -f "${lockfile}"
+          cargo audit --deny warnings --file "${lockfile}"
 
   # -------------------------------------------------------------------
   # Node — npm audit (root + workspace packages)

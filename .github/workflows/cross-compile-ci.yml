@@ -78,11 +78,25 @@ jobs:
           if [[ ! -d "${ANDROID_NDK_HOME}" ]]; then
             mv "${RUNNER_TEMP}/android-ndk-${ANDROID_NDK_VERSION}" "${ANDROID_NDK_HOME}"
           fi
+          NDK_BIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          NDK_CLANG="${NDK_BIN}/aarch64-linux-android24-clang"
+          NDK_CLANGXX="${NDK_BIN}/aarch64-linux-android24-clang++"
+          test -x "${NDK_CLANG}"
+          test -x "${NDK_CLANGXX}"
           echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}" >> "${GITHUB_ENV}"
+          echo "ANDROID_NDK_ROOT=${ANDROID_NDK_HOME}" >> "${GITHUB_ENV}"
+          echo "PATH=${NDK_BIN}:$PATH" >> "${GITHUB_ENV}"
+          echo "${NDK_BIN}" >> "${GITHUB_PATH}"
+          # cc-rs does not infer the API-suffixed NDK compiler name from the
+          # Rust target. Set the target-specific tools explicitly so native
+          # dependencies (notably ring) use the same compiler as rustc.
+          echo "CC_aarch64_linux_android=${NDK_CLANG}" >> "${GITHUB_ENV}"
+          echo "CXX_aarch64_linux_android=${NDK_CLANGXX}" >> "${GITHUB_ENV}"
+          echo "AR_aarch64_linux_android=${NDK_BIN}/llvm-ar" >> "${GITHUB_ENV}"
           mkdir -p .cargo
           {
             echo '[target.aarch64-linux-android]'
-            echo "linker = \"${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang\""
+            echo "linker = \"${NDK_CLANG}\""
           } > .cargo/config.toml
 
       - name: cargo check (${{ matrix.target }})
