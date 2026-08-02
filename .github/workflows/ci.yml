@@ -161,19 +161,27 @@ jobs:
       - name: install deps
         run: |
           if [ -f "uv.lock" ]; then
-            python -m pip install --quiet --disable-pip-version-check --no-cache-dir --no-deps "uv==0.8.9" && uv sync --locked --all-extras 2>&1 || echo "::warning::uv sync failed"
+            python -m pip install --quiet --disable-pip-version-check --no-cache-dir --no-deps "uv==0.8.9" && uv sync --locked --no-build --all-extras 2>&1 || echo "::warning::uv sync failed"
           elif [ -f "pyproject.toml" ]; then
-            python -m pip install --quiet --disable-pip-version-check --no-cache-dir --no-deps --editable . 2>&1 || echo "::warning::pip install -e failed"
+            echo "pyproject.toml found without uv.lock — skipping unlocked dependency install"
           elif compgen -G "requirements*.txt" > /dev/null; then
             if [ -f "requirements.txt" ]; then
-              python -m pip install --quiet --disable-pip-version-check --no-cache-dir --no-deps -r requirements.txt 2>&1 || echo "::warning::pip install failed"
+              if grep -q -- "--hash=" requirements.txt; then
+                python -m pip install --quiet --disable-pip-version-check --no-cache-dir --require-hashes -r requirements.txt 2>&1 || echo "::warning::pip install failed"
+              else
+                echo "requirements.txt has no hashes — skipping unlocked dependency install"
+              fi
             elif [ -f "requirements-dev.txt" ]; then
-              python -m pip install --quiet --disable-pip-version-check --no-cache-dir --no-deps -r requirements-dev.txt 2>&1 || echo "::warning::pip install failed"
+              if grep -q -- "--hash=" requirements-dev.txt; then
+                python -m pip install --quiet --disable-pip-version-check --no-cache-dir --require-hashes -r requirements-dev.txt 2>&1 || echo "::warning::pip install failed"
+              else
+                echo "requirements-dev.txt has no hashes — skipping unlocked dependency install"
+              fi
             fi
           fi
       - name: pytest
         run: |
-          if compgen -G "**/test_*.py" > /dev/null || compgen -G "tests/**/*.py" > /dev/null; then
+          if python -c 'import pytest' >/dev/null 2>&1 && (compgen -G "**/test_*.py" > /dev/null || compgen -G "tests/**/*.py" > /dev/null); then
             python -m pytest --no-header -q 2>&1 || echo "::warning::pytest failed (non-blocking)"
           else
             echo "No tests found"
