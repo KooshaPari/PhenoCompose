@@ -301,6 +301,7 @@ dependencies = [
 name = "phenocompose-port-types"
 version = "0.1.0"
 dependencies = [
+ "sha2",
  "thiserror 2.0.18",
 ]
 
