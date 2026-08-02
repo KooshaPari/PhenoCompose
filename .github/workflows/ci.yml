@@ -79,7 +79,11 @@ jobs:
           fi
 
           # Has any CI-runnable language?
-          if [ -f "Cargo.toml" ] || [ -f "pyproject.toml" ] || [ -f "setup.py" ] || [ -f "go.mod" ] || [ -f "package.json" ]; then
+          if [ -f "Cargo.toml" ] \
+            || [ -f "pyproject.toml" ] \
+            || [ -f "setup.py" ] \
+            || [ -f "go.mod" ] \
+            || [ -f "package.json" ]; then
             echo "has_ci_lint=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_ci_lint=false" >> "$GITHUB_OUTPUT"
@@ -130,13 +134,20 @@ jobs:
           fi
         id: fmt
       - name: clippy
-        run: cargo clippy --all-targets --no-deps -- -D warnings 2>&1 || echo "::warning::clippy failed (non-blocking)"
+        run: |
+          cargo clippy --all-targets --no-deps -- -D warnings 2>&1 \
+            || echo "::warning::clippy failed (non-blocking)"
       - name: build
-        run: cargo build --workspace --locked 2>&1 || cargo build --locked 2>&1 || echo "::warning::build failed (non-blocking)"
+        run: |
+          cargo build --workspace --locked 2>&1 \
+            || cargo build --locked 2>&1 \
+            || echo "::warning::build failed (non-blocking)"
       - name: test
         run: |
           if [ -f "Cargo.lock" ]; then
-            cargo test --workspace --locked --no-fail-fast 2>&1 || cargo test --locked --no-fail-fast 2>&1 || echo "::warning::tests failed (non-blocking)"
+            cargo test --workspace --locked --no-fail-fast 2>&1 \
+              || cargo test --locked --no-fail-fast 2>&1 \
+              || echo "::warning::tests failed (non-blocking)"
           else
             echo "No Cargo.lock — skipping tests"
           fi
@@ -153,35 +164,54 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install ruff
-        run: python -m pip install --quiet --disable-pip-version-check --no-cache-dir --no-deps "ruff==0.12.7" 2>&1 || echo "::warning::ruff install failed"
+        run: |
+          python -m pip install --quiet --disable-pip-version-check \
+            --no-cache-dir --no-deps "ruff==0.12.7" 2>&1 \
+            || echo "::warning::ruff install failed"
       - name: ruff check
-        run: ruff check --output-format=github . 2>&1 || echo "::warning::ruff check found issues (non-blocking)"
+        run: |
+          ruff check --output-format=github . 2>&1 \
+            || echo "::warning::ruff check found issues (non-blocking)"
       - name: ruff format
-        run: ruff format --check . 2>&1 || echo "::warning::format check found issues (non-blocking)"
+        run: |
+          ruff format --check . 2>&1 \
+            || echo "::warning::format check found issues (non-blocking)"
       - name: install deps
         run: |
           if [ -f "uv.lock" ]; then
-            python -m pip install --quiet --disable-pip-version-check --no-cache-dir --no-deps "uv==0.8.9" && uv sync --locked --no-build --all-extras 2>&1 || echo "::warning::uv sync failed"
+            python -m pip install --quiet --disable-pip-version-check \
+              --no-cache-dir --no-deps "uv==0.8.9" && \
+              uv sync --locked --no-build --all-extras 2>&1 \
+              || echo "::warning::uv sync failed"
           elif [ -f "pyproject.toml" ]; then
-            echo "pyproject.toml found without uv.lock — skipping unlocked dependency install"
+            echo "pyproject.toml found without uv.lock —" \
+              "skipping unlocked dependency install"
           elif compgen -G "requirements*.txt" > /dev/null; then
             if [ -f "requirements.txt" ]; then
               if grep -q -- "--hash=" requirements.txt; then
-                python -m pip install --quiet --disable-pip-version-check --no-cache-dir --require-hashes -r requirements.txt 2>&1 || echo "::warning::pip install failed"
+                python -m pip install --quiet --disable-pip-version-check \
+                  --no-cache-dir --require-hashes -r requirements.txt 2>&1 \
+                  || echo "::warning::pip install failed"
               else
-                echo "requirements.txt has no hashes — skipping unlocked dependency install"
+                echo "requirements.txt has no hashes —" \
+                  "skipping unlocked dependency install"
               fi
             elif [ -f "requirements-dev.txt" ]; then
               if grep -q -- "--hash=" requirements-dev.txt; then
-                python -m pip install --quiet --disable-pip-version-check --no-cache-dir --require-hashes -r requirements-dev.txt 2>&1 || echo "::warning::pip install failed"
+                python -m pip install --quiet --disable-pip-version-check \
+                  --no-cache-dir --require-hashes -r requirements-dev.txt 2>&1 \
+                  || echo "::warning::pip install failed"
               else
-                echo "requirements-dev.txt has no hashes — skipping unlocked dependency install"
+                echo "requirements-dev.txt has no hashes —" \
+                  "skipping unlocked dependency install"
               fi
             fi
           fi
       - name: pytest
         run: |
-          if python -c 'import pytest' >/dev/null 2>&1 && (compgen -G "**/test_*.py" > /dev/null || compgen -G "tests/**/*.py" > /dev/null); then
+          if python -c 'import pytest' >/dev/null 2>&1 \
+            && (compgen -G "**/test_*.py" > /dev/null \
+              || compgen -G "tests/**/*.py" > /dev/null); then
             python -m pytest --no-header -q 2>&1 || echo "::warning::pytest failed (non-blocking)"
           else
             echo "No tests found"
@@ -199,11 +229,17 @@ jobs:
         with:
           go-version: "stable"
       - name: go vet
-        run: go vet ./... 2>&1 || echo "::warning::go vet found issues (non-blocking)"
+        run: |
+          go vet ./... 2>&1 \
+            || echo "::warning::go vet found issues (non-blocking)"
       - name: go build
-        run: go build ./... 2>&1 || echo "::warning::go build failed (non-blocking)"
+        run: |
+          go build ./... 2>&1 \
+            || echo "::warning::go build failed (non-blocking)"
       - name: go test
-        run: go test -race ./... 2>&1 || echo "::warning::go test failed (non-blocking)"
+        run: |
+          go test -race ./... 2>&1 \
+            || echo "::warning::go test failed (non-blocking)"
 
   typescript:
     name: TS/JS
@@ -232,16 +268,32 @@ jobs:
       - name: install
         run: |
           case "${{ steps.pm.outputs.manager }}" in
-            pnpm) corepack enable && corepack pnpm install --frozen-lockfile --ignore-scripts 2>&1 || echo "::warning::install failed" ;;
-            yarn) corepack enable && corepack yarn install --immutable --mode=skip-builds 2>&1 || echo "::warning::install failed" ;;
-            bun)  bun install --frozen-lockfile --ignore-scripts 2>&1 || echo "::warning::install failed" ;;
-            *)    npm ci --ignore-scripts 2>&1 || echo "::warning::install failed" ;;
+            pnpm)
+              corepack enable && corepack pnpm install \
+                --frozen-lockfile --ignore-scripts 2>&1 \
+                || echo "::warning::install failed"
+              ;;
+            yarn)
+              corepack enable && corepack yarn install \
+                --immutable --mode=skip-builds 2>&1 \
+                || echo "::warning::install failed"
+              ;;
+            bun)
+              bun install --frozen-lockfile --ignore-scripts 2>&1 \
+                || echo "::warning::install failed"
+              ;;
+            *)
+              npm ci --ignore-scripts 2>&1 \
+                || echo "::warning::install failed"
+              ;;
           esac
       - name: lint
         run: |
           if [ -f "biome.json" ] || [ -f "biome.jsonc" ]; then
-            npx --no-install @biomejs/biome lint . 2>&1 || echo "::warning::biome lint failed"
-            npx --no-install @biomejs/biome format --check . 2>&1 || echo "::warning::biome format failed"
+            npx --no-install @biomejs/biome lint . 2>&1 \
+              || echo "::warning::biome lint failed"
+            npx --no-install @biomejs/biome format --check . 2>&1 \
+              || echo "::warning::biome format failed"
           elif grep -q '"lint"' package.json 2>/dev/null; then
             npm run lint 2>&1 || echo "::warning::lint failed"
           else
@@ -249,7 +301,11 @@ jobs:
           fi
       - name: test
         run: |
-          if grep -q '"test"' package.json 2>/dev/null && [ "$(node -e "console.log(require('./package.json').scripts?.test || '')")" != "" ]; then
+          if grep -q '"test"' package.json 2>/dev/null \
+            && [ "$(
+              node -p \
+                "require('./package.json').scripts?.test || ''"
+            )" != "" ]; then
             npm test 2>&1 || echo "::warning::test failed"
           else
             echo "No tests configured"
@@ -270,7 +326,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Trivy scan
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           scan-type: "fs"
           scan-ref: "."
@@ -318,7 +375,8 @@ jobs:
             echo "Trunk not configured (no trunk.yaml + .trunk/) — skipping"
             exit 0
           fi
-      - uses: trunk-io/trunk-action@04ba50e7658c81db7356da96657e6e77f220bfa3 # v1
+      # v1
+      - uses: trunk-io/trunk-action@04ba50e7658c81db7356da96657e6e77f220bfa3
         if: hashFiles('trunk.yaml', '.trunk/trunk.yaml') != ''
 
   # ===========================================================================

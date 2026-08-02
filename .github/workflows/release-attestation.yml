@@ -81,6 +81,6 @@ jobs:
           retention-days: 90
 
       - name: Attest build provenance (SLSA Build L2)
-        uses: slsa-framework/slsa-github-generator/attest-build-provenance@c747fe7769adf3656dc7d588b161cb614d7abfee
+        uses: slsa-framework/slsa-github-generator/attest-build-provenance@c747fe7769adf3656dc7d588b161cb614d7abfee  # yamllint disable-line rule:line-length
         with:
           artifact-name: release-artifacts
