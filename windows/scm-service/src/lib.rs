@@ -47,6 +47,9 @@ pub struct ScmCapabilities {
     pub event_log: bool,
 }
 
+// `derive(Default)` would set every capability to false on Windows. The
+// platform-aware defaults are intentional and keep non-Windows builds safe.
+#[allow(clippy::derivable_impls)]
 impl Default for ScmCapabilities {
     fn default() -> Self {
         Self {

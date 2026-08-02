@@ -34,6 +34,16 @@ jobs:
           toolchain: nightly-2026-07-31
           components: rustfmt, rust-src, clippy
 
+      - name: Install Trunk-managed linters explicitly
+        shell: bash
+        run: |
+          set -euo pipefail
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+          npm install --global prettier@3.6.2
+          cargo install taplo-cli --locked
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
       - name: Trunk Check
         uses: trunk-io/trunk-action@04ba50e7658c81db7356da96657e6e77f220bfa3  # v1
         env:
