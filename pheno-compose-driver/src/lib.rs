@@ -115,10 +115,21 @@ impl Default for NvmsDriver {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{Mutex, OnceLock};
+
     use super::*;
+
+    // The reference NVMS shim intentionally models a process-wide instance
+    // registry. Keep driver tests serialized so a list/cleanup assertion does
+    // not observe a sibling test's temporary instance.
+    fn test_guard() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(())).lock().expect("test lock")
+    }
 
     #[test]
     fn test_driver_initialization() {
+        let _guard = test_guard();
         let driver = NvmsDriver::new();
         assert!(driver.is_ok());
 
@@ -128,6 +139,7 @@ mod tests {
 
     #[test]
     fn test_create_wasm_instance() {
+        let _guard = test_guard();
         let driver = NvmsDriver::new().unwrap();
         let instance = driver.create_instance(Tier::Wasm, "test-wasm");
 
@@ -139,6 +151,7 @@ mod tests {
 
     #[test]
     fn test_create_gvisor_instance() {
+        let _guard = test_guard();
         let driver = NvmsDriver::new().unwrap();
         let instance = driver.create_instance(Tier::Gvisor, "test-gvisor");
 
@@ -149,6 +162,7 @@ mod tests {
 
     #[test]
     fn test_create_firecracker_instance() {
+        let _guard = test_guard();
         let driver = NvmsDriver::new().unwrap();
         let instance = driver.create_instance(Tier::Firecracker, "test-fc");
 
@@ -159,6 +173,7 @@ mod tests {
 
     #[test]
     fn test_instance_lifecycle() {
+        let _guard = test_guard();
         let driver = NvmsDriver::new().unwrap();
         let mut instance = driver.create_instance(Tier::Wasm, "lifecycle-test").unwrap();
 
@@ -177,6 +192,7 @@ mod tests {
 
     #[test]
     fn test_list_instances_empty_initially() {
+        let _guard = test_guard();
         let driver = NvmsDriver::new().unwrap();
         let instances = driver.list_instances();
         assert!(
@@ -188,6 +204,7 @@ mod tests {
 
     #[test]
     fn test_list_instances_after_creation() {
+        let _guard = test_guard();
         let driver = NvmsDriver::new().unwrap();
 
         // Create two instances
@@ -210,6 +227,7 @@ mod tests {
 
     #[test]
     fn test_list_instances_after_drop() {
+        let _guard = test_guard();
         let driver = NvmsDriver::new().unwrap();
 
         let instance = driver.create_instance(Tier::Gvisor, "drop-test").unwrap();
