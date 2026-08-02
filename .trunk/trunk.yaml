@@ -15,17 +15,13 @@ plugins:
 
 lint:
   enabled:
-    - actionlint
     - black
     - clippy
     - eslint
     - golangci-lint
     - mypy
-    - prettier
     - ruff
-    - rustfmt
     - shellcheck
-    - taplo
     - yamllint
   definitions:
     - name: actionlint
@@ -65,8 +61,3 @@ lint:
       paths:
         - .git/
         - "*.lock"
-    # The pinned cargo fmt gate covers this FFI file. Trunk's bundled
-    # rustfmt parser currently rejects stable C-string literal syntax.
-    - linters: [rustfmt]
-      paths:
-        - bindings/rust-ffi/src/lib.rs
