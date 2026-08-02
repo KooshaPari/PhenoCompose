@@ -2161,4 +2161,20 @@ mod podman_command_tests {
         assert_eq!(status(directory.path(), &output.run_id).unwrap().services["worker"], "running");
         assert_eq!(down(directory.path(), &output.run_id).unwrap().lifecycle, RunLifecycle::Down);
     }
+
+    #[test]
+    fn wslc_direct_apply_status_and_down_use_container_subcommands() {
+        let _lock = environment_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let command_directory = tempfile::tempdir().unwrap();
+        let log = command_directory.path().join("args.log");
+        write_fake_command(command_directory.path(), "wslc", direct_runtime_script());
+        let _environment = install_fake_command_path(command_directory.path(), &log);
+        let output = apply(direct_manifest(RuntimeProvider::WslContainers), directory.path(), false).unwrap();
+        assert_eq!(output.provider, "wsl-containers");
+        assert_eq!(output.containers, BTreeMap::from([("worker".to_owned(), "fake-id".to_owned())]));
+        assert_eq!(status(directory.path(), &output.run_id).unwrap().services["worker"], "running");
+        assert_eq!(down(directory.path(), &output.run_id).unwrap().lifecycle, RunLifecycle::Down);
+        assert_eq!(fs::read_to_string(log).unwrap(), "container\nstop\nfake-id\n");
+    }
 }
