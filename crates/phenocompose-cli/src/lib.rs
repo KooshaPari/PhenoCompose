@@ -1530,7 +1530,7 @@ mod lifecycle_bridge_tests {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, test))]
 mod podman_command_tests {
     use super::*;
     use std::env;
