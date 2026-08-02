@@ -620,8 +620,11 @@ impl Composition {
         valid_name(&self.name)?;
         for (name, service) in &self.services {
             valid_name(name)?;
-            if service.image.as_deref().unwrap_or("").is_empty() && service.command.as_ref().map_or(true, Vec::is_empty)
-            {
+            let command_is_empty = match service.command.as_ref() {
+                Some(command) => command.is_empty(),
+                None => true,
+            };
+            if service.image.as_deref().unwrap_or("").is_empty() && command_is_empty {
                 return Err(CompositionError::Invalid(format!(
                     "service {name} needs image or command"
                 )));
