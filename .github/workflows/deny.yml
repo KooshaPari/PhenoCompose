@@ -32,7 +32,7 @@ jobs:
   # cargo-deny — advisories, licenses, sources, bans, duplicates
   # -------------------------------------------------------------------
   cargo-deny:
-    name: cargo-deny (${{ matrix.scope }})
+    name: cargo-deny (${{ matrix.scope.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:

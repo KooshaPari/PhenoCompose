@@ -7,8 +7,6 @@ on:
     branches: [main]
   schedule:
     - cron: '27 4 * * 1'
-  security-events: write
-  actions: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -34,3 +32,5 @@ jobs:
 
 permissions:
   contents: read
+  actions: read
+  security-events: write
