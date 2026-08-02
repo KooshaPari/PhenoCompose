@@ -53,7 +53,10 @@ jobs:
           RUSTUP_TOOLCHAIN: nightly-2026-07-31
         with:
           cache-key: phenocompose-trunk-v2
-          setup-deps: true
+          # Dependencies are installed in the pinned step above; disabling
+          # Trunk's implicit package bootstrap keeps the supply-chain gate
+          # deterministic and avoids running repository install scripts.
+          setup-deps: false
           save-annotations: true
 
       - name: Trunk Upgrade (on schedule only)
