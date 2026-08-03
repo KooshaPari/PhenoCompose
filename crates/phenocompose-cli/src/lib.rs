@@ -30,10 +30,12 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
 use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
-use std::process::{Command, Output, Stdio};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::process::{Child, Command, Output, Stdio};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::thread;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 use wait_timeout::ChildExt;
 
@@ -1407,6 +1409,144 @@ fn podman_output<'a>(distribution: &Option<String>, arguments: impl IntoIterator
 }
 
 const PODMAN_COMMAND_TIMEOUT: Duration = Duration::from_secs(10);
+const PODMAN_DIAGNOSTIC_LIMIT: usize = 64 * 1024;
+const PODMAN_PIPE_DRAIN_GRACE: Duration = Duration::from_millis(250);
+const PODMAN_CLEANUP_TIMEOUT: Duration = Duration::from_millis(500);
+
+#[derive(Debug)]
+struct PipeCapture {
+    bytes: Vec<u8>,
+}
+
+fn spawn_pipe_reader<R>(pipe: R) -> Receiver<io::Result<PipeCapture>>
+where
+    R: Read + Send + 'static,
+{
+    let (sender, receiver) = mpsc::sync_channel(1);
+    thread::spawn(move || {
+        let _ = sender.send(drain_pipe(pipe));
+    });
+    receiver
+}
+
+fn drain_pipe<R: Read>(mut pipe: R) -> io::Result<PipeCapture> {
+    let mut bytes = Vec::with_capacity(8 * 1024);
+    let mut buffer = [0u8; 8 * 1024];
+
+    loop {
+        let read = pipe.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        bytes.extend_from_slice(&buffer[..read]);
+    }
+
+    Ok(PipeCapture { bytes })
+}
+
+fn collect_pipe(receiver: Option<Receiver<io::Result<PipeCapture>>>, deadline: Instant) -> Vec<u8> {
+    let Some(receiver) = receiver else {
+        return Vec::new();
+    };
+
+    match receiver.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+        Ok(Ok(capture)) => capture.bytes,
+        Ok(Err(error)) => format!("[podman output read failed: {error}]").into_bytes(),
+        Err(RecvTimeoutError::Timeout) => b"[podman output drain timed out]".to_vec(),
+        Err(RecvTimeoutError::Disconnected) => b"[podman output reader disconnected]".to_vec(),
+    }
+}
+
+fn collect_pipes(
+    stdout: Option<Receiver<io::Result<PipeCapture>>>,
+    stderr: Option<Receiver<io::Result<PipeCapture>>>,
+    timeout: Duration,
+) -> (Vec<u8>, Vec<u8>) {
+    let deadline = Instant::now() + timeout;
+    let stdout = collect_pipe(stdout, deadline);
+    let stderr = collect_pipe(stderr, deadline);
+    (stdout, stderr)
+}
+
+fn terminate_child_tree(child: &mut Child, distribution: &Option<String>) -> String {
+    #[cfg(windows)]
+    {
+        let pid = child.id();
+        let mut diagnostics = Vec::new();
+
+        let taskkill_args = vec![
+            "/PID".to_owned(),
+            pid.to_string(),
+            "/T".to_owned(),
+            "/F".to_owned(),
+        ];
+        match run_cleanup_command("taskkill", &taskkill_args) {
+            Ok(true) => {}
+            Ok(false) => diagnostics.push(format!("taskkill did not report success for pid {pid}")),
+            Err(error) => diagnostics.push(format!("taskkill cleanup failed: {error}")),
+        }
+
+        // `taskkill /T` cannot reach Linux descendants started through WSL. A
+        // bounded WSL terminate closes that route's process tree as well.
+        if let Some(distribution) = distribution {
+            let terminate_args = vec!["--terminate".to_owned(), distribution.clone()];
+            match run_cleanup_command("wsl.exe", &terminate_args) {
+                Ok(true) => {}
+                Ok(false) => diagnostics.push(format!("WSL terminate did not report success for {distribution}")),
+                Err(error) => diagnostics.push(format!("WSL terminate cleanup failed: {error}")),
+            }
+        }
+
+        let _ = child.kill();
+        let _ = child.wait_timeout(PODMAN_CLEANUP_TIMEOUT);
+        if process_is_alive(pid) {
+            diagnostics.push(format!("pid {pid} still present after timeout cleanup"));
+        }
+        diagnostics.join("; ")
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = distribution;
+        match child.kill() {
+            Ok(()) => {
+                let _ = child.wait_timeout(PODMAN_CLEANUP_TIMEOUT);
+                String::new()
+            }
+            Err(error) if error.kind() == io::ErrorKind::InvalidInput => String::new(),
+            Err(error) => format!("process cleanup failed: {error}"),
+        }
+    }
+}
+
+#[cfg(windows)]
+fn run_cleanup_command(command: &str, arguments: &[String]) -> io::Result<bool> {
+    let mut child = Command::new(command)
+        .args(arguments)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+    match child.wait_timeout(PODMAN_CLEANUP_TIMEOUT)? {
+        Some(status) => Ok(status.success()),
+        None => {
+            let _ = child.kill();
+            let _ = child.wait();
+            Ok(false)
+        }
+    }
+}
+
+#[cfg(windows)]
+fn process_is_alive(pid: u32) -> bool {
+    let Ok(output) = Command::new("tasklist")
+        .args(["/FI", &format!("PID eq {pid}"), "/FO", "CSV", "/NH"])
+        .output()
+    else {
+        return false;
+    };
+    let pid = format!("\"{pid}\"");
+    String::from_utf8_lossy(&output.stdout).contains(&pid)
+}
 
 fn podman_output_owned(distribution: &Option<String>, arguments: &[String]) -> Result<Output> {
     podman_output_owned_with_timeout(distribution, arguments, PODMAN_COMMAND_TIMEOUT)
@@ -1431,22 +1571,44 @@ fn podman_output_owned_with_timeout(
         .spawn()
         .map_err(|error| CliError::backend("podman_unavailable", format!("failed to start Podman: {error}")))?;
 
+    // Drain both pipes concurrently while the process is running. Waiting for
+    // the process before reading either pipe can deadlock when Podman emits a
+    // large diagnostic (the OS pipe buffer fills and Podman never exits).
+    let stdout = child.stdout.take().map(spawn_pipe_reader);
+    let stderr = child.stderr.take().map(spawn_pipe_reader);
+
     match child.wait_timeout(timeout) {
-        Ok(Some(_)) => child
-            .wait_with_output()
-            .map_err(|error| CliError::backend("podman_unavailable", format!("Podman output was unavailable: {error}"))),
+        Ok(Some(status)) => {
+            let (stdout, stderr) = collect_pipes(stdout, stderr, PODMAN_PIPE_DRAIN_GRACE);
+            Ok(Output { status, stdout, stderr })
+        }
         Ok(None) => {
-            let _ = child.kill();
-            let _ = child.wait();
+            let cleanup = terminate_child_tree(&mut child, distribution);
+            let (stdout, stderr) = collect_pipes(stdout, stderr, PODMAN_PIPE_DRAIN_GRACE);
+            let diagnostics = timeout_diagnostics(&stdout, &stderr);
+            let mut message = format!("Podman command timed out after {} ms", timeout.as_millis());
+            if !diagnostics.is_empty() {
+                message.push_str(": ");
+                message.push_str(&diagnostics);
+            }
+            if !cleanup.is_empty() {
+                message.push_str("; ");
+                message.push_str(&cleanup);
+            }
             Err(CliError::backend(
                 "podman_timeout",
-                format!("Podman command timed out after {} ms", timeout.as_millis()),
+                message,
             ))
         }
         Err(error) => {
-            let _ = child.kill();
-            let _ = child.wait();
-            Err(CliError::io("podman_wait", error))
+            let cleanup = terminate_child_tree(&mut child, distribution);
+            let _ = collect_pipes(stdout, stderr, PODMAN_PIPE_DRAIN_GRACE);
+            let message = if cleanup.is_empty() {
+                error.to_string()
+            } else {
+                format!("{error}; {cleanup}")
+            };
+            Err(CliError::io("podman_wait", io::Error::other(message)))
         }
     }
 }
@@ -1460,12 +1622,30 @@ fn require_success(code: &str, output: Output) -> Result<Output> {
 }
 
 fn output_message(output: &Output) -> String {
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+    output_message_bytes(&output.stdout, &output.stderr)
+}
+
+fn output_message_bytes(stdout: &[u8], stderr: &[u8]) -> String {
+    let stderr = String::from_utf8_lossy(stderr).trim().to_owned();
     if stderr.is_empty() {
-        String::from_utf8_lossy(&output.stdout).trim().to_owned()
+        String::from_utf8_lossy(stdout).trim().to_owned()
     } else {
         stderr
     }
+}
+
+fn timeout_diagnostics(stdout: &[u8], stderr: &[u8]) -> String {
+    let bytes = if stderr.is_empty() { stdout } else { stderr };
+    let (bytes, truncated) = if bytes.len() > PODMAN_DIAGNOSTIC_LIMIT {
+        (&bytes[..PODMAN_DIAGNOSTIC_LIMIT], true)
+    } else {
+        (bytes, false)
+    };
+    let mut message = String::from_utf8_lossy(bytes).trim().to_owned();
+    if truncated {
+        message.push_str(&format!(" [diagnostic truncated after {PODMAN_DIAGNOSTIC_LIMIT} bytes]"));
+    }
+    message
 }
 
 fn map_compose_error(error: ComposeError) -> CliError {
@@ -1649,5 +1829,29 @@ mod podman_command_tests {
         assert_eq!(error.kind, ErrorKind::Backend);
         assert_eq!(error.code, "podman_timeout");
         assert_eq!(error.message, "Podman command timed out after 50 ms");
+    }
+
+    #[test]
+    fn podman_command_drains_large_pipes_without_deadlocking() {
+        let _lock = environment_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let log = directory.path().join("args.log");
+        write_fake_command(
+            directory.path(),
+            "podman",
+            "#!/bin/sh\n\ni=0\nwhile [ $i -lt 131072 ]; do printf 'o' ; printf 'e' >&2; i=$((i + 1)); done\nprintf '\\n'\n",
+        );
+        let _environment = install_fake_command_path(directory.path(), &log);
+
+        let output = podman_output_owned_with_timeout(
+            &None,
+            &["version".to_owned()],
+            Duration::from_secs(2),
+        )
+        .unwrap();
+
+        assert!(output.status.success());
+        assert_eq!(output.stdout.len(), 131_073);
+        assert_eq!(output.stderr.len(), 131_072);
     }
 }
