@@ -1506,7 +1506,7 @@ impl ContainerBackend {
         }
     }
 
-    fn command(self, distribution: &Option<String>) -> Result<Command> {
+    fn command_candidates(self, distribution: &Option<String>) -> Result<Vec<Command>> {
         if self != Self::Podman && distribution.is_some() {
             return Err(CliError::unsupported(
                 "runtime_distribution_unsupported",
@@ -1515,17 +1515,21 @@ impl ContainerBackend {
                 self.name(),
             ));
         }
-        let command = match self {
+        let commands = match self {
             Self::Podman if distribution.is_some() => {
                 let mut command = Command::new("wsl.exe");
                 command.args(["-d", distribution.as_deref().unwrap(), "--", "podman"]);
-                command
+                vec![command]
             }
-            Self::Podman => Command::new("podman"),
-            Self::AppleContainers => Command::new("container"),
-            Self::WslContainers => Command::new("wslc"),
+            Self::Podman => vec![Command::new("podman")],
+            Self::AppleContainers => vec![Command::new("container")],
+            Self::WslContainers => vec![
+                Command::new("wslc"),
+                Command::new("wslc.exe"),
+                Command::new("container.exe"),
+            ],
         };
-        Ok(command)
+        Ok(commands)
     }
 
     fn supports_resource_flags(self) -> bool {
@@ -1786,22 +1790,44 @@ fn runtime_output_owned_with_timeout(
     arguments: &[String],
     timeout: Duration,
 ) -> Result<Output> {
-    let mut command = backend.command(distribution)?;
-    let mut child = command
-        .args(arguments)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|error| {
-            CliError::backend(
-                if backend == ContainerBackend::Podman {
-                    "podman_unavailable"
-                } else {
-                    "runtime_unavailable"
-                },
-                format!("failed to start {}: {error}", backend.display_name()),
-            )
-        })?;
+    let unavailable_code = if backend == ContainerBackend::Podman {
+        "podman_unavailable"
+    } else {
+        "runtime_unavailable"
+    };
+    let mut child = None;
+    let mut last_not_found = None;
+    for mut command in backend.command_candidates(distribution)? {
+        match command
+            .args(arguments)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+        {
+            Ok(process) => {
+                child = Some(process);
+                break;
+            }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                last_not_found = Some(error);
+            }
+            Err(error) => {
+                return Err(CliError::backend(
+                    unavailable_code,
+                    format!("failed to start {}: {error}", backend.display_name()),
+                ));
+            }
+        }
+    }
+    let mut child = child.ok_or_else(|| {
+        let detail = last_not_found
+            .map(|error| error.to_string())
+            .unwrap_or_else(|| "no executable candidates were configured".to_owned());
+        CliError::backend(
+            unavailable_code,
+            format!("failed to start {}: {detail}", backend.display_name()),
+        )
+    })?;
 
     match child.wait_timeout(timeout) {
         Ok(Some(_)) => child
@@ -1923,6 +1949,33 @@ mod lifecycle_bridge_tests {
         };
         let error = validate_lifecycle_result(&request, &result).unwrap_err();
         assert_eq!(error.code, "nvms_route_mismatch");
+    }
+}
+
+#[cfg(test)]
+mod container_backend_command_tests {
+    use super::*;
+
+    fn program_names(commands: Vec<Command>) -> Vec<String> {
+        commands
+            .iter()
+            .map(|command| command.get_program().to_string_lossy().into_owned())
+            .collect()
+    }
+
+    #[test]
+    fn wslc_candidates_are_ordered_for_extension_aliases() {
+        let names = program_names(ContainerBackend::WslContainers.command_candidates(&None).unwrap());
+        assert_eq!(names, ["wslc", "wslc.exe", "container.exe"]);
+    }
+
+    #[test]
+    fn podman_distribution_route_remains_single_wsl_wrapper() {
+        let commands = ContainerBackend::Podman
+            .command_candidates(&Some("podman-machine-default".to_owned()))
+            .unwrap();
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0].get_program().to_string_lossy(), "wsl.exe");
     }
 }
 
@@ -2129,6 +2182,26 @@ mod podman_command_tests {
             "container\ninspect\nfake-id\n",
             &["container\nstop\nfake-id"],
         );
+    }
+
+    #[test]
+    fn wslc_falls_back_to_container_executable_alias() {
+        let _lock = environment_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let log = directory.path().join("args.log");
+        write_fake_command(directory.path(), "container.exe", direct_runtime_script());
+        let _environment = install_fake_command_path(directory.path(), &log);
+
+        let output = runtime_output_owned_with_timeout(
+            ContainerBackend::WslContainers,
+            &None,
+            &["version".to_owned()],
+            Duration::from_secs(1),
+        )
+        .unwrap();
+
+        assert!(output.status.success());
+        assert_eq!(fs::read_to_string(log).unwrap(), "version\n");
     }
 
     #[test]
