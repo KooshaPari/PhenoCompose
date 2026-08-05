@@ -2411,6 +2411,38 @@ mod podman_command_tests {
     }
 
     #[test]
+    fn capability_probe_receipt_records_actual_podman_command() {
+        let _lock = environment_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let log = directory.path().join("args.log");
+        write_fake_command(
+            directory.path(),
+            "podman",
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$PHENOCOMPOSE_PODMAN_TEST_LOG\"\nprintf '{\"version\":{\"Version\":\"5.8.4\"}}\\n'\n",
+        );
+        let _environment = install_fake_command_path(directory.path(), &log);
+
+        let receipt = probe_runtime(&RuntimeProvider::Podman, &None).unwrap();
+
+        assert!(receipt.ready);
+        assert_eq!(receipt.executable, "podman");
+        assert_eq!(
+            receipt.commands,
+            vec![vec![
+                "podman".to_owned(),
+                "info".to_owned(),
+                "--format".to_owned(),
+                "json".to_owned(),
+            ]]
+        );
+        assert_eq!(receipt.version.as_deref(), Some("5.8.4"));
+        assert_eq!(
+            fs::read_to_string(log).unwrap(),
+            "info\n--format\njson\n"
+        );
+    }
+
+    #[test]
     fn wsl_podman_command_includes_distribution_route() {
         let _lock = environment_lock();
         let directory = tempfile::tempdir().unwrap();
