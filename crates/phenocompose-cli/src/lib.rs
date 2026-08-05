@@ -1651,6 +1651,28 @@ impl ContainerBackend {
             })
             .collect())
     }
+
+    /// Check that the command actually invoked for a probe is the provider's
+    /// read-only command contract. WSLc is the only backend with executable
+    /// aliases; its arguments must still match the expected `image ls` probe
+    /// exactly.
+    fn probe_command_matches(self, expected: &[String], actual: &[String]) -> bool {
+        if expected.len() != actual.len() {
+            return false;
+        }
+
+        let executable_matches = match self {
+            Self::WslContainers => {
+                expected.first().map(String::as_str) == Some("wslc.exe")
+                    && actual.first().is_some_and(|executable| {
+                        matches!(executable.as_str(), "wslc" | "wslc.exe" | "container.exe")
+                    })
+            }
+            _ => expected.first() == actual.first(),
+        };
+
+        executable_matches && expected.get(1..) == actual.get(1..)
+    }
 }
 
 /// Probe a local container backend without starting or stopping any runtime
@@ -1658,13 +1680,36 @@ impl ContainerBackend {
 pub fn probe_runtime(provider: &RuntimeProvider, distribution: &Option<String>) -> Result<CapabilityReceipt> {
     let backend = ContainerBackend::from_provider(provider)?;
     let expected_commands = backend.probe_commands(distribution)?;
+    let probe_arguments = backend.probe_arguments();
+    if expected_commands.len() != probe_arguments.len() {
+        return Err(CliError::backend(
+            "runtime_probe_contract",
+            format!(
+                "{} probe command contract has {} commands for {} argument vectors",
+                backend.display_name(),
+                expected_commands.len(),
+                probe_arguments.len()
+            ),
+        ));
+    }
     let mut commands = Vec::with_capacity(expected_commands.len());
     let mut outputs = Vec::with_capacity(expected_commands.len());
 
-    for arguments in backend.probe_arguments() {
+    for (expected_command, arguments) in expected_commands.iter().zip(probe_arguments) {
         let (command, output) =
             runtime_output_owned_with_command(backend, distribution, &arguments, PODMAN_COMMAND_TIMEOUT)
                 .map_err(|error| CliError::backend("runtime_probe_failed", error.to_string()))?;
+        if !backend.probe_command_matches(expected_command, &command) {
+            return Err(CliError::backend(
+                "runtime_probe_contract",
+                format!(
+                    "{} probe invoked {:?}, expected read-only command {:?}",
+                    backend.display_name(),
+                    command,
+                    expected_command
+                ),
+            ));
+        }
         commands.push(command);
         if !output.status.success() {
             return Err(CliError::backend(
@@ -2240,6 +2285,24 @@ mod container_backend_command_tests {
     }
 
     #[test]
+    fn capability_probe_accepts_wslc_executable_aliases_but_not_mutating_argv() {
+        let expected = ContainerBackend::WslContainers
+            .probe_commands(&None)
+            .unwrap()
+            .remove(0);
+
+        for executable in ["wslc", "wslc.exe", "container.exe"] {
+            let mut actual = vec![executable.to_owned()];
+            actual.extend_from_slice(&expected[1..]);
+            assert!(ContainerBackend::WslContainers.probe_command_matches(&expected, &actual));
+        }
+
+        let mut mutating = vec!["container.exe".to_owned()];
+        mutating.extend(["image", "ls", "stop"].into_iter().map(str::to_owned));
+        assert!(!ContainerBackend::WslContainers.probe_command_matches(&expected, &mutating));
+    }
+
+    #[test]
     fn runtime_version_extraction_is_provider_output_agnostic() {
         assert_eq!(
             extract_runtime_version(br#"{"version":{"Version":"5.8.4"}}"#),
@@ -2442,6 +2505,26 @@ mod podman_command_tests {
             fs::read_to_string(log).unwrap(),
             "info\n--format\njson\n"
         );
+    }
+
+    #[test]
+    fn capability_probe_receipt_records_wslc_alias_and_read_only_argv() {
+        let _lock = environment_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let log = directory.path().join("args.log");
+        write_fake_command(
+            directory.path(),
+            "wslc",
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$PHENOCOMPOSE_PODMAN_TEST_LOG\"\nprintf 'NAME IMAGE\\n'\n",
+        );
+        let _environment = install_fake_command_path(directory.path(), &log);
+
+        let receipt = probe_runtime(&RuntimeProvider::WslContainers, &None).unwrap();
+
+        assert!(receipt.ready);
+        assert_eq!(receipt.executable, "wslc");
+        assert_eq!(receipt.commands, vec![vec!["wslc".to_owned(), "image".to_owned(), "ls".to_owned()]]);
+        assert_eq!(fs::read_to_string(log).unwrap(), "image\nls\n");
     }
 
     #[test]
