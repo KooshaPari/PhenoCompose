@@ -1,11 +1,14 @@
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
 use clap::{Parser, Subcommand};
 use phenocompose_cli::{
-    apply, down, export_provenance, load_job_provenance, load_manifest, render_plan, run_action, status, CliError,
-    ErrorKind, Result,
+    apply, down, export_provenance, load_job_provenance, load_manifest, parse_runtime_provider, probe_runtime,
+    render_plan, run_action, status, CliError, ErrorKind, Result,
 };
 use serde::Serialize;
-use std::fs;
-use std::path::{Path, PathBuf};
 
 #[derive(Debug, Parser)]
 #[command(name = "pheno-compose", version, about)]
@@ -20,6 +23,15 @@ struct Cli {
 enum Commands {
     /// Validate and deterministically normalize a composition manifest.
     Plan { manifest: PathBuf },
+    /// Probe a local runtime without starting a machine or container.
+    Probe {
+        /// Runtime provider (`podman`, `apple-containers`, or
+        /// `wsl-containers`).
+        provider: String,
+        /// Optional WSL distribution used for the Podman route.
+        #[arg(long)]
+        distribution: Option<String>,
+    },
     /// Apply a manifest through real providers, or render with no mutation.
     Apply {
         manifest: PathBuf,
@@ -61,6 +73,10 @@ fn execute(cli: Cli) -> Result<()> {
         Commands::Plan { manifest } => {
             let manifest = load_manifest(&manifest)?;
             print_json(&render_plan(&manifest)?)
+        }
+        Commands::Probe { provider, distribution } => {
+            let provider = parse_runtime_provider(&provider)?;
+            print_json(&probe_runtime(&provider, &distribution)?)
         }
         Commands::Apply { manifest, dry_run } => {
             let manifest = load_manifest(&manifest)?;

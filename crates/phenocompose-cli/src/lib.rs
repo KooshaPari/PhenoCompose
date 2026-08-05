@@ -153,6 +153,34 @@ pub struct RunState {
     pub manifest: CompositionManifest,
 }
 
+/// A deterministic, non-mutating receipt from a local runtime capability
+/// probe.
+///
+/// Probes only query the selected CLI (`podman info`, Apple Containers system
+/// status/version, or WSLc image listing). They never start a machine, create a
+/// container, or change persisted state. The digest covers the successful
+/// command outputs so a receipt can be carried across the BytePort/NanoVMS
+/// handoff without claiming more than the host actually reported.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CapabilityReceipt {
+    /// Version of the receipt schema.
+    pub schema_version: String,
+    /// Provider-neutral runtime name.
+    pub provider: String,
+    /// Executable selected by the probe (including a WSL wrapper when used).
+    pub executable: String,
+    /// Exact argument vectors used by the probe, including a WSL wrapper when
+    /// a distribution override was supplied.
+    pub commands: Vec<Vec<String>>,
+    /// Whether every read-only probe command exited successfully.
+    pub ready: bool,
+    /// Version discovered in structured output, when the provider reports it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    /// SHA-256 of the ordered stdout/stderr probe outputs.
+    pub output_sha256: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum RunLifecycle {
@@ -1568,6 +1596,165 @@ impl ContainerBackend {
             Self::WslContainers => vec!["container".to_owned(), "inspect".to_owned(), id.to_string()],
         }
     }
+
+    fn probe_arguments(self) -> Vec<Vec<String>> {
+        match self {
+            Self::Podman => vec![vec!["info".to_owned(), "--format".to_owned(), "json".to_owned()]],
+            Self::AppleContainers => vec![
+                vec![
+                    "system".to_owned(),
+                    "status".to_owned(),
+                    "--format".to_owned(),
+                    "json".to_owned(),
+                ],
+                vec![
+                    "system".to_owned(),
+                    "version".to_owned(),
+                    "--format".to_owned(),
+                    "json".to_owned(),
+                ],
+            ],
+            Self::WslContainers => vec![vec!["image".to_owned(), "ls".to_owned()]],
+        }
+    }
+
+    fn probe_commands(self, distribution: &Option<String>) -> Result<Vec<Vec<String>>> {
+        if self != Self::Podman && distribution.is_some() {
+            return Err(CliError::unsupported(
+                "runtime_distribution_unsupported",
+                format!("{} does not accept a WSL distribution override", self.display_name()),
+                "runtime.wsl_distribution",
+                self.name(),
+            ));
+        }
+
+        let prefix = match self {
+            Self::Podman if distribution.is_some() => vec![
+                "wsl.exe".to_owned(),
+                "-d".to_owned(),
+                distribution.as_deref().unwrap_or_default().to_owned(),
+                "--".to_owned(),
+                "podman".to_owned(),
+            ],
+            Self::Podman => vec!["podman".to_owned()],
+            Self::AppleContainers => vec!["container".to_owned()],
+            Self::WslContainers => vec!["wslc.exe".to_owned()],
+        };
+
+        Ok(self
+            .probe_arguments()
+            .into_iter()
+            .map(|arguments| {
+                let mut command = prefix.clone();
+                command.extend(arguments);
+                command
+            })
+            .collect())
+    }
+}
+
+/// Probe a local container backend without starting or stopping any runtime
+/// resource.
+pub fn probe_runtime(provider: &RuntimeProvider, distribution: &Option<String>) -> Result<CapabilityReceipt> {
+    let backend = ContainerBackend::from_provider(provider)?;
+    let expected_commands = backend.probe_commands(distribution)?;
+    let mut commands = Vec::with_capacity(expected_commands.len());
+    let mut outputs = Vec::with_capacity(expected_commands.len());
+
+    for arguments in backend.probe_arguments() {
+        let (command, output) =
+            runtime_output_owned_with_command(backend, distribution, &arguments, PODMAN_COMMAND_TIMEOUT)
+                .map_err(|error| CliError::backend("runtime_probe_failed", error.to_string()))?;
+        commands.push(command);
+        if !output.status.success() {
+            return Err(CliError::backend(
+                "runtime_probe_failed",
+                format!("{} probe failed: {}", backend.display_name(), output_message(&output)),
+            ));
+        }
+        if matches!(backend, ContainerBackend::Podman | ContainerBackend::AppleContainers) {
+            serde_json::from_slice::<serde_json::Value>(&output.stdout).map_err(|error| {
+                CliError::backend(
+                    "runtime_probe_invalid_output",
+                    format!("{} probe returned invalid JSON: {error}", backend.display_name()),
+                )
+            })?;
+        }
+        outputs.push(output);
+    }
+
+    let mut digest = Sha256::new();
+    let mut version = None;
+    for output in &outputs {
+        digest.update(&output.stdout);
+        digest.update([0]);
+        digest.update(&output.stderr);
+        digest.update([0]);
+        if version.is_none() {
+            version = extract_runtime_version(&output.stdout);
+        }
+    }
+
+    Ok(CapabilityReceipt {
+        schema_version: "phenocompose.runtime-capability/v1".to_owned(),
+        provider: backend.name().to_owned(),
+        executable: commands
+            .first()
+            .and_then(|command| command.first())
+            .cloned()
+            .unwrap_or_else(|| backend.name().to_owned()),
+        commands,
+        ready: true,
+        version,
+        output_sha256: format!("{:x}", digest.finalize()),
+    })
+}
+
+/// Parse the stable provider spellings accepted by the probe command.
+pub fn parse_runtime_provider(value: &str) -> Result<RuntimeProvider> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "podman" => Ok(RuntimeProvider::Podman),
+        "apple" | "apple-containers" | "apple_containers" | "container" => Ok(RuntimeProvider::AppleContainers),
+        "wslc" | "wslc.exe" | "wsl-containers" | "wsl_containers" => Ok(RuntimeProvider::WslContainers),
+        "nvms" => Ok(RuntimeProvider::Nvms),
+        "placeholder" => Ok(RuntimeProvider::Placeholder),
+        other => Err(CliError::validation(
+            "runtime_provider_invalid",
+            format!("unsupported runtime provider {other:?}"),
+        )),
+    }
+}
+
+fn extract_runtime_version(output: &[u8]) -> Option<String> {
+    let value = serde_json::from_slice::<serde_json::Value>(output).ok()?;
+    find_runtime_version(&value)
+}
+
+fn find_runtime_version(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::Object(map) => {
+            for key in ["version", "Version", "clientVersion", "ClientVersion"] {
+                if let Some(candidate) = map.get(key) {
+                    if let Some(version) = candidate.as_str() {
+                        if !version.trim().is_empty() {
+                            return Some(version.trim().to_owned());
+                        }
+                    }
+                    if let Some(version) = find_runtime_version(candidate) {
+                        return Some(version);
+                    }
+                }
+            }
+            for candidate in map.values() {
+                if let Some(version) = find_runtime_version(candidate) {
+                    return Some(version);
+                }
+            }
+            None
+        }
+        serde_json::Value::Array(values) => values.iter().find_map(find_runtime_version),
+        _ => None,
+    }
 }
 
 #[derive(Debug)]
@@ -1790,25 +1977,40 @@ fn runtime_output_owned_with_timeout(
     arguments: &[String],
     timeout: Duration,
 ) -> Result<Output> {
+    runtime_output_owned_with_command(backend, distribution, arguments, timeout).map(|(_, output)| output)
+}
+
+fn runtime_output_owned_with_command(
+    backend: ContainerBackend,
+    distribution: &Option<String>,
+    arguments: &[String],
+    timeout: Duration,
+) -> Result<(Vec<String>, Output)> {
     let unavailable_code = if backend == ContainerBackend::Podman {
         "podman_unavailable"
     } else {
         "runtime_unavailable"
     };
     let mut child = None;
+    let mut invoked_command = None;
     let mut last_not_found = None;
     for mut command in backend.command_candidates(distribution)? {
+        command.args(arguments);
+        let argv = std::iter::once(command.get_program())
+            .chain(command.get_args())
+            .map(|value| value.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
         match command
-            .args(arguments)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
         {
             Ok(process) => {
                 child = Some(process);
+                invoked_command = Some(argv);
                 break;
             }
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 last_not_found = Some(error);
             }
             Err(error) => {
@@ -1829,19 +2031,18 @@ fn runtime_output_owned_with_timeout(
         )
     })?;
 
+    let invoked_command = invoked_command.expect("a spawned child always records its command");
     match child.wait_timeout(timeout) {
-        Ok(Some(_)) => child
-            .wait_with_output()
-            .map_err(|error| {
-                CliError::backend(
-                    if backend == ContainerBackend::Podman {
-                        "podman_unavailable"
-                    } else {
-                        "runtime_unavailable"
-                    },
-                    format!("{} output was unavailable: {error}", backend.display_name()),
-                )
-            }),
+        Ok(Some(_)) => child.wait_with_output().map(|output| (invoked_command, output)).map_err(|error| {
+            CliError::backend(
+                if backend == ContainerBackend::Podman {
+                    "podman_unavailable"
+                } else {
+                    "runtime_unavailable"
+                },
+                format!("{} output was unavailable: {error}", backend.display_name()),
+            )
+        }),
         Ok(None) => {
             let _ = child.kill();
             let _ = child.wait();
@@ -1976,6 +2177,94 @@ mod container_backend_command_tests {
             .unwrap();
         assert_eq!(commands.len(), 1);
         assert_eq!(commands[0].get_program().to_string_lossy(), "wsl.exe");
+    }
+
+    #[test]
+    fn capability_probe_commands_are_provider_specific_and_read_only() {
+        assert_eq!(
+            ContainerBackend::Podman.probe_arguments(),
+            vec![vec!["info".to_owned(), "--format".to_owned(), "json".to_owned()]]
+        );
+        assert_eq!(
+            ContainerBackend::AppleContainers.probe_arguments(),
+            vec![
+                vec![
+                    "system".to_owned(),
+                    "status".to_owned(),
+                    "--format".to_owned(),
+                    "json".to_owned(),
+                ],
+                vec![
+                    "system".to_owned(),
+                    "version".to_owned(),
+                    "--format".to_owned(),
+                    "json".to_owned(),
+                ],
+            ]
+        );
+        assert_eq!(
+            ContainerBackend::WslContainers.probe_arguments(),
+            vec![vec!["image".to_owned(), "ls".to_owned()]]
+        );
+        for arguments in ContainerBackend::AppleContainers
+            .probe_arguments()
+            .into_iter()
+            .chain(ContainerBackend::WslContainers.probe_arguments())
+        {
+            assert!(!arguments
+                .iter()
+                .any(|argument| { matches!(argument.as_str(), "run" | "start" | "stop" | "rm" | "delete") }));
+        }
+    }
+
+    #[test]
+    fn capability_probe_command_includes_wsl_distribution_wrapper() {
+        let commands = ContainerBackend::Podman
+            .probe_commands(&Some("FedoraLinux-44".to_owned()))
+            .unwrap();
+        assert_eq!(
+            commands,
+            vec![vec![
+                "wsl.exe".to_owned(),
+                "-d".to_owned(),
+                "FedoraLinux-44".to_owned(),
+                "--".to_owned(),
+                "podman".to_owned(),
+                "info".to_owned(),
+                "--format".to_owned(),
+                "json".to_owned(),
+            ]]
+        );
+    }
+
+    #[test]
+    fn runtime_version_extraction_is_provider_output_agnostic() {
+        assert_eq!(
+            extract_runtime_version(br#"{"version":{"Version":"5.8.4"}}"#),
+            Some("5.8.4".to_owned())
+        );
+        assert_eq!(
+            extract_runtime_version(br#"{"clientVersion":"1.0.0"}"#),
+            Some("1.0.0".to_owned())
+        );
+        assert_eq!(extract_runtime_version(b"not-json"), None);
+    }
+
+    #[test]
+    fn provider_aliases_are_stable() {
+        assert_eq!(parse_runtime_provider("podman").unwrap(), RuntimeProvider::Podman);
+        assert_eq!(
+            parse_runtime_provider("apple-containers").unwrap(),
+            RuntimeProvider::AppleContainers
+        );
+        assert_eq!(
+            parse_runtime_provider("wslc.exe").unwrap(),
+            RuntimeProvider::WslContainers
+        );
+        assert_eq!(
+            parse_runtime_provider("unknown").unwrap_err().code,
+            "runtime_provider_invalid"
+        );
     }
 }
 
