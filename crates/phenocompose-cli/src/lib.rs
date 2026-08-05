@@ -1735,10 +1735,12 @@ fn find_runtime_version(value: &serde_json::Value) -> Option<String> {
         serde_json::Value::Object(map) => {
             for key in ["version", "Version", "clientVersion", "ClientVersion"] {
                 if let Some(candidate) = map.get(key) {
-                    if let Some(version) = candidate.as_str() {
-                        if !version.trim().is_empty() {
-                            return Some(version.trim().to_owned());
-                        }
+                    if let Some(version) = candidate
+                        .as_str()
+                        .map(str::trim)
+                        .filter(|version| !version.is_empty())
+                    {
+                        return Some(version.to_owned());
                     }
                     if let Some(version) = find_runtime_version(candidate) {
                         return Some(version);
