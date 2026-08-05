@@ -1411,7 +1411,7 @@ fn podman_output<'a>(distribution: &Option<String>, arguments: impl IntoIterator
 const PODMAN_COMMAND_TIMEOUT: Duration = Duration::from_secs(10);
 const PODMAN_DIAGNOSTIC_LIMIT: usize = 64 * 1024;
 const PODMAN_PIPE_DRAIN_GRACE: Duration = Duration::from_millis(250);
-const PODMAN_CLEANUP_TIMEOUT: Duration = Duration::from_millis(500);
+const PODMAN_CHILD_REAP_TIMEOUT: Duration = Duration::from_millis(500);
 
 #[derive(Debug)]
 struct PipeCapture {
@@ -1468,84 +1468,22 @@ fn collect_pipes(
     (stdout, stderr)
 }
 
-fn terminate_child_tree(child: &mut Child, distribution: &Option<String>) -> String {
-    #[cfg(windows)]
-    {
-        let pid = child.id();
-        let mut diagnostics = Vec::new();
-
-        let taskkill_args = vec![
-            "/PID".to_owned(),
-            pid.to_string(),
-            "/T".to_owned(),
-            "/F".to_owned(),
-        ];
-        match run_cleanup_command("taskkill", &taskkill_args) {
-            Ok(true) => {}
-            Ok(false) => diagnostics.push(format!("taskkill did not report success for pid {pid}")),
-            Err(error) => diagnostics.push(format!("taskkill cleanup failed: {error}")),
-        }
-
-        // `taskkill /T` cannot reach Linux descendants started through WSL. A
-        // bounded WSL terminate closes that route's process tree as well.
-        if let Some(distribution) = distribution {
-            let terminate_args = vec!["--terminate".to_owned(), distribution.clone()];
-            match run_cleanup_command("wsl.exe", &terminate_args) {
-                Ok(true) => {}
-                Ok(false) => diagnostics.push(format!("WSL terminate did not report success for {distribution}")),
-                Err(error) => diagnostics.push(format!("WSL terminate cleanup failed: {error}")),
-            }
-        }
-
-        let _ = child.kill();
-        let _ = child.wait_timeout(PODMAN_CLEANUP_TIMEOUT);
-        if process_is_alive(pid) {
-            diagnostics.push(format!("pid {pid} still present after timeout cleanup"));
-        }
-        diagnostics.join("; ")
+/// Reap only the exact child process represented by this handle.
+///
+/// This deliberately does not invoke platform-wide process-tree or
+/// distribution controls. A timeout must never terminate an unrelated process
+/// or an interactive agent session.
+fn terminate_tracked_child(child: &mut Child) -> String {
+    let pid = child.id();
+    match child.kill() {
+        Ok(()) => match child.wait_timeout(PODMAN_CHILD_REAP_TIMEOUT) {
+            Ok(Some(_)) => String::new(),
+            Ok(None) => format!("tracked child {pid} did not exit after timeout cleanup"),
+            Err(error) => format!("tracked child {pid} reap failed: {error}"),
+        },
+        Err(error) if error.kind() == io::ErrorKind::InvalidInput => String::new(),
+        Err(error) => format!("tracked child {pid} cleanup failed: {error}"),
     }
-
-    #[cfg(not(windows))]
-    {
-        let _ = distribution;
-        match child.kill() {
-            Ok(()) => {
-                let _ = child.wait_timeout(PODMAN_CLEANUP_TIMEOUT);
-                String::new()
-            }
-            Err(error) if error.kind() == io::ErrorKind::InvalidInput => String::new(),
-            Err(error) => format!("process cleanup failed: {error}"),
-        }
-    }
-}
-
-#[cfg(windows)]
-fn run_cleanup_command(command: &str, arguments: &[String]) -> io::Result<bool> {
-    let mut child = Command::new(command)
-        .args(arguments)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()?;
-    match child.wait_timeout(PODMAN_CLEANUP_TIMEOUT)? {
-        Some(status) => Ok(status.success()),
-        None => {
-            let _ = child.kill();
-            let _ = child.wait();
-            Ok(false)
-        }
-    }
-}
-
-#[cfg(windows)]
-fn process_is_alive(pid: u32) -> bool {
-    let Ok(output) = Command::new("tasklist")
-        .args(["/FI", &format!("PID eq {pid}"), "/FO", "CSV", "/NH"])
-        .output()
-    else {
-        return false;
-    };
-    let pid = format!("\"{pid}\"");
-    String::from_utf8_lossy(&output.stdout).contains(&pid)
 }
 
 fn podman_output_owned(distribution: &Option<String>, arguments: &[String]) -> Result<Output> {
@@ -1583,7 +1521,7 @@ fn podman_output_owned_with_timeout(
             Ok(Output { status, stdout, stderr })
         }
         Ok(None) => {
-            let cleanup = terminate_child_tree(&mut child, distribution);
+            let cleanup = terminate_tracked_child(&mut child);
             let (stdout, stderr) = collect_pipes(stdout, stderr, PODMAN_PIPE_DRAIN_GRACE);
             let diagnostics = timeout_diagnostics(&stdout, &stderr);
             let mut message = format!("Podman command timed out after {} ms", timeout.as_millis());
@@ -1601,7 +1539,7 @@ fn podman_output_owned_with_timeout(
             ))
         }
         Err(error) => {
-            let cleanup = terminate_child_tree(&mut child, distribution);
+            let cleanup = terminate_tracked_child(&mut child);
             let _ = collect_pipes(stdout, stderr, PODMAN_PIPE_DRAIN_GRACE);
             let message = if cleanup.is_empty() {
                 error.to_string()
