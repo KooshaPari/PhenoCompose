@@ -32,9 +32,10 @@ use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
-use std::process::{Command, Output};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::process::{Command, Output, Stdio};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use thiserror::Error;
+use wait_timeout::ChildExt;
 
 pub type Result<T> = std::result::Result<T, CliError>;
 
@@ -1405,7 +1406,17 @@ fn podman_output<'a>(distribution: &Option<String>, arguments: impl IntoIterator
     podman_output_owned(distribution, &arguments)
 }
 
+const PODMAN_COMMAND_TIMEOUT: Duration = Duration::from_secs(10);
+
 fn podman_output_owned(distribution: &Option<String>, arguments: &[String]) -> Result<Output> {
+    podman_output_owned_with_timeout(distribution, arguments, PODMAN_COMMAND_TIMEOUT)
+}
+
+fn podman_output_owned_with_timeout(
+    distribution: &Option<String>,
+    arguments: &[String],
+    timeout: Duration,
+) -> Result<Output> {
     let mut command = if let Some(distribution) = distribution {
         let mut command = Command::new("wsl.exe");
         command.args(["-d", distribution, "--", "podman"]);
@@ -1413,10 +1424,31 @@ fn podman_output_owned(distribution: &Option<String>, arguments: &[String]) -> R
     } else {
         Command::new("podman")
     };
-    command
+    let mut child = command
         .args(arguments)
-        .output()
-        .map_err(|error| CliError::io("podman_spawn", error))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| CliError::backend("podman_unavailable", format!("failed to start Podman: {error}")))?;
+
+    match child.wait_timeout(timeout) {
+        Ok(Some(_)) => child
+            .wait_with_output()
+            .map_err(|error| CliError::backend("podman_unavailable", format!("Podman output was unavailable: {error}"))),
+        Ok(None) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            Err(CliError::backend(
+                "podman_timeout",
+                format!("Podman command timed out after {} ms", timeout.as_millis()),
+            ))
+        }
+        Err(error) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            Err(CliError::io("podman_wait", error))
+        }
+    }
 }
 
 fn require_success(code: &str, output: Output) -> Result<Output> {
@@ -1495,5 +1527,127 @@ mod lifecycle_bridge_tests {
         };
         let error = validate_lifecycle_result(&request, &result).unwrap_err();
         assert_eq!(error.code, "nvms_route_mismatch");
+    }
+}
+
+#[cfg(all(unix, test))]
+mod podman_command_tests {
+    use super::*;
+    use std::env;
+    use std::ffi::OsString;
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::Path;
+    use std::sync::{Mutex, OnceLock};
+
+    struct FakeCommandEnvironment {
+        path: Option<OsString>,
+        log: Option<OsString>,
+    }
+
+    impl Drop for FakeCommandEnvironment {
+        fn drop(&mut self) {
+            restore_environment("PATH", self.path.take());
+            restore_environment("PHENOCOMPOSE_PODMAN_TEST_LOG", self.log.take());
+        }
+    }
+
+    fn restore_environment(name: &str, value: Option<OsString>) {
+        if let Some(value) = value {
+            env::set_var(name, value);
+        } else {
+            env::remove_var(name);
+        }
+    }
+
+    fn environment_lock() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(())).lock().unwrap()
+    }
+
+    fn install_fake_command_path(directory: &Path, log: &Path) -> FakeCommandEnvironment {
+        let previous_path = env::var_os("PATH");
+        let previous_log = env::var_os("PHENOCOMPOSE_PODMAN_TEST_LOG");
+        let mut paths = vec![directory.to_path_buf()];
+        if let Some(existing) = previous_path.as_ref() {
+            paths.extend(env::split_paths(existing));
+        }
+        env::set_var("PATH", env::join_paths(paths).unwrap());
+        env::set_var("PHENOCOMPOSE_PODMAN_TEST_LOG", log);
+        FakeCommandEnvironment {
+            path: previous_path,
+            log: previous_log,
+        }
+    }
+
+    fn write_fake_command(directory: &Path, name: &str, script: &str) {
+        let path = directory.join(name);
+        fs::write(&path, script).unwrap();
+        let mut permissions = fs::metadata(&path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).unwrap();
+    }
+
+    #[test]
+    fn direct_podman_command_preserves_arguments() {
+        let _lock = environment_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let log = directory.path().join("args.log");
+        write_fake_command(
+            directory.path(),
+            "podman",
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$PHENOCOMPOSE_PODMAN_TEST_LOG\"\nprintf 'ok\\n'\n",
+        );
+        let _environment = install_fake_command_path(directory.path(), &log);
+        let arguments = vec!["version".to_owned(), "--format".to_owned(), "json".to_owned()];
+
+        let output = podman_output_owned_with_timeout(&None, &arguments, Duration::from_secs(1)).unwrap();
+
+        assert!(output.status.success());
+        assert_eq!(String::from_utf8_lossy(&output.stdout), "ok\n");
+        assert_eq!(fs::read_to_string(log).unwrap(), "version\n--format\njson\n");
+    }
+
+    #[test]
+    fn wsl_podman_command_includes_distribution_route() {
+        let _lock = environment_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let log = directory.path().join("args.log");
+        write_fake_command(
+            directory.path(),
+            "wsl.exe",
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$PHENOCOMPOSE_PODMAN_TEST_LOG\"\nprintf 'ok\\n'\n",
+        );
+        let _environment = install_fake_command_path(directory.path(), &log);
+        let distribution = Some("podman-machine-default".to_owned());
+        let arguments = vec!["image".to_owned(), "exists".to_owned(), "example:latest".to_owned()];
+
+        let output = podman_output_owned_with_timeout(&distribution, &arguments, Duration::from_secs(1)).unwrap();
+
+        assert!(output.status.success());
+        assert_eq!(
+            fs::read_to_string(log).unwrap(),
+            "-d\npodman-machine-default\n--\npodman\nimage\nexists\nexample:latest\n"
+        );
+    }
+
+    #[test]
+    fn podman_command_timeout_kills_child_and_is_deterministic() {
+        let _lock = environment_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let log = directory.path().join("args.log");
+        write_fake_command(directory.path(), "podman", "#!/bin/sh\nwhile :; do :; done\n");
+        let _environment = install_fake_command_path(directory.path(), &log);
+
+        let error = podman_output_owned_with_timeout(
+            &None,
+            &["version".to_owned()],
+            Duration::from_millis(50),
+        )
+        .unwrap_err();
+
+        assert_eq!(error.kind, ErrorKind::Backend);
+        assert_eq!(error.code, "podman_timeout");
+        assert_eq!(error.message, "Podman command timed out after 50 ms");
     }
 }
