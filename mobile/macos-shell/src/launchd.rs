@@ -18,8 +18,7 @@ pub const PLIST_FILENAME: &str = "ai.phenotype.pheno-compose-driver.plist";
 /// Where the plist should be installed for the current user.
 /// `~/Library/LaunchAgents/` is the standard per-user agent location.
 pub fn launch_agent_dir() -> Result<PathBuf, MacosShellError> {
-    let home = std::env::var_os("HOME")
-        .ok_or_else(|| MacosShellError::LaunchdBootstrap("$HOME not set".into()))?;
+    let home = std::env::var_os("HOME").ok_or_else(|| MacosShellError::LaunchdBootstrap("$HOME not set".into()))?;
     Ok(Path::new(&home).join("Library").join("LaunchAgents"))
 }
 

@@ -24,7 +24,10 @@ fn parse_latest_tag(body: &str) -> Option<String> {
 
 fn is_newer(latest: &str, current: &str) -> bool {
     let parse = |s: &str| -> Vec<u32> {
-        s.trim_start_matches('v').split('.').filter_map(|p| p.parse().ok()).collect()
+        s.trim_start_matches('v')
+            .split('.')
+            .filter_map(|p| p.parse().ok())
+            .collect()
     };
     let l = parse(latest);
     let c = parse(current);

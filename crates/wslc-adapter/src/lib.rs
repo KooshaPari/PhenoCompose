@@ -67,9 +67,7 @@ fn spawn_container(image: &ImageRef) -> Result<ContainerId, RuntimeError> {
 
 #[cfg(not(target_os = "windows"))]
 fn spawn_container(_image: &ImageRef) -> Result<ContainerId, RuntimeError> {
-    Err(RuntimeError::backend(
-        "wslc runtime is only available on Windows",
-    ))
+    Err(RuntimeError::backend("wslc runtime is only available on Windows"))
 }
 
 #[cfg(target_os = "windows")]
@@ -82,10 +80,7 @@ fn stop_container(id: &ContainerId) -> Result<(), RuntimeError> {
     if output.status.success() {
         Ok(())
     } else if output_mentions_not_found(&output) {
-        Err(RuntimeError::not_found(format!(
-            "no container with id {}",
-            id.as_ref()
-        )))
+        Err(RuntimeError::not_found(format!("no container with id {}", id.as_ref())))
     } else {
         Err(RuntimeError::backend(command_error("wslc stop", &output)))
     }
@@ -93,9 +88,7 @@ fn stop_container(id: &ContainerId) -> Result<(), RuntimeError> {
 
 #[cfg(not(target_os = "windows"))]
 fn stop_container(_id: &ContainerId) -> Result<(), RuntimeError> {
-    Err(RuntimeError::backend(
-        "wslc runtime is only available on Windows",
-    ))
+    Err(RuntimeError::backend("wslc runtime is only available on Windows"))
 }
 
 #[cfg(target_os = "windows")]
@@ -118,9 +111,7 @@ fn container_status(id: &ContainerId) -> Result<ContainerStatus, RuntimeError> {
 
 #[cfg(not(target_os = "windows"))]
 fn container_status(_id: &ContainerId) -> Result<ContainerStatus, RuntimeError> {
-    Err(RuntimeError::backend(
-        "wslc runtime is only available on Windows",
-    ))
+    Err(RuntimeError::backend("wslc runtime is only available on Windows"))
 }
 
 #[cfg(target_os = "windows")]

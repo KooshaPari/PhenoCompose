@@ -164,10 +164,7 @@ impl Runtime for NoopRuntime {
         }
         let n = self.next_id.fetch_add(1, Ordering::SeqCst);
         let id = format!("noop-{}", n);
-        self.alive
-            .lock()
-            .expect("noop runtime mutex poisoned")
-            .push(id.clone());
+        self.alive.lock().expect("noop runtime mutex poisoned").push(id.clone());
         Ok(ContainerId::new(id))
     }
 
@@ -179,10 +176,7 @@ impl Runtime for NoopRuntime {
                 guard.swap_remove(i);
                 Ok(())
             }
-            None => Err(RuntimeError::not_found(format!(
-                "no container with id {}",
-                id.as_ref()
-            ))),
+            None => Err(RuntimeError::not_found(format!("no container with id {}", id.as_ref()))),
         }
     }
 

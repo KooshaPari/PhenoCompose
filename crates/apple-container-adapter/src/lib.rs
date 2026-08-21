@@ -79,10 +79,7 @@ fn stop_container(id: &ContainerId) -> Result<(), RuntimeError> {
     if output.status.success() {
         Ok(())
     } else if output_mentions_not_found(&output) {
-        Err(RuntimeError::not_found(format!(
-            "no container with id {}",
-            id.as_ref()
-        )))
+        Err(RuntimeError::not_found(format!("no container with id {}", id.as_ref())))
     } else {
         Err(RuntimeError::backend(command_error("container stop", &output)))
     }

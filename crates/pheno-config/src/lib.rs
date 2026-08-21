@@ -105,12 +105,10 @@ const fn default_firecracker_memory() -> u64 {
 // NvmsConfig
 // ---------------------------------------------------------------------------
 
-
-pub mod nvms;
-pub mod sandbox;
-pub mod perf;
 pub mod gpu;
-
+pub mod nvms;
+pub mod perf;
+pub mod sandbox;
 
 // ---------------------------------------------------------------------------
 // Combined defaults — derived via #[derive(Default)] on PhenoConfig

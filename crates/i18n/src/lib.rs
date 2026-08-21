@@ -34,7 +34,16 @@ pub fn t(key: &str) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn known_key() { assert_eq!(t("app.name"), "PhenoCompose"); }
-    #[test] fn unknown_key() { assert_eq!(t("nope"), "?"); }
-    #[test] fn no_panic_on_empty() { assert_eq!(t(""), "?"); }
+    #[test]
+    fn known_key() {
+        assert_eq!(t("app.name"), "PhenoCompose");
+    }
+    #[test]
+    fn unknown_key() {
+        assert_eq!(t("nope"), "?");
+    }
+    #[test]
+    fn no_panic_on_empty() {
+        assert_eq!(t(""), "?");
+    }
 }

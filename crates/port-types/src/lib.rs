@@ -32,6 +32,8 @@
 // ---------------------------------------------------------------------------
 // OCI helpers — canonical home is `phenotype-types`
 // ---------------------------------------------------------------------------
+pub mod compose;
+pub mod error;
 /// OCI (Open Container Initiative) image reference helpers.
 ///
 /// Parsing, validation, and construction utilities for OCI image
@@ -42,11 +44,8 @@
 /// (<https://github.com/kooshapari/phenotype-types>). Consumers
 /// SHOULD prefer that crate over this local module when it is
 /// available.
-
 pub mod oci;
-pub mod compose;
 pub mod runtime;
-pub mod error;
 pub mod secret;
 
 // ---------------------------------------------------------------------------

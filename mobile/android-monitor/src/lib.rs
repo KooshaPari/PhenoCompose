@@ -60,9 +60,7 @@ pub fn ping_heartbeat(seq: u64) -> Result<u64, AndroidMonitorError> {
 /// On non-Android targets this is a no-op stub.
 pub fn push_deploy_event(event_id: &str, severity: u8) -> Result<(), AndroidMonitorError> {
     if event_id.is_empty() {
-        return Err(AndroidMonitorError::InvalidPayload(
-            "event_id cannot be empty".into(),
-        ));
+        return Err(AndroidMonitorError::InvalidPayload("event_id cannot be empty".into()));
     }
     if severity > 5 {
         return Err(AndroidMonitorError::InvalidPayload(format!(
@@ -72,8 +70,7 @@ pub fn push_deploy_event(event_id: &str, severity: u8) -> Result<(), AndroidMoni
     }
     #[cfg(all(target_os = "android", feature = "android"))]
     {
-        jni_bridge::pheno_monitor_push(event_id, severity as i32)
-            .map_err(AndroidMonitorError::ServiceFailed)?;
+        jni_bridge::pheno_monitor_push(event_id, severity as i32).map_err(AndroidMonitorError::ServiceFailed)?;
     }
     Ok(())
 }
