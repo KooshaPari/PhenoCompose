@@ -41,6 +41,26 @@ exclude:
     - "**/*_test.rs"
     - "**/*.spec.*"
 
+    # Governance / documentation files — these contain patterns
+    # (URLs, email addresses, token placeholders) that trigger
+    # false positives from trufflehog's ~700 default detectors.
+    - "AGENTS.md"
+    - "CLAUDE.md"
+    - "CODEOWNERS"
+    - "CONTRIBUTING.md"
+    - "SECURITY.md"
+    - "DESIGN.md"
+    - "CHANGELOG.md"
+    - "CITATION.cff"
+    - "FUNDING.yml"
+    - "NOTICE"
+    - "LICENSE*"
+    - "*.md"
+    - ".forge/**"
+    - ".trunk/**"
+    - ".gitleaks.toml"
+    - ".trufflehog.yml"
+
 include:
   files:
     - "**/*"
