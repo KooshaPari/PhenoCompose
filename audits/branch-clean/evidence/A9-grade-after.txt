@@ -1,0 +1,4 @@
+Microsoft Windows [Version 10.0.28120.2374]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Users\koosh\PhenoCompose>More? 

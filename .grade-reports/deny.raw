@@ -1,0 +1,10 @@
+2026-06-30 04:27:55 [ERROR] failed to fetch crates: error: failed to parse lock file at: /mnt/c/Users/koosh/PhenoCompose/Cargo.lock
+
+Caused by:
+  lock file version 4 requires `-Znext-lockfile-bump`
+
+2026-06-30 04:27:55 [ERROR] `cargo metadata` exited with an error: error: failed to parse lock file at: /mnt/c/Users/koosh/PhenoCompose/Cargo.lock
+
+Caused by:
+  lock file version 4 requires `-Znext-lockfile-bump`
+
