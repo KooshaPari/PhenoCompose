@@ -304,10 +304,7 @@ mod tests {
         };
         match &err {
             DriverError::Config(msg) => {
-                assert!(
-                    msg.contains("cpu_count"),
-                    "Config error must name cpu_count: {msg}"
-                );
+                assert!(msg.contains("cpu_count"), "Config error must name cpu_count: {msg}");
             }
             other => panic!("expected DriverError::Config, got {other:?}"),
         }
@@ -353,10 +350,7 @@ mod tests {
             Err(e) => e,
         };
         match &err {
-            DriverError::Config(msg) => assert!(
-                msg.contains("network"),
-                "Config error must name network: {msg}"
-            ),
+            DriverError::Config(msg) => assert!(msg.contains("network"), "Config error must name network: {msg}"),
             other => panic!("expected DriverError::Config, got {other:?}"),
         }
         assert_eq!(driver.list_instances().len(), baseline);
@@ -372,10 +366,7 @@ mod tests {
             Err(e) => e,
         };
         match &err {
-            DriverError::Config(msg) => assert!(
-                msg.contains("image"),
-                "Config error must name image: {msg}"
-            ),
+            DriverError::Config(msg) => assert!(msg.contains("image"), "Config error must name image: {msg}"),
             other => panic!("expected DriverError::Config, got {other:?}"),
         }
         assert_eq!(driver.list_instances().len(), baseline);
@@ -391,10 +382,7 @@ mod tests {
             Err(e) => e,
         };
         match &err {
-            DriverError::Config(msg) => assert!(
-                msg.contains("env"),
-                "Config error must name env: {msg}"
-            ),
+            DriverError::Config(msg) => assert!(msg.contains("env"), "Config error must name env: {msg}"),
             other => panic!("expected DriverError::Config, got {other:?}"),
         }
         assert_eq!(driver.list_instances().len(), baseline);
@@ -418,10 +406,7 @@ mod tests {
         match err {
             DriverError::Config(msg) => {
                 for field in ["cpu_count", "memory_bytes", "network", "image", "env"] {
-                    assert!(
-                        msg.contains(field),
-                        "Config error must name {field}: {msg}"
-                    );
+                    assert!(msg.contains(field), "Config error must name {field}: {msg}");
                 }
             }
             other => panic!("expected DriverError::Config, got {other:?}"),
