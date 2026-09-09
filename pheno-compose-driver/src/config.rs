@@ -6,6 +6,7 @@
 //! reference to [`pheno_config::PhenoConfig`] so callers can
 //! supply their own defaults (loaded from TOML, env vars, etc.).
 
+use super::error::DriverError;
 use super::Tier;
 
 /// NVMS Instance Configuration
@@ -125,6 +126,52 @@ impl NvmsConfig {
             value: value.into(),
         });
         self
+    }
+
+    /// List the names of fields that are set but not honored by
+    /// the underlying NVMS C FFI. Used by [`Self::validate`] to
+    /// surface explicit configuration errors instead of silently
+    /// dropping unsupported fields at allocation time.
+    pub fn unsupported_fields(&self) -> Vec<&'static str> {
+        let mut unsupported: Vec<&'static str> = Vec::new();
+        if self.cpu_count.is_some() {
+            unsupported.push("cpu_count");
+        }
+        if self.memory_bytes.is_some() {
+            unsupported.push("memory_bytes");
+        }
+        if self.network.is_some() {
+            unsupported.push("network");
+        }
+        if self.image.is_some() {
+            unsupported.push("image");
+        }
+        if !self.env.is_empty() {
+            unsupported.push("env");
+        }
+        unsupported
+    }
+
+    /// Validate that the configuration only carries fields
+    /// honored by the underlying NVMS C FFI.
+    ///
+    /// Returns [`DriverError::Config`] listing every field that
+    /// is set but not currently supported. The list is sorted
+    /// and stable for predictable error messages.
+    pub fn validate(&self) -> Result<(), DriverError> {
+        let unsupported = self.unsupported_fields();
+        if unsupported.is_empty() {
+            Ok(())
+        } else {
+            Err(DriverError::Config(format!(
+                "NvmsConfig carries fields not honored by the NVMS C FFI \
+                 (currently only `tier` and `name` are forwarded): {}. \
+                 Remove these fields or use the lower-level \
+                 NvmsDriver::create_instance API until the C ABI grows \
+                 additional setters.",
+                unsupported.join(", ")
+            )))
+        }
     }
 }
 

@@ -79,10 +79,17 @@ impl NvmsDriver {
     }
 
     /// Create instance with full configuration
+    ///
+    /// The configuration is validated before any allocation is
+    /// performed. If any field that is not honored by the
+    /// underlying NVMS C FFI is set, the call returns
+    /// [`DriverError::Config`] listing the offending fields and
+    /// no instance is created. The current C ABI accepts only
+    /// `tier` and `name`; all other [`NvmsConfig`] fields are
+    /// rejected explicitly rather than silently dropped.
     pub fn create_instance_with_config(&self, config: &NvmsConfig) -> Result<Instance, DriverError> {
-        let instance = self.create_instance(config.tier, &config.name)?;
-        // Apply additional config options here
-        Ok(instance)
+        config.validate()?;
+        self.create_instance(config.tier, &config.name)
     }
 
     /// List all running instances
@@ -225,5 +232,222 @@ mod tests {
             "expected no instances after drop, got {}",
             instances.len()
         );
+    }
+
+    // -----------------------------------------------------------------
+    // Driver config honesty acceptance tests.
+    //
+    // The current NVMS C FFI only honors `tier` and `name`. Every
+    // other field on `NvmsConfig` must be rejected explicitly by
+    // `create_instance_with_config` instead of being silently dropped,
+    // so callers get a truthful error before any allocation happens.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn config_firecracker_factory_defaults_are_truthfully_rejected() {
+        // The `firecracker()` and `firecracker_with()` factories
+        // pre-populate cpu_count/memory_bytes from the centralized
+        // pheno_config defaults. Those fields are not honored by
+        // the current NVMS C FFI, so `create_instance_with_config`
+        // must surface a truthful Config error rather than silently
+        // ignoring the defaults. Callers wanting the platform
+        // defaults should use the lower-level `create_instance`
+        // API until the C ABI gains setters for these fields.
+        let driver = NvmsDriver::new().expect("driver init");
+        let baseline = driver.list_instances().len();
+        let config = NvmsConfig::firecracker("honest-fc-defaults");
+        assert!(
+            config.cpu_count.is_some() && config.memory_bytes.is_some(),
+            "firecracker() factory must still carry the pheno_config defaults \
+             so callers can see what would have been requested"
+        );
+        let err = match driver.create_instance_with_config(&config) {
+            Ok(_) => panic!("firecracker() defaults must be rejected"),
+            Err(e) => e,
+        };
+        match &err {
+            DriverError::Config(msg) => {
+                assert!(
+                    msg.contains("cpu_count") && msg.contains("memory_bytes"),
+                    "Config error must name both defaulted fields: {msg}"
+                );
+            }
+            other => panic!("expected DriverError::Config, got {other:?}"),
+        }
+        assert_eq!(
+            driver.list_instances().len(),
+            baseline,
+            "rejected firecracker default config must not allocate"
+        );
+    }
+
+    #[test]
+    fn config_minimal_wasm_is_accepted_and_allocates() {
+        let driver = NvmsDriver::new().expect("driver init");
+        let config = NvmsConfig::wasm("honest-minimal-wasm");
+        assert!(config.validate().is_ok(), "minimal config must validate");
+        let instance = driver
+            .create_instance_with_config(&config)
+            .expect("minimal config allocation succeeds");
+        assert_eq!(instance.tier(), Tier::Wasm);
+        drop(instance);
+    }
+
+    #[test]
+    fn config_unsupported_cpu_count_returns_config_error_without_allocation() {
+        let driver = NvmsDriver::new().expect("driver init");
+        let baseline = driver.list_instances().len();
+        let config = NvmsConfig::wasm("honest-bad-cpus").with_cpus(8);
+        let err = match driver.create_instance_with_config(&config) {
+            Ok(_) => panic!("cpu_count must be rejected"),
+            Err(e) => e,
+        };
+        match &err {
+            DriverError::Config(msg) => {
+                assert!(
+                    msg.contains("cpu_count"),
+                    "Config error must name cpu_count: {msg}"
+                );
+            }
+            other => panic!("expected DriverError::Config, got {other:?}"),
+        }
+        assert!(
+            err.recovery_hint().contains("configuration"),
+            "recovery hint must mention configuration"
+        );
+        assert_eq!(
+            driver.list_instances().len(),
+            baseline,
+            "rejected config must not allocate an instance"
+        );
+    }
+
+    #[test]
+    fn config_unsupported_memory_returns_config_error_without_allocation() {
+        let driver = NvmsDriver::new().expect("driver init");
+        let baseline = driver.list_instances().len();
+        let config = NvmsConfig::wasm("honest-bad-mem").with_memory_gb(4);
+        let err = match driver.create_instance_with_config(&config) {
+            Ok(_) => panic!("memory_bytes must be rejected"),
+            Err(e) => e,
+        };
+        match &err {
+            DriverError::Config(msg) => {
+                assert!(
+                    msg.contains("memory_bytes"),
+                    "Config error must name memory_bytes: {msg}"
+                );
+            }
+            other => panic!("expected DriverError::Config, got {other:?}"),
+        }
+        assert_eq!(driver.list_instances().len(), baseline);
+    }
+
+    #[test]
+    fn config_unsupported_network_returns_config_error_without_allocation() {
+        let driver = NvmsDriver::new().expect("driver init");
+        let baseline = driver.list_instances().len();
+        let config = NvmsConfig::wasm("honest-bad-net").with_network("default");
+        let err = match driver.create_instance_with_config(&config) {
+            Ok(_) => panic!("network must be rejected"),
+            Err(e) => e,
+        };
+        match &err {
+            DriverError::Config(msg) => assert!(
+                msg.contains("network"),
+                "Config error must name network: {msg}"
+            ),
+            other => panic!("expected DriverError::Config, got {other:?}"),
+        }
+        assert_eq!(driver.list_instances().len(), baseline);
+    }
+
+    #[test]
+    fn config_unsupported_image_returns_config_error_without_allocation() {
+        let driver = NvmsDriver::new().expect("driver init");
+        let baseline = driver.list_instances().len();
+        let config = NvmsConfig::wasm("honest-bad-image").with_image("ubuntu:22.04");
+        let err = match driver.create_instance_with_config(&config) {
+            Ok(_) => panic!("image must be rejected"),
+            Err(e) => e,
+        };
+        match &err {
+            DriverError::Config(msg) => assert!(
+                msg.contains("image"),
+                "Config error must name image: {msg}"
+            ),
+            other => panic!("expected DriverError::Config, got {other:?}"),
+        }
+        assert_eq!(driver.list_instances().len(), baseline);
+    }
+
+    #[test]
+    fn config_unsupported_env_returns_config_error_without_allocation() {
+        let driver = NvmsDriver::new().expect("driver init");
+        let baseline = driver.list_instances().len();
+        let config = NvmsConfig::wasm("honest-bad-env").with_env("KEY", "VALUE");
+        let err = match driver.create_instance_with_config(&config) {
+            Ok(_) => panic!("env must be rejected"),
+            Err(e) => e,
+        };
+        match &err {
+            DriverError::Config(msg) => assert!(
+                msg.contains("env"),
+                "Config error must name env: {msg}"
+            ),
+            other => panic!("expected DriverError::Config, got {other:?}"),
+        }
+        assert_eq!(driver.list_instances().len(), baseline);
+    }
+
+    #[test]
+    fn config_combined_unsupported_lists_every_field_in_sorted_order() {
+        let config = NvmsConfig::wasm("honest-combined")
+            .with_env("E", "V")
+            .with_image("ubuntu:22.04")
+            .with_network("default")
+            .with_memory_gb(1)
+            .with_cpus(2);
+        let unsupported = config.unsupported_fields();
+        assert_eq!(
+            unsupported,
+            vec!["cpu_count", "memory_bytes", "network", "image", "env"],
+            "fields must be reported in a stable, sorted order"
+        );
+        let err = config.validate().expect_err("combined unsupported must fail");
+        match err {
+            DriverError::Config(msg) => {
+                for field in ["cpu_count", "memory_bytes", "network", "image", "env"] {
+                    assert!(
+                        msg.contains(field),
+                        "Config error must name {field}: {msg}"
+                    );
+                }
+            }
+            other => panic!("expected DriverError::Config, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn config_empty_unsupported_fields_is_empty_vec() {
+        let config = NvmsConfig::wasm("honest-empty");
+        assert!(
+            config.unsupported_fields().is_empty(),
+            "minimal config must report zero unsupported fields"
+        );
+    }
+
+    #[test]
+    fn config_rejected_error_has_no_ffi_source() {
+        let config = NvmsConfig::wasm("honest-no-ffi-source").with_cpus(1);
+        let err = config.validate().expect_err("must reject cpu_count");
+        match err {
+            DriverError::Config(_) => {
+                // The Config variant must not pretend to be an FFI
+                // error so callers don't mistake config issues for
+                // backend faults.
+            }
+            other => panic!("expected DriverError::Config, got {other:?}"),
+        }
     }
 }
