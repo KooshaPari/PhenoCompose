@@ -57,8 +57,8 @@ pub use error::PortError;
 pub use runtime::{ContainerId, ContainerStatus, ImageRef};
 pub use secret::{Secret, SecretRef};
 
+#[cfg(test)]
 mod tests {
-    use super::*;
     #[test]
     fn manifest_new_sets_name_and_leaves_others_empty() {
         let m = Manifest::new("phenocommand-web");
