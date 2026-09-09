@@ -77,15 +77,14 @@ jobs:
         # support and is verified locally with `cargo deny check`.
         run: cargo install --locked cargo-deny --version 0.19.0
 
-      - name: cargo-deny check (advisories, licenses, sources, bans)
+      - name: cargo-deny check (advisories, licenses, sources, bans, duplicates)
         working-directory: ${{ matrix.scope.workdir }}
+        # In cargo-deny 0.19.0, duplicate-version detection is part of the
+        # 'bans' check (gated by deny.toml [bans] multiple-versions =
+        # "warn"). The separate 'cargo deny check duplicates' subcommand
+        # from 0.16.x was removed; calling it now exits with
+        # 'invalid value duplicates for [WHICH]...'.
         run: cargo deny check
-
-      - name: cargo-deny check duplicates
-        working-directory: ${{ matrix.scope.workdir }}
-        # Duplicates are advisory; warn rather than fail so newly-merged PRs
-        # don't get bounced for transitive version skew.
-        run: cargo deny check duplicates || echo "::warning::duplicate crate versions detected"
 
   # -------------------------------------------------------------------
   # gomod check — graceful no-op (no top-level Go module today)
