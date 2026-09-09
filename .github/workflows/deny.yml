@@ -68,7 +68,11 @@ jobs:
           fi
 
       - name: Install cargo-deny
-        run: cargo install --locked cargo-deny --version "^0.16"
+        # Pin to a specific cargo-deny release that supports the CVSS v4.0
+        # advisory format (RUSTSEC advisories published in 2026 onward). The
+        # pinned version is 0.16.4, which is the most recent 0.16.x at the
+        # time of this commit and parses CVSS 4.0 vectors without erroring.
+        run: cargo install --locked cargo-deny --version "=0.16.4"
 
       - name: cargo-deny check (advisories, licenses, sources, bans)
         working-directory: ${{ matrix.scope.workdir }}
