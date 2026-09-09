@@ -36,6 +36,7 @@ pub struct MonitorCapabilities {
     pub ndk_runtime: bool,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for MonitorCapabilities {
     fn default() -> Self {
         let on_android = cfg!(target_os = "android");

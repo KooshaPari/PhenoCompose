@@ -47,6 +47,7 @@ pub struct ScmCapabilities {
     pub event_log: bool,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for ScmCapabilities {
     fn default() -> Self {
         let on_windows = cfg!(target_os = "windows");
