@@ -49,10 +49,11 @@ pub struct ScmCapabilities {
 
 impl Default for ScmCapabilities {
     fn default() -> Self {
+        let on_windows = cfg!(target_os = "windows");
         Self {
-            scm_registration: cfg!(target_os = "windows"),
-            service_control: cfg!(target_os = "windows"),
-            event_log: cfg!(target_os = "windows"),
+            scm_registration: on_windows,
+            service_control: on_windows,
+            event_log: on_windows,
         }
     }
 }

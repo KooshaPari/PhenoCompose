@@ -38,10 +38,11 @@ pub struct MonitorCapabilities {
 
 impl Default for MonitorCapabilities {
     fn default() -> Self {
+        let on_android = cfg!(target_os = "android");
         Self {
-            jni_bridge: cfg!(target_os = "android"),
-            foreground_service: cfg!(target_os = "android"),
-            ndk_runtime: cfg!(target_os = "android"),
+            jni_bridge: on_android,
+            foreground_service: on_android,
+            ndk_runtime: on_android,
         }
     }
 }

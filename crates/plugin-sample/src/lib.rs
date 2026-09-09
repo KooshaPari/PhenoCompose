@@ -24,6 +24,12 @@ impl SamplePlugin {
     }
 }
 
+impl Default for SamplePlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Plugin for SamplePlugin {
     fn info(&self) -> PluginInfo {
         PluginInfo {
