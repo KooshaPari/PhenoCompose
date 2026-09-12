@@ -1,10 +1,7 @@
 avoid-breaking-exported-api = false
 cognitive-complexity-threshold = 30
 excessive-nesting-threshold = 5
-missing-docs-in-private-items = true
-missing-panics-doc = true
-missing-safety-doc = true
-redundant-pub-crate = true
-redundant-pub-trait = true
+# Renamed in clippy 0.1.84 from `missing-docs-in-private-items`
+missing-docs-in-crate-items = true
 too-many-arguments-threshold = 8
 type-complexity-threshold = 500

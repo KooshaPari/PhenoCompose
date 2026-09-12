@@ -92,9 +92,10 @@ pub fn install_plist(driver_binary: &Path) -> Result<PathBuf, MacosShellError> {
 /// Capability query for the launchd surface — used by `boot_shell_extension`
 /// to populate `ShellCapabilities.launchd_service`.
 pub fn capabilities() -> ShellCapabilities {
-    let mut caps = ShellCapabilities::default();
-    caps.launchd_service = cfg!(target_os = "macos");
-    caps
+    ShellCapabilities {
+        launchd_service: cfg!(target_os = "macos"),
+        ..ShellCapabilities::default()
+    }
 }
 
 #[cfg(test)]

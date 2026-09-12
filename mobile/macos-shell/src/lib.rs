@@ -44,6 +44,10 @@ pub struct ShellCapabilities {
     pub spotlight: bool,
 }
 
+// clippy::derivable_impls: cfg!() is not a const-evaluable expression,
+// so #[derive(Default)] cannot replicate these field values at the
+// language level. The manual impl is canonical for this pattern.
+#[allow(clippy::derivable_impls)]
 impl Default for ShellCapabilities {
     fn default() -> Self {
         Self {
